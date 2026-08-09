@@ -1,0 +1,27 @@
+{
+  "icon": "chart.bar.fill",
+  "name": "Codex Usage",
+  "color": "rgba(28, 28, 30, 1)",
+  "entry": "index.tsx",
+  "permissions": null,
+  "runInApp": true,
+  "contributors": [],
+  "version": "2.1.0",
+  "intentInputTypes": [],
+  "localizedNames": {
+    "zh": "Codex 用量",
+    "en": "Codex Usage"
+  },
+  "description": "Codex usage widget with official OpenAI browser OAuth (PKCE + manual localhost callback paste), local Keychain persistence, automatic token refresh, adaptive 5h/7d/30d limits and subscription expiry display.",
+  "remoteResource": null,
+  "author": {
+    "name": "StarYunLee",
+    "email": null,
+    "homepage": "https://github.com/StarYunLee/Scripting"
+  },
+  "localizedDescriptions": {
+    "zh": "Codex 用量桌面小组件。使用 OpenAI 官方 OAuth 登录，凭证与数据保存本机；自动识别 5 小时、7 天、30 天限额，并展示订阅到期时间。",
+    "en": "Codex usage widget with official OpenAI OAuth, local persistence, adaptive 5h/7d/30d limits, and subscription expiry display."
+  },
+  "iconImage": null
+}

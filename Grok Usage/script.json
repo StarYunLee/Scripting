@@ -1,0 +1,27 @@
+{
+  "icon": "bolt.circle.fill",
+  "name": "Grok Usage",
+  "color": "rgba(24, 24, 27, 1)",
+  "entry": "index.tsx",
+  "permissions": null,
+  "runInApp": true,
+  "contributors": [],
+  "version": "1.3.0",
+  "intentInputTypes": [],
+  "localizedNames": {
+    "zh": "Grok 用量",
+    "en": "Grok Usage"
+  },
+  "description": "Grok Build subscription quota widget with official xAI Authorization Code OAuth + PKCE, local Keychain persistence, monthly and weekly billing usage, and multi-account support.",
+  "remoteResource": null,
+  "author": {
+    "name": "StarYunLee",
+    "email": null,
+    "homepage": "https://github.com/StarYunLee/Scripting"
+  },
+  "localizedDescriptions": {
+    "zh": "Grok Build 订阅额度小组件。使用 xAI 官方 Authorization Code OAuth + PKCE 登录，展示每周和月度额度、重置时间及套餐。",
+    "en": "Grok Build quota widget with xAI Authorization Code OAuth + PKCE, weekly/monthly usage, reset times and plan display."
+  },
+  "iconImage": null
+}
