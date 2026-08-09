@@ -32,6 +32,14 @@
 
 下载并使用 Scripting 打开：[Codex-Usage.scripting](https://raw.githubusercontent.com/StarYunLee/Scripting/main/Codex-Usage.scripting)
 
+### 远程导入
+
+在 Scripting 中选择“远程导入”，复制并粘贴：
+
+```text
+https://raw.githubusercontent.com/StarYunLee/Scripting/main/Codex-Usage.scripting
+```
+
 ### 从源码导入
 
 1. 下载本项目源码目录或 `.scripting` 安装包。

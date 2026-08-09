@@ -11,12 +11,24 @@ OpenAI Codex 用量小组件，支持多账号、5 小时/每周/每月额度窗
 - [查看源码与使用说明](./Codex%20Usage/)
 - [直接安装 Codex-Usage.scripting](https://raw.githubusercontent.com/StarYunLee/Scripting/main/Codex-Usage.scripting)
 
+远程导入地址：
+
+```text
+https://raw.githubusercontent.com/StarYunLee/Scripting/main/Codex-Usage.scripting
+```
+
 ### Grok Usage
 
 Grok Build 订阅额度小组件，支持多账号、每周/月度双额度窗口、Small/Medium 布局和本机 xAI OAuth 凭证管理。
 
 - [查看源码与使用说明](./Grok%20Usage/)
 - [直接安装 Grok-Usage.scripting](https://raw.githubusercontent.com/StarYunLee/Scripting/main/Grok-Usage.scripting)
+
+远程导入地址：
+
+```text
+https://raw.githubusercontent.com/StarYunLee/Scripting/main/Grok-Usage.scripting
+```
 
 ## 安装
 
