@@ -17,6 +17,19 @@ OpenAI Codex 用量小组件，支持多账号、5 小时/每周/每月额度窗
 https://raw.githubusercontent.com/StarYunLee/Scripting/main/Codex-Usage.scripting
 ```
 
+### Claude Usage
+
+Claude Code 用量小组件，支持 Anthropic OAuth、多账号、5 小时/每周/Fable 每周额度、概览/详情布局及 Small/Medium 小组件。
+
+- [查看源码与使用说明](./Claude%20Usage/)
+- [直接安装 Claude-Usage.scripting](https://raw.githubusercontent.com/StarYunLee/Scripting/main/Claude-Usage.scripting)
+
+远程导入地址：
+
+```text
+https://raw.githubusercontent.com/StarYunLee/Scripting/main/Claude-Usage.scripting
+```
+
 ### Grok Usage
 
 Grok Build 订阅额度小组件，支持多账号、每周/月度双额度窗口、Small/Medium 布局和本机 xAI OAuth 凭证管理。
@@ -50,11 +63,11 @@ https://raw.githubusercontent.com/StarYunLee/Scripting/main/Grok-Usage.scripting
 - 作者与维护者：[StarYunLee](https://github.com/StarYunLee)
 - 问题反馈：[GitHub Issues](https://github.com/StarYunLee/Scripting/issues)
 
-提交 Issue 时，请在标题中注明 `[Codex Usage]` 或 `[Grok Usage]`。
+提交 Issue 时，请在标题中注明 `[Codex Usage]`、`[Claude Usage]` 或 `[Grok Usage]`。
 
 ## 致谢
 - [LINUX DO](https://linux.do/) — 社区讨论与反馈
 
 ## 免责声明
 
-本仓库项目不是 OpenAI、xAI 或 Scripting App 官方产品。相关 OAuth、用量及 Billing 接口可能随服务端更新而变化。使用者应遵守对应平台服务条款并自行承担使用风险。
+本仓库项目不是 OpenAI、Anthropic、xAI 或 Scripting App 官方产品。相关 OAuth、用量及 Billing 接口可能随服务端更新而变化。使用者应遵守对应平台服务条款并自行承担使用风险。
