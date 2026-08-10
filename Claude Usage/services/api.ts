@@ -78,7 +78,7 @@ function writeCache(profileId: string, value: UsageSnapshot): void {
 export const getCachedUsage = (profileId?: string | null) => readCache(profileId)
 export function clearUsageCache(profileId?: string | null): void { const p = resolveProfile(profileId); if (p) try { Storage.remove(cacheKey(p.id)) } catch { /* ignore */ } }
 export function pickFocusWindow(snapshot: UsageSnapshot, focus: "five_hour" | "weekly" | "weekly_fable" = "five_hour"): LimitWindow | null {
-  return snapshot.windows.find(w => w.name === focus) || snapshot.fiveHour || snapshot.weekly || snapshot.weeklyFable || snapshot.windows[0] || null
+  return snapshot.windows.find(w => w.name === focus) || null
 }
 function recent(cache: UsageSnapshot | null): boolean {
   if (!cache?.fetchedAt) return false

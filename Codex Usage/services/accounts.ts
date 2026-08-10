@@ -102,10 +102,6 @@ export function createAccount(name = ""): CodexAccountProfile {
   writeRegistry({ ...r, defaultAccountId: r.defaultAccountId || profile.id, accounts: [...r.accounts, profile] })
   return profile
 }
-export function renameAccount(profileId: string, name: string): void {
-  const r = getAccountRegistry(); const clean = name.trim(); if (!clean) return
-  writeRegistry({ ...r, accounts: r.accounts.map(a => a.id === profileId ? { ...a, name: clean, updatedAt: new Date().toISOString() } : a) })
-}
 export function setDefaultAccount(profileId: string): void {
   const r = getAccountRegistry(); if (!r.accounts.some(a => a.id === profileId)) return
   writeRegistry({ ...r, defaultAccountId: profileId })
@@ -118,9 +114,6 @@ export function updateProfileIdentity(profileId: string, identity: { accountId?:
     return { ...a, accountId: identity.accountId || a.accountId, email, name: email || a.name, updatedAt: new Date().toISOString() }
   }) })
 }
-export function updateProfileAccountId(profileId: string, accountId: string | null): void {
-  updateProfileIdentity(profileId, { accountId })
-}
 export function deleteAccount(profileId: string): void {
   const r = getAccountRegistry(); const accounts = r.accounts.filter(a => a.id !== profileId)
   for (const field of ["access_token", "refresh_token", "id_token", "expires_at", "account_id"]) setSecretRaw(secretKey(profileId, field), null)
@@ -128,7 +121,6 @@ export function deleteAccount(profileId: string): void {
 }
 export function getProfileAccessToken(profileId?: string | null): string | null { const p = resolveProfile(profileId); return p ? getSecretRaw(secretKey(p.id, "access_token")) : null }
 export function getProfileRefreshToken(profileId?: string | null): string | null { const p = resolveProfile(profileId); return p ? getSecretRaw(secretKey(p.id, "refresh_token")) : null }
-export function getProfileIdToken(profileId?: string | null): string | null { const p = resolveProfile(profileId); return p ? getSecretRaw(secretKey(p.id, "id_token")) : null }
 export function getProfileAccountId(profileId?: string | null): string | null { const p = resolveProfile(profileId); return p ? getSecretRaw(secretKey(p.id, "account_id")) || p.accountId : null }
 export function getProfileTokenExpiresAt(profileId?: string | null): number | null { const p = resolveProfile(profileId); const raw = p ? getSecretRaw(secretKey(p.id, "expires_at")) : null; const n = raw ? Number(raw) : NaN; return Number.isFinite(n) ? n : null }
 export function saveProfileCredentials(profileId: string, value: { accessToken: string; refreshToken?: string | null; idToken?: string | null; expiresAt?: number | null; accountId?: string | null; email?: string | null }): boolean {
@@ -140,12 +132,4 @@ export function saveProfileCredentials(profileId: string, value: { accessToken: 
   if (value.accountId) setSecretRaw(secretKey(p.id, "account_id"), value.accountId)
   if (value.accountId || value.email) updateProfileIdentity(p.id, { accountId: value.accountId, email: value.email })
   return ok
-}
-export function clearProfileCredentials(profileId: string): void {
-  for (const field of ["access_token", "refresh_token", "id_token", "expires_at", "account_id"]) setSecretRaw(secretKey(profileId, field), null)
-}
-export function accountParameterOptions(): Record<string, string> {
-  const out: Record<string, string> = {}
-  for (const account of listAccounts()) out[account.name] = account.email || account.id
-  return out
 }

@@ -6,7 +6,7 @@
 
 ### Codex Usage
 
-OpenAI Codex 用量小组件，支持多账号、5 小时/每周/每月额度窗口、Small/Medium 布局和本机 OAuth 凭证管理。
+OpenAI Codex 用量小组件，支持 OpenAI OAuth、多账号、5 小时/每周/每月额度，以及双额度概览和单额度详情布局。
 
 - [查看源码与使用说明](./Codex%20Usage/)
 - [直接安装 Codex-Usage.scripting](https://raw.githubusercontent.com/StarYunLee/Scripting/main/Codex-Usage.scripting)
@@ -19,7 +19,7 @@ https://raw.githubusercontent.com/StarYunLee/Scripting/main/Codex-Usage.scriptin
 
 ### Claude Usage
 
-Claude Code 用量小组件，支持 Anthropic OAuth、多账号、5 小时/每周/Fable 每周额度、概览/详情布局及 Small/Medium 小组件。
+Claude Code 用量小组件，支持 Anthropic OAuth、多账号、5 小时/每周/Fable 每周额度，以及双额度概览和单额度详情布局。
 
 - [查看源码与使用说明](./Claude%20Usage/)
 - [直接安装 Claude-Usage.scripting](https://raw.githubusercontent.com/StarYunLee/Scripting/main/Claude-Usage.scripting)
@@ -32,7 +32,7 @@ https://raw.githubusercontent.com/StarYunLee/Scripting/main/Claude-Usage.scripti
 
 ### Grok Usage
 
-Grok Build 订阅额度小组件，支持多账号、每周/月度双额度窗口、Small/Medium 布局和本机 xAI OAuth 凭证管理。
+Grok Build 额度小组件，支持 xAI OAuth、多账号、每周/月度额度，以及双额度概览和单额度详情布局。
 
 - [查看源码与使用说明](./Grok%20Usage/)
 - [直接安装 Grok-Usage.scripting](https://raw.githubusercontent.com/StarYunLee/Scripting/main/Grok-Usage.scripting)

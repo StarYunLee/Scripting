@@ -6,13 +6,14 @@
 
 ## 功能
 
-- OpenAI Authorization Code OAuth + PKCE，无需手动导入 `auth.json`
+- OpenAI Authorization Code OAuth + PKCE
 - Access Token、Refresh Token 和 ID Token 保存在本机 Keychain
 - Token 到期前自动刷新
 - 多账号管理，每个账号独立保存凭证和用量缓存
-- 自动识别账号实际返回的 5 小时、每周和每月额度窗口
+- 读取账号返回的 5 小时、每周和每月额度窗口
+- 支持单额度详情和双额度概览两种布局
 - 支持显示已用或剩余百分比
-- 支持手动选择主要展示的额度窗口
+- 单额度详情可选择 5 小时、每周或每月额度
 - 展示额度重置时间、可用重置次数和订阅到期信息
 - 网络失败时回退到本机最近一次成功缓存
 - 支持 Small、Medium 主屏幕小组件
@@ -28,21 +29,7 @@
 
 ## 安装
 
-### 直接安装
-
-下载并使用 Scripting 打开：[Codex-Usage.scripting](https://raw.githubusercontent.com/StarYunLee/Scripting/main/Codex-Usage.scripting)
-
-### 远程导入
-
-在 Scripting 中选择“远程导入”，复制并粘贴：
-
-```text
-https://raw.githubusercontent.com/StarYunLee/Scripting/main/Codex-Usage.scripting
-```
-
-### 从源码导入
-
-1. 下载本项目源码目录或 `.scripting` 安装包。
+1. 下载本项目目录或发布的 `.scripting` 安装包。
 2. 将 `Codex Usage` 导入 Scripting App。
 3. 在 Scripting 中运行 `Codex Usage`，进入账号和小组件设置页。
 4. 按下方步骤完成 OpenAI OAuth。
@@ -83,47 +70,43 @@ Codex Usage 支持同时添加多个 OpenAI 账号：
 3. 选择“编辑小组件”；
 4. 在“参数”中粘贴邮箱。
 
-普通用户直接填写邮箱即可。旧版 JSON、profileId 和账号显示名参数仅用于向后兼容。
+小组件参数填写目标账号邮箱即可。
 
 ## 小组件显示
 
 ### Small
 
-紧凑展示当前主额度窗口：
+支持两种布局：
 
-- 套餐徽章；
-- 5小时额度 / 每周额度 / 每月额度；
-- 已用和剩余百分比；
-- 进度条；
-- 更新时间；
-- 重置时间；
-- 可用重置次数。
+- 单额度详情：套餐徽章、所选额度、已用/剩余百分比、进度条、更新时间、重置时间和可用重置次数；
+- 双额度概览：同时显示 5 小时额度和每周额度。
 
 ### Medium
 
-重点展示当前主额度窗口，并在接口提供时显示其他额度窗口摘要：
+支持两种布局：
 
-- 套餐徽章与订阅信息；
-- 当前额度窗口的大百分比；
-- 已用进度条；
-- 其他窗口摘要；
-- 更新时间、可用重置次数和重置时间。
+- 单额度详情：重点展示所选额度的大百分比、进度条、其他窗口摘要和底部元数据；
+- 双额度概览：同时显示 5 小时额度和每周额度。
 
 ## 小组件设置
+
+### 组件布局
+
+- 单额度详情（默认）：突出显示所选额度；默认显示每周额度
+- 双额度概览：固定同时显示 5 小时额度和每周额度
+
+### 显示额度
+
+仅在“单额度详情”下显示：
+
+- 5 小时额度
+- 每周额度（默认）
+- 每月额度
 
 ### 用量显示
 
 - 已用
 - 剩余
-
-### 主额度窗口
-
-- 自动：优先展示当前使用比例最高、最紧张的窗口
-- 5 小时
-- 每周
-- 每月
-
-如果账号没有所选窗口，组件会回退到可用窗口。
 
 ### 刷新频率
 
@@ -169,11 +152,13 @@ OAuth 使用 OpenAI 官方认证端点；用量和账户数据来自 ChatGPT 当
 Codex Usage/
 ├── assets/                         小组件水印资源
 ├── components/
-│   └── UsageWidgetView.tsx         Small / Medium 布局
+│   ├── UsageWidgetView.tsx         布局路由
+│   ├── OverviewWidgetView.tsx      双额度概览布局
+│   └── DetailWidgetView.tsx        单额度详情布局
 ├── services/
 │   ├── accounts.ts                 多账号注册表与 Keychain 凭证
 │   ├── api.ts                      用量、账户信息、缓存与窗口解析
-│   ├── credentials.ts              小组件设置与布局默认值
+│   ├── credentials.ts              小组件设置与固定布局基线
 │   ├── format.ts                   时间和百分比格式化
 │   ├── oauth.ts                    OpenAI OAuth、PKCE 与 Token 刷新
 │   └── types.ts                    类型定义
@@ -181,17 +166,8 @@ Codex Usage/
 ├── index.tsx                       账号、授权、用量与设置页
 ├── widget.tsx                      小组件入口
 ├── script.json                     Scripting 项目元数据
-├── LICENSE                         MIT 许可证
 └── README.md
 ```
-
-## 作者与维护
-
-- 作者与维护者：[StarYunLee](https://github.com/StarYunLee)
-- 问题反馈：[GitHub Issues](https://github.com/StarYunLee/Scripting/issues)
-- 提交 Issue 时，请在标题中注明 `[Codex Usage]`。
-
-本项目采用 [MIT License](./LICENSE) 开源。
 
 ## 免责声明
 

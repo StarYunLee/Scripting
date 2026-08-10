@@ -132,8 +132,8 @@ function App() {
         onChanged={(value) => updateWidgetSettings({ widgetStyle: value as "dual" | "single" })}
         pickerStyle="navigationLink"
       >
-        <Text tag="dual">额度概览</Text>
-        <Text tag="single">额度详情</Text>
+        <Text tag="dual">双额度概览</Text>
+        <Text tag="single">单额度详情</Text>
       </Picker>
       {widgetSettings.widgetStyle === "dual" ? <Picker
         title="概览内容"

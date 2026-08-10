@@ -22,25 +22,6 @@ export function formatFetchedAt(iso: string | null | undefined): string {
   })
 }
 
-export function formatCountdown(resetAtIso: string | null | undefined): string {
-  if (!resetAtIso) return "—"
-  const target = new Date(resetAtIso).getTime()
-  if (Number.isNaN(target)) return "—"
-
-  let remain = Math.max(0, target - Date.now())
-  const days = Math.floor(remain / 86_400_000)
-  remain -= days * 86_400_000
-  const hours = Math.floor(remain / 3_600_000)
-  remain -= hours * 3_600_000
-  const minutes = Math.floor(remain / 60_000)
-
-  const hh = String(hours).padStart(2, "0")
-  const mm = String(minutes).padStart(2, "0")
-
-  if (days > 0) return `${days}d ${hh}:${mm}`
-  return `${hh}:${mm}`
-}
-
 export function formatResetDate(resetAtIso: string | null | undefined): string {
   if (!resetAtIso) return "—"
   const date = new Date(resetAtIso)

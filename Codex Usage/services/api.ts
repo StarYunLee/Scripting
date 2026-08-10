@@ -191,9 +191,8 @@ export function clearUsageCache(profileId?: string | null): void {
   try { Storage.remove(cacheKey(profile.id)) } catch { /* ignore */ }
 }
 
-export function pickFocusWindow(snapshot: UsageSnapshot, focus: "weekly" | "five_hour" | "monthly" | "auto" = "auto"): LimitWindow | null {
-  if (focus !== "auto") return snapshot.windows.find(w => w.name === focus) || snapshot.windows[0] || null
-  return [...snapshot.windows].sort((a, b) => (b.usedPercent ?? 0) - (a.usedPercent ?? 0))[0] || null
+export function pickFocusWindow(snapshot: UsageSnapshot, focus: "weekly" | "five_hour" | "monthly" = "weekly"): LimitWindow | null {
+  return snapshot.windows.find(w => w.name === focus) || null
 }
 
 export async function fetchUsage(options?: { force?: boolean; profileId?: string | null }): Promise<UsageResult> {

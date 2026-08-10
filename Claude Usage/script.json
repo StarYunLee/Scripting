@@ -6,13 +6,13 @@
   "permissions": null,
   "runInApp": true,
   "contributors": [],
-  "version": "1.0.0",
+  "version": "1.2.0",
   "intentInputTypes": [],
   "localizedNames": {
     "zh": "Claude 用量",
     "en": "Claude Usage"
   },
-  "description": "Claude Code usage widget with Anthropic Authorization Code OAuth + PKCE, multi-account support, five-hour, weekly and Fable weekly limits, and overview/detail layouts.",
+  "description": "Claude Code usage widget with Anthropic Authorization Code OAuth + PKCE, multi-account support, five-hour, weekly and Fable weekly limits, and dual-quota overview/single-quota detail layouts.",
   "remoteResource": null,
   "author": {
     "name": "StarYunLee",
@@ -20,8 +20,8 @@
     "homepage": null
   },
   "localizedDescriptions": {
-    "zh": "Claude Code 用量小组件。支持 Anthropic OAuth、多账号、5 小时/每周/Fable 每周额度，以及概览和详情布局。",
-    "en": "Claude Code usage widget with Anthropic OAuth, multi-account support, five-hour, weekly and Fable weekly limits, plus overview/detail layouts."
+    "zh": "Claude Code 用量小组件。支持 Anthropic OAuth、多账号、5 小时/每周/Fable 每周额度，以及双额度概览和单额度详情布局。",
+    "en": "Claude Code usage widget with Anthropic OAuth, multi-account support, five-hour, weekly and Fable weekly limits, plus dual-quota overview and single-quota detail layouts."
   },
   "iconImage": null
 }

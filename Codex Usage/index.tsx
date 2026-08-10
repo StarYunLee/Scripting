@@ -17,7 +17,7 @@ ensureAccountMigration()
 
 function summary(snapshot: UsageSnapshot | null): string {
   if (!snapshot) return "暂无数据，请刷新此账号"
-  const window = pickFocusWindow(snapshot, "auto")
+  const window = pickFocusWindow(snapshot, "weekly")
   return [
     `套餐：${snapshot.planLabel || snapshot.planType || "未提供"}`,
     `${window?.label || "限额"}：已用 ${formatPercent(window?.usedPercent)} · 剩余 ${formatPercent(window?.remainingPercent)}`,
@@ -122,6 +122,15 @@ function App() {
 
     <Section header={<Text>小组件显示设置</Text>} footer={<Text>这些设置对所有 Codex 小组件生效，修改后自动刷新。</Text>}>
       <Picker
+        title="组件布局"
+        value={widgetSettings.widgetLayout}
+        onChanged={(value) => updateWidgetSettings({ widgetLayout: value as "detail" | "overview" })}
+        pickerStyle="navigationLink"
+      >
+        <Text tag="detail">单额度详情</Text>
+        <Text tag="overview">双额度概览</Text>
+      </Picker>
+      <Picker
         title="用量显示"
         value={widgetSettings.displayMode}
         onChanged={(value) => updateWidgetSettings({ displayMode: value as "used" | "remaining" })}
@@ -130,17 +139,16 @@ function App() {
         <Text tag="used">已用</Text>
         <Text tag="remaining">剩余</Text>
       </Picker>
-      <Picker
-        title="主额度窗口"
+      {widgetSettings.widgetLayout === "detail" ? <Picker
+        title="显示额度"
         value={widgetSettings.focusWindow}
-        onChanged={(value) => updateWidgetSettings({ focusWindow: value as "auto" | "five_hour" | "weekly" | "monthly" })}
+        onChanged={(value) => updateWidgetSettings({ focusWindow: value as "five_hour" | "weekly" | "monthly" })}
         pickerStyle="navigationLink"
       >
-        <Text tag="auto">自动</Text>
-        <Text tag="five_hour">5 小时</Text>
-        <Text tag="weekly">每周</Text>
-        <Text tag="monthly">每月</Text>
-      </Picker>
+        <Text tag="five_hour">5 小时额度</Text>
+        <Text tag="weekly">每周额度</Text>
+        <Text tag="monthly">每月额度</Text>
+      </Picker> : null}
       <Picker
         title="刷新频率"
         value={String(widgetSettings.reloadMinutes)}

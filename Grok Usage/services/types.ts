@@ -59,43 +59,12 @@ export type UsageResult =
     }
 
 export type DisplayMode = "used" | "remaining"
-export type FocusWindow = "weekly" | "five_hour" | "monthly" | "auto"
-export type ProviderBrand = "chatgpt" | "claude" | "grok"
-
-export type MediumWidgetLayout = {
-  left: number
-  right: number
-  topY: number
-  topFont: number
-  chipFont: number
-  chipHorizontal: number
-  chipVertical: number
-  titleY: number
-  titleFont: number
-  mainY: number
-  mainFont: number
-  suffixFont: number
-  progressY: number
-  progressHeight: number
-  footerY: number
-  footerIcon: number
-  footerLabelFont: number
-  footerValueFont: number
-  dividerHeight: number
-  planY: number
-  planFont: number
-  planHorizontal: number
-  planVertical: number
-  subscriptionBadgeFont: number
-  resetCountFont: number
-  watermarkSize: number
-  watermarkRight: number
-  watermarkBottom: number
-}
+export type FocusWindow = "weekly" | "monthly"
+export type WidgetLayout = "detail" | "overview"
 
 export type WidgetSettings = {
   displayMode: DisplayMode
   focusWindow: FocusWindow
   reloadMinutes: number
-  provider: ProviderBrand
+  widgetLayout: WidgetLayout
 }

@@ -126,6 +126,15 @@ function App() {
 
     <Section header={<Text>小组件显示设置</Text>} footer={<Text>这些设置对所有 Grok 小组件生效，修改后自动刷新。</Text>}>
       <Picker
+        title="组件布局"
+        value={widgetSettings.widgetLayout}
+        onChanged={(value) => updateWidgetSettings({ widgetLayout: value as "detail" | "overview" })}
+        pickerStyle="navigationLink"
+      >
+        <Text tag="overview">双额度概览</Text>
+        <Text tag="detail">单额度详情</Text>
+      </Picker>
+      <Picker
         title="用量显示"
         value={widgetSettings.displayMode}
         onChanged={(value) => updateWidgetSettings({ displayMode: value as "used" | "remaining" })}
@@ -134,6 +143,15 @@ function App() {
         <Text tag="used">已用</Text>
         <Text tag="remaining">剩余</Text>
       </Picker>
+      {widgetSettings.widgetLayout === "detail" ? <Picker
+        title="显示额度"
+        value={widgetSettings.focusWindow}
+        onChanged={(value) => updateWidgetSettings({ focusWindow: value as "weekly" | "monthly" })}
+        pickerStyle="navigationLink"
+      >
+        <Text tag="weekly">每周额度</Text>
+        <Text tag="monthly">每月额度</Text>
+      </Picker> : null}
       <Picker
         title="刷新频率"
         value={String(widgetSettings.reloadMinutes)}

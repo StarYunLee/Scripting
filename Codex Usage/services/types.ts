@@ -57,8 +57,8 @@ export type UsageResult =
     }
 
 export type DisplayMode = "used" | "remaining"
-export type FocusWindow = "weekly" | "five_hour" | "monthly" | "auto"
-export type ProviderBrand = "chatgpt" | "claude" | "grok"
+export type FocusWindow = "weekly" | "five_hour" | "monthly"
+export type WidgetLayout = "detail" | "overview"
 
 export type MediumWidgetLayout = {
   left: number
@@ -95,5 +95,5 @@ export type WidgetSettings = {
   displayMode: DisplayMode
   focusWindow: FocusWindow
   reloadMinutes: number
-  provider: ProviderBrand
+  widgetLayout: WidgetLayout
 }

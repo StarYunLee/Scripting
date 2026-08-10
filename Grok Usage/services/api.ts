@@ -70,9 +70,9 @@ function readCache(profileId?: string | null): UsageSnapshot | null {
 function writeCache(profileId: string, value: UsageSnapshot): void { try { Storage.set(cacheKey(profileId), { ...value, source: "cache", raw: {} }) } catch { /* ignore */ } }
 export const getCachedUsage = (profileId?: string | null) => readCache(profileId)
 export function clearUsageCache(profileId?: string | null): void { const p = resolveProfile(profileId); if (p) try { Storage.remove(cacheKey(p.id)) } catch { /* ignore */ } }
-export function pickFocusWindow(snapshot: UsageSnapshot, focus: "weekly" | "five_hour" | "monthly" | "auto" = "auto"): LimitWindow | null {
-  if (focus !== "auto") return snapshot.windows.find(w => w.name === focus) || snapshot.windows[0] || null
-  return snapshot.weekly || snapshot.monthly || snapshot.windows[0] || null
+
+export function pickFocusWindow(snapshot: UsageSnapshot, focus: "weekly" | "monthly" = "weekly"): LimitWindow | null {
+  return snapshot.windows.find(window => window.name === focus) || null
 }
 
 export async function fetchUsage(options?: { force?: boolean; profileId?: string | null }): Promise<UsageResult> {

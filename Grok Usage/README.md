@@ -1,6 +1,6 @@
 # Grok Usage
 
-面向 [Scripting App](https://scriptingapp.github.io/) 的非官方 Grok Build 订阅额度小组件。支持 xAI OAuth、多账号、每周与月度双额度窗口，以及 Small、Medium 两种尺寸。
+面向 [Scripting App](https://scriptingapp.github.io/) 的非官方 Grok Build 订阅额度小组件。支持 xAI OAuth、多账号、单额度详情/双额度概览，以及 Small、Medium 两种尺寸。
 
 > 本项目不是 xAI 或 Grok 官方产品，与 xAI 无隶属或合作关系。
 
@@ -10,11 +10,11 @@
 - Access Token、Refresh Token 和 ID Token 保存在本机 Keychain
 - Token 到期前自动刷新
 - 多账号管理，每个账号独立保存凭证和额度缓存
-- 同时读取并显示每周额度和月度 Credits
-- Small、Medium 均采用周/月双窗口布局
+- 读取每周额度和月度 Credits
+- 支持单额度详情和双额度概览两种布局
 - 支持显示已用或剩余百分比
-- 展示每个额度窗口的进度条和重置时间
-- Medium 额外展示月度 Credits 已用值与总额
+- 展示额度进度条和重置时间
+- Medium 双额度概览额外展示月度 Credits 已用值与总额
 - SuperGrok / SuperGrok Heavy 套餐徽章
 - 网络失败时回退到本机最近一次成功缓存
 - 支持 AppIntent 手动刷新
@@ -29,21 +29,7 @@
 
 ## 安装
 
-### 直接安装
-
-下载并使用 Scripting 打开：[Grok-Usage.scripting](https://raw.githubusercontent.com/StarYunLee/Scripting/main/Grok-Usage.scripting)
-
-### 远程导入
-
-在 Scripting 中选择“远程导入”，复制并粘贴：
-
-```text
-https://raw.githubusercontent.com/StarYunLee/Scripting/main/Grok-Usage.scripting
-```
-
-### 从源码导入
-
-1. 下载本项目源码目录或 `.scripting` 安装包。
+1. 下载本项目目录或发布的 `.scripting` 安装包。
 2. 将 `Grok Usage` 导入 Scripting App。
 3. 在 Scripting 中运行 `Grok Usage`，进入账号和小组件设置页。
 4. 按下方步骤完成 xAI OAuth。
@@ -94,7 +80,7 @@ Grok Usage 支持同时添加多个账号：
 3. 选择“编辑小组件”；
 4. 在“参数”中粘贴邮箱。
 
-普通用户直接填写邮箱即可。旧版 JSON、profileId 和账号显示名参数仅用于向后兼容。
+小组件参数填写目标账号邮箱即可。
 
 ## 额度与显示逻辑
 
@@ -117,24 +103,33 @@ Grok Build 当前返回两套额度数据：
 - 已用和剩余百分比；
 - 月度周期结束/重置时间。
 
-两个窗口属于同一 Grok Build 订阅额度体系下的不同周期限制，因此 Small 和 Medium 都会同时展示，不提供“主额度窗口”切换。
+两个窗口属于同一 Grok Build 额度体系，可通过设置选择双额度概览或聚焦其中一个额度的单额度详情。
 
 ### Small
 
-- 套餐徽章与更新时间；
-- 每周额度标题、已用/剩余百分比、进度条和重置时间；
-- 每月额度标题、已用/剩余百分比、进度条和重置时间。
+- 双额度概览：套餐徽章、更新时间、每周和每月额度、进度条及重置时间；
+- 单额度详情：所选额度的已用/剩余百分比、进度条、更新时间和重置时间。
 
 ### Medium
 
-- 套餐徽章与更新时间；
-- 每周额度、百分比、进度条和重置时间；
-- 每月额度、Credits 已用/总额、百分比、进度条和重置时间；
-- Grok 背景水印。
+- 双额度概览：每周和每月额度，月度 Credits 已用值/总额，进度条、重置时间和 Grok 水印；
+- 单额度详情：所选额度的大百分比、进度条、更新时间、重置时间和 Grok 水印。
 
 无论“用量显示”选择已用还是剩余，进度条始终表示已使用比例。
 
 ## 小组件设置
+
+### 组件布局
+
+- 双额度概览（默认）：同时显示每周额度和每月额度
+- 单额度详情：突出显示一个额度窗口
+
+### 显示额度
+
+仅在“单额度详情”下显示：
+
+- 每周额度（默认）
+- 每月额度
 
 ### 用量显示
 
@@ -197,11 +192,13 @@ Billing 接口当前不直接返回统一的标准套餐名称。本项目参考
 Grok Usage/
 ├── assets/                         Grok 水印资源
 ├── components/
-│   └── UsageWidgetView.tsx         Small / Medium 周月双窗口布局
+│   ├── UsageWidgetView.tsx         布局路由
+│   ├── OverviewWidgetView.tsx      双额度概览布局
+│   └── DetailWidgetView.tsx        单额度详情布局
 ├── services/
 │   ├── accounts.ts                 多账号注册表与 Keychain 凭证
 │   ├── api.ts                      Grok Billing、额度解析与缓存
-│   ├── credentials.ts              小组件设置与布局默认值
+│   ├── credentials.ts              小组件显示设置
 │   ├── format.ts                   时间和百分比格式化
 │   ├── oauth.ts                    xAI OAuth、PKCE 与 Token 刷新
 │   └── types.ts                    类型定义
@@ -209,17 +206,8 @@ Grok Usage/
 ├── index.tsx                       账号、授权、额度与设置页
 ├── widget.tsx                      小组件入口
 ├── script.json                     Scripting 项目元数据
-├── LICENSE                         MIT 许可证
 └── README.md
 ```
-
-## 作者与维护
-
-- 作者与维护者：[StarYunLee](https://github.com/StarYunLee)
-- 问题反馈：[GitHub Issues](https://github.com/StarYunLee/Scripting/issues)
-- 提交 Issue 时，请在标题中注明 `[Grok Usage]`。
-
-本项目采用 [MIT License](./LICENSE) 开源。
 
 ## 免责声明
 

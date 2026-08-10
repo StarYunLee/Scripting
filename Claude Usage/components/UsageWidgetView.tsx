@@ -78,10 +78,13 @@ function compactPlanLabel(label: string): string {
 }
 function badgePalette(label: string, small = false) {
   const text = small ? compactPlanLabel(label) : label
-  const max = /max/i.test(text)
-  return max
-    ? { text, background: dynamic("#F3DDD2", "#5A2F22"), foreground: dynamic("#8C321B", "#FFD9C8"), border: dynamic("#D97757", "#D97757") }
-    : { text, background: dynamic("#F2E8E3", "#3F302B"), foreground: dynamic("#6B3C2C", "#F2C9B9"), border: dynamic("#C98A72", "#B66C50") }
+  if (/max/i.test(text)) {
+    return { text, background: dynamic("#EEE8FF", "#352A52"), foreground: dynamic("#5E3AA8", "#DDCEFF"), border: dynamic("#8B6CC7", "#9E82D7") }
+  }
+  if (/\bpro\b/i.test(text)) {
+    return { text, background: dynamic("#FFF0E8", "#4A2A20"), foreground: dynamic("#9A3D20", "#FFD2C2"), border: dynamic("#D97757", "#D98262") }
+  }
+  return { text, background: dynamic("#EEF0F3", "#303238"), foreground: dynamic("#4B505A", "#D8DAE0"), border: dynamic("#9A9EA8", "#737781") }
 }
 function PlanBadge({ label, small = false }: { label: string; small?: boolean }) {
   const p = badgePalette(label, small)
