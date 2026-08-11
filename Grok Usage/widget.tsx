@@ -1,7 +1,7 @@
 import { Widget } from "scripting"
 import { UsageWidgetView } from "./components/UsageWidgetView"
 import { fetchUsage, getCachedUsage, getReloadMinutes } from "./services/api"
-import { getSettings } from "./services/credentials"
+import { getEffectiveSettings } from "./services/credentials"
 import { getDefaultProfileId, resolveProfile } from "./services/accounts"
 import type { UsageResult } from "./services/types"
 
@@ -31,8 +31,8 @@ async function loadResult(profileId: string | null): Promise<UsageResult> {
 }
 async function run() {
   const family = String(Widget.family || "systemSmall")
-  const settings = getSettings()
   const profileId = parameterProfileId()
+  const settings = getEffectiveSettings(profileId)
   const result = await loadResult(profileId)
   Widget.present(
     <UsageWidgetView result={result} family={family} displayMode={settings.displayMode} focusWindow={settings.focusWindow} widgetLayout={settings.widgetLayout}/>,

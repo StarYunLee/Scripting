@@ -34,7 +34,9 @@ https://raw.githubusercontent.com/StarYunLee/Scripting/main/Claude-Usage.scripti
 
 ### Grok Usage
 
-Grok Build 额度小组件，支持 xAI OAuth、多账号、每周/月度额度，以及双额度概览和单额度详情布局。
+Grok Build 额度小组件，支持 xAI OAuth、多账号、账号级显示设置、每周/月度额度，以及双额度概览和单额度详情布局。
+
+![Grok Usage 小组件预览](./Grok%20Usage/assets/grok-usage-preview.png)
 
 - [查看源码与使用说明](./Grok%20Usage/)
 - [直接安装 Grok-Usage.scripting](https://raw.githubusercontent.com/StarYunLee/Scripting/main/Grok-Usage.scripting)

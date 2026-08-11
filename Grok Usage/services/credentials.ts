@@ -1,7 +1,8 @@
 import { getDefaultProfileId, getProfileAccessToken, getProfileAccountId, getProfileIdToken, getProfileRefreshToken, getProfileTokenExpiresAt, saveProfileCredentials, clearProfileCredentials } from "./accounts"
-import type { WidgetSettings, DisplayMode, FocusWindow, ProviderBrand, MediumWidgetLayout, WidgetLayout } from "./types"
+import type { WidgetSettings, FocusWindow, MediumWidgetLayout, WidgetLayout } from "./types"
 
 const SETTINGS_KEY = "grok_usage_settings"
+const PROFILE_SETTINGS_KEY = "grok_usage_profile_settings_v1"
 const MEDIUM_LAYOUT_KEY = "grok_medium_layout_v2"
 
 export const DEFAULT_MEDIUM_LAYOUT: MediumWidgetLayout = {
@@ -31,26 +32,85 @@ export function saveOAuthCredentials(value: { accessToken: string; refreshToken?
 }
 export function clearCredentials(): void { const id = getDefaultProfileId(); if (id) clearProfileCredentials(id) }
 export function maskSecret(value: string | null): string { if (!value) return "未登录"; return value.length <= 10 ? "••••" : value.slice(0, 4) + "…" + value.slice(-4) }
-function isProvider(v: unknown): v is ProviderBrand { return v === "chatgpt" || v === "claude" || v === "grok" }
+function isObject(v: unknown): v is Record<string, unknown> { return Boolean(v) && typeof v === "object" && !Array.isArray(v) }
 function isFocus(v: unknown): v is FocusWindow { return v === "five_hour" || v === "weekly" || v === "monthly" || v === "auto" }
 function isWidgetLayout(v: unknown): v is WidgetLayout { return v === "detail" || v === "overview" }
+type ProfileWidgetSettings = Pick<WidgetSettings, "displayMode" | "focusWindow" | "widgetLayout">
+type ProfileSettingsRegistry = { profiles: Record<string, ProfileWidgetSettings> }
+function sanitizeDisplaySettings(value: unknown, fallback: ProfileWidgetSettings): ProfileWidgetSettings {
+  const object = isObject(value) ? value : {}
+  return {
+    displayMode: object.displayMode === "remaining" ? "remaining" : object.displayMode === "used" ? "used" : fallback.displayMode,
+    focusWindow: isFocus(object.focusWindow) ? object.focusWindow : fallback.focusWindow,
+    widgetLayout: isWidgetLayout(object.widgetLayout) ? object.widgetLayout : fallback.widgetLayout,
+  }
+}
+function readProfileRegistry(): ProfileSettingsRegistry {
+  try {
+    const value = Storage.get<unknown>(PROFILE_SETTINGS_KEY)
+    if (!isObject(value) || !isObject(value.profiles)) return { profiles: {} }
+    const profiles: Record<string, ProfileWidgetSettings> = {}
+    const fallback = sanitizeDisplaySettings(DEFAULT_SETTINGS, DEFAULT_SETTINGS)
+    for (const [profileId, settings] of Object.entries(value.profiles)) {
+      if (!profileId.trim() || !isObject(settings)) continue
+      profiles[profileId] = sanitizeDisplaySettings(settings, fallback)
+    }
+    return { profiles }
+  } catch { return { profiles: {} } }
+}
+function writeProfileRegistry(value: ProfileSettingsRegistry): void {
+  try { Storage.set(PROFILE_SETTINGS_KEY, value) } catch { /* ignore */ }
+}
 export function getSettings(): WidgetSettings {
   try {
     const v = Storage.get<Partial<WidgetSettings>>(SETTINGS_KEY)
     if (!v || typeof v !== "object") return { ...DEFAULT_SETTINGS }
+    const display = sanitizeDisplaySettings(v, DEFAULT_SETTINGS)
     return {
-      displayMode: v.displayMode === "remaining" ? "remaining" : "used",
-      focusWindow: isFocus(v.focusWindow) ? v.focusWindow : DEFAULT_SETTINGS.focusWindow,
+      ...display,
       reloadMinutes: typeof v.reloadMinutes === "number" && v.reloadMinutes >= 5 ? Math.min(v.reloadMinutes, 360) : 30,
       provider: "grok",
-      widgetLayout: isWidgetLayout(v.widgetLayout) ? v.widgetLayout : DEFAULT_SETTINGS.widgetLayout,
     }
   } catch { return { ...DEFAULT_SETTINGS } }
 }
-export function setSettings(patch: Partial<WidgetSettings>): WidgetSettings { const next = { ...getSettings(), ...patch }; try { Storage.set(SETTINGS_KEY, next) } catch {}; return next }
-export const setDisplayMode = (displayMode: DisplayMode) => setSettings({ displayMode })
-export const setFocusWindow = (focusWindow: FocusWindow) => setSettings({ focusWindow })
-export const setProvider = (provider: ProviderBrand) => setSettings({ provider })
+export function getEffectiveSettings(profileId?: string | null): WidgetSettings {
+  const global = getSettings()
+  if (!profileId) return global
+  const profile = readProfileRegistry().profiles[profileId]
+  return profile ? { ...global, ...profile, reloadMinutes: global.reloadMinutes, provider: "grok" } : global
+}
+export function setProfileSettings(profileId: string, patch: Partial<ProfileWidgetSettings>): WidgetSettings {
+  if (!profileId) return getSettings()
+  const current = getEffectiveSettings(profileId)
+  const next = sanitizeDisplaySettings({ ...current, ...patch }, current)
+  const registry = readProfileRegistry()
+  registry.profiles[profileId] = next
+  writeProfileRegistry(registry)
+  const global = getSettings()
+  return { ...global, ...next, reloadMinutes: global.reloadMinutes, provider: "grok" }
+}
+export function clearProfileSettings(profileId: string): WidgetSettings {
+  if (!profileId) return getSettings()
+  const registry = readProfileRegistry()
+  if (profileId in registry.profiles) {
+    delete registry.profiles[profileId]
+    writeProfileRegistry(registry)
+  }
+  return getSettings()
+}
+export function hasProfileSettings(profileId?: string | null): boolean {
+  return Boolean(profileId && readProfileRegistry().profiles[profileId])
+}
+export function setReloadMinutes(reloadMinutes: number): WidgetSettings {
+  const current = getSettings()
+  const next = {
+    ...current,
+    reloadMinutes: Number.isFinite(reloadMinutes) && reloadMinutes >= 5 ? Math.min(reloadMinutes, 360) : current.reloadMinutes,
+    provider: "grok" as const,
+  }
+  try { Storage.set(SETTINGS_KEY, next) } catch { /* ignore */ }
+  return next
+}
 export function getMediumLayout(): MediumWidgetLayout {
   try {
     const value = Storage.get<Partial<MediumWidgetLayout>>(MEDIUM_LAYOUT_KEY)

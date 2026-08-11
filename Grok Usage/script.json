@@ -6,13 +6,13 @@
   "permissions": null,
   "runInApp": true,
   "contributors": [],
-  "version": "1.3.0",
+  "version": "1.4.0",
   "intentInputTypes": [],
   "localizedNames": {
     "zh": "Grok 用量",
     "en": "Grok Usage"
   },
-  "description": "Grok Build quota widget with xAI Authorization Code OAuth + PKCE, multi-account support, weekly/monthly usage, and detail/overview layouts.",
+  "description": "Grok Build quota widget with xAI Authorization Code OAuth + PKCE, multi-account support, per-account display settings, weekly/monthly usage, and detail/overview layouts.",
   "remoteResource": null,
   "author": {
     "name": "StarYunLee",
@@ -20,8 +20,8 @@
     "homepage": null
   },
   "localizedDescriptions": {
-    "zh": "Grok Build 额度小组件。支持 xAI OAuth、多账号、每周/月度额度，以及单额度详情和双额度概览布局。",
-    "en": "Grok Build quota widget with xAI OAuth, multi-account support, weekly/monthly usage, and detail/overview layouts."
+    "zh": "Grok Build 额度小组件。支持 xAI OAuth、多账号、账号级显示设置、每周/月度额度，以及单额度详情和双额度概览布局。",
+    "en": "Grok Build quota widget with xAI OAuth, multi-account support, per-account display settings, weekly/monthly usage, and detail/overview layouts."
   },
   "iconImage": null
 }

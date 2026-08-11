@@ -11,6 +11,7 @@ declare const Storage: {
 
 const CACHE_KEY = "grok_usage_cache_v3"
 const BILLING_URL = "https://cli-chat-proxy.grok.com/v1/billing"
+const MIN_LIVE_INTERVAL_MS = 3 * 60_000
 
 export function getReloadMinutes(): number { return getSettings().reloadMinutes }
 function asObject(v: unknown): Record<string, unknown> | null { return v && typeof v === "object" && !Array.isArray(v) ? v as Record<string, unknown> : null }
@@ -31,7 +32,7 @@ function billingHeaders(token: string, userId: string | null): Record<string, st
   const headers: Record<string, string> = {
     Authorization: `Bearer ${token}`,
     "x-xai-token-auth": "xai-grok-cli",
-    "x-grok-client-version": "grok-usage-scripting/1.3.0",
+    "x-grok-client-version": "grok-usage-scripting/1.4.0",
     Accept: "application/json",
   }
   if (userId) headers["x-userid"] = userId
@@ -113,13 +114,30 @@ export function pickFocusWindow(snapshot: UsageSnapshot, focus: "weekly" | "five
   if (focus !== "auto") return snapshot.windows.find(w => w.name === focus) || snapshot.windows[0] || null
   return snapshot.weekly || snapshot.monthly || snapshot.windows[0] || null
 }
+function recent(cache: UsageSnapshot | null): boolean {
+  if (!cache?.fetchedAt) return false
+  const fetchedAt = new Date(cache.fetchedAt).getTime()
+  return Number.isFinite(fetchedAt) && Date.now() - fetchedAt < MIN_LIVE_INTERVAL_MS
+}
+function recoverRecentCache(profileId: string, force: boolean, reason: string): UsageResult | null {
+  if (force) return null
+  const latest = readCache(profileId)
+  if (!recent(latest)) return null
+  debug("cache.recover", { reason, fetchedAt: latest!.fetchedAt })
+  return { ok: true, snapshot: latest! }
+}
 
 export async function fetchUsage(options?: { force?: boolean; profileId?: string | null }): Promise<UsageResult> {
   const profile = resolveProfile(options?.profileId)
   if (!profile) return { ok: false, error: { code: "missing_token", message: "未找到指定账号" }, cache: null }
   const cache = readCache(profile.id)
   const userId = getProfileAccountId(profile.id)
-  debug("fetch.start", { force: Boolean(options?.force), hasCache: Boolean(cache), cacheFetchedAt: cache?.fetchedAt || null, hasUserId: Boolean(userId) })
+  const cacheIsRecent = recent(cache)
+  debug("fetch.start", { force: Boolean(options?.force), hasCache: Boolean(cache), cacheFetchedAt: cache?.fetchedAt || null, cacheIsRecent, hasUserId: Boolean(userId) })
+  if (!options?.force && cacheIsRecent) {
+    debug("cache.hit", { fetchedAt: cache!.fetchedAt })
+    return { ok: true, snapshot: cache! }
+  }
   let token = await refreshOAuthToken(profile.id, Boolean(options?.force && !cache))
   if (!token) token = getProfileAccessToken(profile.id)
   if (!token) return { ok: false, error: { code: "missing_token", message: `账号“${profile.name}”尚未授权` }, cache }
@@ -139,22 +157,40 @@ export async function fetchUsage(options?: { force?: boolean; profileId?: string
     if (!monthlyResponse.ok) {
       const unauthorized = monthlyResponse.status === 401 || monthlyResponse.status === 403
       debug("http.error", { endpoint: "monthly", status: monthlyResponse.status, unauthorized })
-      return { ok: false, error: { code: unauthorized ? "unauthorized" : "http_error", message: unauthorized ? "Grok Build 授权无效或当前账号没有订阅额度权限" : `Grok Build 额度请求失败 HTTP ${monthlyResponse.status}` }, cache }
+      const recovered = recoverRecentCache(profile.id, Boolean(options?.force), `monthly_http_${monthlyResponse.status}`)
+      if (recovered) return recovered
+      return { ok: false, error: { code: unauthorized ? "unauthorized" : "http_error", message: unauthorized ? "Grok Build 授权无效或当前账号没有订阅额度权限" : `Grok Build 额度请求失败 HTTP ${monthlyResponse.status}` }, cache: readCache(profile.id) || cache }
     }
-    if (!monthlyPayload) return { ok: false, error: { code: "invalid_json", message: "月度额度响应不是合法 JSON" }, cache }
+    if (!monthlyPayload) {
+      const recovered = recoverRecentCache(profile.id, Boolean(options?.force), "monthly_invalid_json")
+      if (recovered) return recovered
+      return { ok: false, error: { code: "invalid_json", message: "月度额度响应不是合法 JSON" }, cache: readCache(profile.id) || cache }
+    }
     const monthly = parseMonthly(monthlyPayload)
 
     let weekly: LimitWindow | null = null
+    let weeklySucceeded = false
+    let weeklySource: "live" | "cache" | "missing" = "missing"
     try {
       const weeklyResponse = await requestBilling(token, userId, true)
       const weeklyText = await weeklyResponse.text()
       if (weeklyResponse.ok) {
         weekly = parseWeekly(asObject(JSON.parse(weeklyText)) || {})
+        weeklySucceeded = Boolean(weekly)
+        if (weeklySucceeded) weeklySource = "live"
       } else {
         debug("http.error", { endpoint: "weekly", status: weeklyResponse.status, unauthorized: weeklyResponse.status === 401 || weeklyResponse.status === 403 })
       }
     } catch (e) {
       debug("weekly.error", { reason: "request_or_parse_failed", message: e instanceof Error ? e.message : String(e) })
+    }
+    if (!weeklySucceeded) {
+      const cachedWeekly = cache?.weekly || cache?.windows.find(window => window.name === "weekly") || null
+      if (cachedWeekly) {
+        weekly = cachedWeekly
+        weeklySource = "cache"
+        debug("weekly.cache", { resetAt: cachedWeekly.resetAt, usedPercent: cachedWeekly.usedPercent })
+      }
     }
     const windows = weekly ? [weekly, monthly] : [monthly]
     const plan = planFromMonthly(monthly)
@@ -167,6 +203,7 @@ export async function fetchUsage(options?: { force?: boolean; profileId?: string
     writeCache(profile.id, snapshot)
     debug("fetch.success", {
       plan,
+      weeklySource,
       weeklyPercent: weekly?.usedPercent ?? null,
       monthlyPercent: monthly.usedPercent,
       monthlyCredits: { used: monthly.usedValue ?? null, limit: monthly.limitValue ?? null },
@@ -174,7 +211,10 @@ export async function fetchUsage(options?: { force?: boolean; profileId?: string
     })
     return { ok: true, snapshot }
   } catch (e) {
-    debug("fetch.error", { name: e instanceof Error ? e.name : "unknown", message: e instanceof Error ? e.message : String(e), hasCache: Boolean(cache) })
-    return { ok: false, error: { code: "network_error", message: e instanceof Error ? e.message : "网络请求失败", detail: e instanceof Error ? e.message : String(e) }, cache }
+    const recovered = recoverRecentCache(profile.id, Boolean(options?.force), "network_or_parse_error")
+    if (recovered) return recovered
+    const latestCache = readCache(profile.id) || cache
+    debug("fetch.error", { name: e instanceof Error ? e.name : "unknown", message: e instanceof Error ? e.message : String(e), hasCache: Boolean(latestCache) })
+    return { ok: false, error: { code: "network_error", message: e instanceof Error ? e.message : "网络请求失败", detail: e instanceof Error ? e.message : String(e) }, cache: latestCache }
   }
 }
