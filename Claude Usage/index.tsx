@@ -1,6 +1,6 @@
 import { Button, List, Navigation, NavigationStack, Picker, Script, Section, Text, TextField, Widget, useState } from "scripting"
 import { clearUsageCache, fetchUsage, getCachedUsage } from "./services/api"
-import { getSettings, setSettings } from "./services/credentials"
+import { clearProfileSettings, getEffectiveSettings, hasProfileSettings, setProfileSettings, setReloadMinutes } from "./services/credentials"
 import {
   createAccount, deleteAccount, ensureAccountMigration, getDefaultProfileId,
   getProfileAccessToken, listAccounts, resolveProfile, setDefaultAccount,
@@ -24,8 +24,8 @@ function summary(snapshot: UsageSnapshot | null): string {
   return [
     `套餐：${snapshot.planLabel || snapshot.planType || "Claude"}`,
     `5 小时：已用 ${formatPercent(fiveHour?.usedPercent)} · 剩余 ${formatPercent(fiveHour?.remainingPercent)} · 重置 ${formatResetDate(fiveHour?.resetAt)}`,
-    `7 天：已用 ${formatPercent(weekly?.usedPercent)} · 剩余 ${formatPercent(weekly?.remainingPercent)} · 重置 ${formatResetDate(weekly?.resetAt)}`,
-    ...(fable ? [`Fable 7 天：已用 ${formatPercent(fable.usedPercent)} · 重置 ${formatResetDate(fable.resetAt)}`] : []),
+    `周限：已用 ${formatPercent(weekly?.usedPercent)} · 剩余 ${formatPercent(weekly?.remainingPercent)} · 重置 ${formatResetDate(weekly?.resetAt)}`,
+    ...(fable ? [`Fable 周限：已用 ${formatPercent(fable.usedPercent)} · 重置 ${formatResetDate(fable.resetAt)}`] : []),
     `更新时间：${formatFetchedAt(snapshot.fetchedAt)}`,
   ].join("\n")
 }
@@ -40,7 +40,7 @@ function App() {
   const [usageText, setUsageText] = useState(() => summary(getCachedUsage(selectedId)))
   const [deleteArmed, setDeleteArmed] = useState(false)
   const [copiedEmail, setCopiedEmail] = useState("")
-  const [widgetSettings, setWidgetSettingsState] = useState(() => getSettings())
+  const [widgetSettings, setWidgetSettingsState] = useState(() => getEffectiveSettings(pendingInitial || getDefaultProfileId() || initial[0]?.id || ""))
   const selected = resolveProfile(selectedId)
   const authTarget = resolveProfile(authTargetId)
 
@@ -48,14 +48,23 @@ function App() {
     const next = listAccounts(); setAccounts([...next])
     const wanted = preferId || selectedId || getDefaultProfileId() || next[0]?.id || ""
     const id = next.some(a => a.id === wanted) ? wanted : (getDefaultProfileId() || next[0]?.id || "")
-    setSelectedId(id); setUsageText(summary(getCachedUsage(id))); setDeleteArmed(false)
+    setSelectedId(id); setUsageText(summary(getCachedUsage(id))); setWidgetSettingsState(getEffectiveSettings(id)); setDeleteArmed(false)
   }
   function selectAccount(id: string) {
-    setSelectedId(id); setUsageText(summary(getCachedUsage(id))); setStatus(""); setDeleteArmed(false)
+    setSelectedId(id); setUsageText(summary(getCachedUsage(id))); setWidgetSettingsState(getEffectiveSettings(id)); setStatus(""); setDeleteArmed(false)
   }
   function reloadWidgets() { try { Widget.reloadUserWidgets() } catch { try { Widget.reloadAll() } catch {} } }
-  function updateWidgetSettings(patch: Parameters<typeof setSettings>[0]) {
-    const next = setSettings(patch); setWidgetSettingsState({ ...next }); reloadWidgets()
+  function updateProfileWidgetSettings(patch: Parameters<typeof setProfileSettings>[1]) {
+    if (!selectedId) return
+    const next = setProfileSettings(selectedId, patch); setWidgetSettingsState({ ...next }); reloadWidgets()
+  }
+  function updateReloadMinutes(reloadMinutes: number) {
+    setReloadMinutes(reloadMinutes)
+    const next = getEffectiveSettings(selectedId); setWidgetSettingsState({ ...next }); reloadWidgets()
+  }
+  function restoreProfileDefaults() {
+    if (!selectedId) return
+    const next = clearProfileSettings(selectedId); setWidgetSettingsState({ ...next }); setStatus("当前账号已恢复默认显示设置"); reloadWidgets()
   }
   async function refreshSelected() {
     if (!selectedId) return
@@ -76,7 +85,7 @@ function App() {
     const target = resolveProfile(authTargetId)
     clearPendingOAuth(); setAuthorizationInput(""); setAuthTargetId(""); setStatus("已取消授权")
     // 未完成授权的临时账号直接清理，避免留下“账号 N”。
-    if (target && !getProfileAccessToken(target.id)) { clearUsageCache(target.id); deleteAccount(target.id); refreshRegistry() }
+    if (target && !getProfileAccessToken(target.id)) { clearUsageCache(target.id); clearProfileSettings(target.id); deleteAccount(target.id); refreshRegistry() }
   }
 
   return <NavigationStack><List navigationTitle="Claude Usage">
@@ -107,10 +116,10 @@ function App() {
       </>}
     </Section> : null}
 
-    {selected ? <Section header={<Text>账号管理 · {selected.email || selected.name}</Text>} footer={<Text>删除后会清除该账号的 OAuth 凭证和本机额度缓存，此操作不可撤销。</Text>}>
+    {selected ? <Section header={<Text>账号管理 · {selected.email || selected.name}</Text>} footer={<Text>删除后会清除该账号的 OAuth 凭证、本机额度缓存和独立显示设置，此操作不可撤销。</Text>}>
       {!deleteArmed ? <Button title="删除当前账号…" action={() => setDeleteArmed(true)}/> : <>
         <Text foregroundStyle="systemRed">确认删除当前账号 {selected.email || selected.name}？</Text>
-        <Button title="确认删除当前账号" action={() => { const id = selected.id; clearUsageCache(id); deleteAccount(id); refreshRegistry(); setStatus("当前账号已删除"); reloadWidgets() }}/>
+        <Button title="确认删除当前账号" action={() => { const id = selected.id; clearUsageCache(id); clearProfileSettings(id); deleteAccount(id); refreshRegistry(); setStatus("当前账号已删除"); reloadWidgets() }}/>
         <Button title="取消" action={() => setDeleteArmed(false)}/>
       </>}
     </Section> : null}
@@ -125,11 +134,11 @@ function App() {
       <Text font={12} foregroundStyle="secondary">长按主屏幕小组件 → 编辑小组件 → 参数 → 粘贴邮箱。</Text>
     </Section>
 
-    <Section header={<Text>小组件显示设置</Text>} footer={<Text>这些设置对所有 Claude 小组件生效，修改后自动刷新。</Text>}>
+    {selected ? <Section header={<Text>小组件设置 · {selected.email || selected.name}</Text>} footer={<Text>布局和显示选项仅应用于当前账号；刷新频率对所有账号生效。</Text>}>
       <Picker
         title="组件布局"
         value={widgetSettings.widgetStyle}
-        onChanged={(value) => updateWidgetSettings({ widgetStyle: value as "dual" | "single" })}
+        onChanged={(value) => updateProfileWidgetSettings({ widgetStyle: value as "dual" | "single" })}
         pickerStyle="navigationLink"
       >
         <Text tag="dual">双额度概览</Text>
@@ -138,26 +147,26 @@ function App() {
       {widgetSettings.widgetStyle === "dual" ? <Picker
         title="概览内容"
         value={widgetSettings.dualQuotaPreset}
-        onChanged={(value) => updateWidgetSettings({ dualQuotaPreset: value as "five_hour_weekly" | "weekly_fable" })}
+        onChanged={(value) => updateProfileWidgetSettings({ dualQuotaPreset: value as "five_hour_weekly" | "weekly_fable" })}
         pickerStyle="navigationLink"
       >
-        <Text tag="five_hour_weekly">5 小时 + 每周</Text>
-        <Text tag="weekly_fable">每周 + Fable 每周</Text>
+        <Text tag="five_hour_weekly">5 小时 + 周限</Text>
+        <Text tag="weekly_fable">周限 + Fable 周限</Text>
       </Picker> : null}
       {widgetSettings.widgetStyle === "single" ? <Picker
         title="显示额度"
         value={widgetSettings.focusWindow}
-        onChanged={(value) => updateWidgetSettings({ focusWindow: value as "five_hour" | "weekly" | "weekly_fable" })}
+        onChanged={(value) => updateProfileWidgetSettings({ focusWindow: value as "five_hour" | "weekly" | "weekly_fable" })}
         pickerStyle="navigationLink"
       >
-        <Text tag="five_hour">5 小时限额</Text>
-        <Text tag="weekly">7 天周限</Text>
-        <Text tag="weekly_fable">Fable 7 天周限</Text>
+        <Text tag="five_hour">5 小时额度</Text>
+        <Text tag="weekly">周限</Text>
+        <Text tag="weekly_fable">Fable 周限</Text>
       </Picker> : null}
       <Picker
         title="用量显示"
         value={widgetSettings.displayMode}
-        onChanged={(value) => updateWidgetSettings({ displayMode: value as "used" | "remaining" })}
+        onChanged={(value) => updateProfileWidgetSettings({ displayMode: value as "used" | "remaining" })}
         pickerStyle="navigationLink"
       >
         <Text tag="used">已用</Text>
@@ -166,7 +175,7 @@ function App() {
       <Picker
         title="刷新频率"
         value={String(widgetSettings.reloadMinutes)}
-        onChanged={(value) => updateWidgetSettings({ reloadMinutes: Number(value) })}
+        onChanged={(value) => updateReloadMinutes(Number(value))}
         pickerStyle="navigationLink"
       >
         <Text tag="5">5 分钟</Text>
@@ -175,7 +184,8 @@ function App() {
         <Text tag="30">30 分钟</Text>
         <Text tag="60">60 分钟</Text>
       </Picker>
-    </Section>
+      {hasProfileSettings(selectedId) ? <Button title="恢复当前账号默认显示设置" action={restoreProfileDefaults}/> : <Text font={12} foregroundStyle="secondary">当前账号使用全局默认显示设置</Text>}
+    </Section> : null}
   </List></NavigationStack>
 }
 Navigation.present({ element: <App /> }).then(() => Script.exit())

@@ -49,7 +49,7 @@ function writeRegistry(value: AccountRegistry): AccountRegistry {
   return value
 }
 
-/** 把旧单账号 Keychain 原地复制为“账号 1”，旧键保留作回滚。 */
+/** 将单账号凭证迁移到账号注册表，并保留原 Keychain 数据。 */
 export function ensureAccountMigration(): AccountRegistry {
   let registry = readRegistryRaw()
   if (registry.accounts.length) {

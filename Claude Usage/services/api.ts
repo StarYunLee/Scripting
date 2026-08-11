@@ -21,6 +21,9 @@ function toNumber(v: unknown): number | null {
   return null
 }
 function clamp(n: number): number { return Math.max(0, Math.min(100, n)) }
+function debug(event: string, data: Record<string, unknown> = {}): void {
+  try { console.log(`[Claude Usage] ${event} ${JSON.stringify(data)}`) } catch { /* logging must not affect runtime */ }
+}
 function isoDate(v: unknown): { iso: string | null; ms: number | null } {
   if (typeof v !== "string") return { iso: null, ms: null }
   const ms = new Date(v).getTime()
@@ -41,13 +44,13 @@ function parseWindow(payload: Record<string, unknown>, key: string, name: LimitW
   const utilization = toNumber(raw.utilization)
   const reset = isoDate(raw.resets_at)
   if (utilization == null && !reset.iso) return null
-  const usedPercent = clamp(utilization ?? 0)
+  const usedPercent = utilization == null ? null : clamp(utilization)
   return {
     id: `claude:${key}`,
     name,
     label,
     usedPercent,
-    remainingPercent: clamp(100 - usedPercent),
+    remainingPercent: usedPercent == null ? null : clamp(100 - usedPercent),
     resetAt: reset.iso,
     resetAtMs: reset.ms,
     windowSeconds: seconds,
@@ -97,7 +100,12 @@ export async function fetchUsage(options?: { force?: boolean; profileId?: string
   const profile = resolveProfile(options?.profileId)
   if (!profile) return { ok: false, error: { code: "missing_token", message: "未找到指定账号" }, cache: null }
   const cache = readCache(profile.id)
-  if (!options?.force && recent(cache)) return { ok: true, snapshot: cache! }
+  const cacheIsRecent = recent(cache)
+  debug("fetch.start", { force: Boolean(options?.force), hasCache: Boolean(cache), cacheFetchedAt: cache?.fetchedAt || null, cacheIsRecent })
+  if (!options?.force && cacheIsRecent) {
+    debug("cache.hit", { fetchedAt: cache!.fetchedAt })
+    return { ok: true, snapshot: cache! }
+  }
 
   let token = await refreshOAuthToken(profile.id)
   if (!token) token = getProfileAccessToken(profile.id)
@@ -106,8 +114,12 @@ export async function fetchUsage(options?: { force?: boolean; profileId?: string
   try {
     let response = await requestUsage(token)
     if (response.status === 401) {
-      token = await refreshOAuthToken(profile.id, true)
-      if (token) response = await requestUsage(token)
+      const refreshedToken = await refreshOAuthToken(profile.id, true)
+      debug("auth.retry", { status: 401, refreshed: Boolean(refreshedToken) })
+      if (refreshedToken) {
+        token = refreshedToken
+        response = await requestUsage(token)
+      }
     }
     const text = await response.text()
     let payload: Record<string, unknown> | null = null
@@ -121,17 +133,21 @@ export async function fetchUsage(options?: { force?: boolean; profileId?: string
         : rateLimited
           ? "Anthropic 用量接口限流，已保留最近缓存"
           : errorMessage(payload) || `Claude 用量请求失败 HTTP ${response.status}`
+      debug("http.error", { endpoint: "usage", status: response.status, unauthorized, rateLimited, hasCache: Boolean(cache) })
       return { ok: false, error: { code: unauthorized ? "unauthorized" : rateLimited ? "rate_limited" : "http_error", message, status: response.status }, cache }
     }
     if (!payload) return { ok: false, error: { code: "invalid_json", message: "Claude 用量响应不是合法 JSON" }, cache }
 
     const fiveHour = parseWindow(payload, "five_hour", "five_hour", "5 小时", 5 * 3600)
-    const weekly = parseWindow(payload, "seven_day", "weekly", "7 天", 7 * 86400)
-    const weeklyFable = parseWindow(payload, "seven_day_fable", "weekly_fable", "Fable 7 天", 7 * 86400)
-      || parseWindow(payload, "seven_day_fable_5", "weekly_fable", "Fable 7 天", 7 * 86400)
-      || parseWindow(payload, "fable_seven_day", "weekly_fable", "Fable 7 天", 7 * 86400)
+    const weekly = parseWindow(payload, "seven_day", "weekly", "周限", 7 * 86400)
+    const weeklyFable = parseWindow(payload, "seven_day_fable", "weekly_fable", "Fable 周限", 7 * 86400)
+      || parseWindow(payload, "seven_day_fable_5", "weekly_fable", "Fable 周限", 7 * 86400)
+      || parseWindow(payload, "fable_seven_day", "weekly_fable", "Fable 周限", 7 * 86400)
     const windows = [fiveHour, weekly, weeklyFable].filter((w): w is LimitWindow => Boolean(w))
-    if (!windows.length) return { ok: false, error: { code: "invalid_json", message: "Claude 用量响应中没有可用额度窗口" }, cache }
+    if (!windows.length) {
+      debug("parse.error", { reason: "no_windows" })
+      return { ok: false, error: { code: "invalid_json", message: "Claude 用量响应中没有可用额度窗口" }, cache }
+    }
 
     const plan = planLabel(payload)
     const snapshot: UsageSnapshot = {
@@ -146,8 +162,14 @@ export async function fetchUsage(options?: { force?: boolean; profileId?: string
       raw: {},
     }
     writeCache(profile.id, snapshot)
+    debug("fetch.success", {
+      plan,
+      windows: windows.map(window => ({ name: window.name, usedPercent: window.usedPercent, resetAt: window.resetAt })),
+      fetchedAt: snapshot.fetchedAt,
+    })
     return { ok: true, snapshot }
   } catch (e) {
+    debug("fetch.error", { name: e instanceof Error ? e.name : "unknown", message: e instanceof Error ? e.message : String(e), hasCache: Boolean(cache) })
     return { ok: false, error: { code: "network_error", message: e instanceof Error ? e.message : "网络请求失败", detail: e instanceof Error ? e.message : String(e) }, cache }
   }
 }

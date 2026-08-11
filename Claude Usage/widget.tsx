@@ -1,14 +1,14 @@
 import { Widget } from "scripting"
 import { UsageWidgetView } from "./components/UsageWidgetView"
 import { fetchUsage, getCachedUsage, getReloadMinutes } from "./services/api"
-import { getSettings } from "./services/credentials"
+import { getEffectiveSettings } from "./services/credentials"
 import { getDefaultProfileId, resolveProfile } from "./services/accounts"
 import type { UsageResult } from "./services/types"
 
 function parameterProfileId(): string | null {
   const raw = String(Widget.parameter || "").trim()
   if (!raw) return getDefaultProfileId()
-  // 兼容旧 JSON 参数；新参数可直接填写邮箱、profileId 或账号显示名。
+  // 参数支持邮箱、profileId、账号显示名或 JSON 账号信息。
   try {
     const parsed = JSON.parse(raw) as { accountId?: string; email?: string }
     const profile = resolveProfile(parsed.accountId || parsed.email || "")
@@ -31,8 +31,8 @@ async function loadResult(profileId: string | null): Promise<UsageResult> {
 }
 async function run() {
   const family = String(Widget.family || "systemSmall")
-  const settings = getSettings()
   const profileId = parameterProfileId()
+  const settings = getEffectiveSettings(profileId)
   const result = await loadResult(profileId)
   Widget.present(
     <UsageWidgetView result={result} family={family} displayMode={settings.displayMode} focusWindow={settings.focusWindow} widgetStyle={settings.widgetStyle} dualQuotaPreset={settings.dualQuotaPreset}/>,

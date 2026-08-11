@@ -69,26 +69,57 @@ function Progress({ value, width, height }: { value: number; width: number; heig
     {fill > 0 ? <HStack frame={{ width: Math.max(height, fill), height }} background={C.fill} clipShape={{ type: "capsule" }}/> : null}
   </ZStack>
 }
-function compactPlanLabel(label: string): string {
-  const value = label.replace(/DEMO\s*[·•|-]?\s*/i, "").trim()
-  if (/max\s*20\s*[×x]/i.test(value)) return "Max 20×"
-  if (/max\s*5\s*[×x]/i.test(value)) return "Max 5×"
-  if (/\bpro\b/i.test(value)) return "Pro"
-  return value.replace(/^claude\s+/i, "") || "Claude"
+const linear = (light: string[], dark: string[] = light) => ({
+  light: {
+    gradient: light.map((color, index) => ({ color, location: index / (light.length - 1) })),
+    startPoint: "leading" as const,
+    endPoint: "trailing" as const,
+  },
+  dark: {
+    gradient: dark.map((color, index) => ({ color, location: index / (dark.length - 1) })),
+    startPoint: "leading" as const,
+    endPoint: "trailing" as const,
+  },
+})
+function normalizedPlan(label: string): string {
+  return label.replace(/DEMO\s*[·•|-]?\s*/i, "").trim().toLowerCase().replace(/^claude\s+/, "").replace(/×/g, "x").replace(/[\s_]+/g, "-")
 }
-function badgePalette(label: string, small = false) {
-  const text = small ? compactPlanLabel(label) : label
-  if (/max/i.test(text)) {
-    return { text, background: dynamic("#EEE8FF", "#352A52"), foreground: dynamic("#5E3AA8", "#DDCEFF"), border: dynamic("#8B6CC7", "#9E82D7") }
+function badgePalette(label: string) {
+  const normalized = normalizedPlan(label)
+  if (normalized === "max-20x") return {
+    text: "MAX 20X",
+    background: linear(["#F59E0B", "#EA580C", "#E11D48"], ["#FBBF24", "#F97316", "#F43F5E"]),
+    foreground: "#FFFFFF",
   }
-  if (/\bpro\b/i.test(text)) {
-    return { text, background: dynamic("#FFF0E8", "#4A2A20"), foreground: dynamic("#9A3D20", "#FFD2C2"), border: dynamic("#D97757", "#D98262") }
+  if (normalized === "max-5x") return {
+    text: "MAX 5X",
+    background: linear(["#F97316", "#F59E0B", "#F43F5E"], ["#FB923C", "#FBBF24", "#FB7185"]),
+    foreground: "#FFFFFF",
   }
-  return { text, background: dynamic("#EEF0F3", "#303238"), foreground: dynamic("#4B505A", "#D8DAE0"), border: dynamic("#9A9EA8", "#737781") }
+  if (normalized === "max") return {
+    text: "MAX",
+    background: linear(["#FB923C", "#F59E0B", "#EA580C"], ["#FB923C", "#F59E0B", "#F97316"]),
+    foreground: "#FFFFFF",
+  }
+  if (normalized === "pro") return {
+    text: "PRO",
+    background: linear(["#FCD34D", "#FACC15", "#F59E0B"]),
+    foreground: "#451A03",
+  }
+  if (normalized.startsWith("team")) return {
+    text: "TEAM",
+    background: linear(["#8B5CF6", "#4F46E5"], ["#A78BFA", "#6366F1"]),
+    foreground: "#FFFFFF",
+  }
+  return {
+    text: label.replace(/^Claude\s+/i, "").trim().toUpperCase() || "CLAUDE",
+    background: linear(["#94A3B8", "#64748B"], ["#64748B", "#475569"]),
+    foreground: "#FFFFFF",
+  }
 }
 function PlanBadge({ label, small = false }: { label: string; small?: boolean }) {
-  const p = badgePalette(label, small)
-  return <HStack padding={{ horizontal: small ? 5 : 10, vertical: small ? 2 : 4 }} background={p.background} border={{ color: p.border, width: 0.8 }} clipShape={{ type: "capsule" }}>
+  const p = badgePalette(label)
+  return <HStack padding={{ horizontal: small ? 5 : 10, vertical: small ? 2 : 4 }} background={p.background} clipShape={{ type: "capsule" }}>
     <Text fontDesign="default" fontWidth="standard" font={small ? 8 : 10} fontWeight="bold" foregroundStyle={p.foreground} lineLimit={1} minimumScaleFactor={small ? 0.72 : 1}>{p.text}</Text>
   </HStack>
 }
@@ -147,11 +178,10 @@ function MediumWindow({ title, window, mode, width, top }: { title: string; wind
   </>
 }
 
-function singleWindowTitle(window: LimitWindow | null): string {
-  if (window?.name === "five_hour") return "5 小时额度"
-  if (window?.name === "weekly") return "7 天额度"
-  if (window?.name === "weekly_fable") return "Fable 7 天周限"
-  return window?.label || "Claude 用量"
+function singleWindowTitle(focus: FocusWindow): string {
+  if (focus === "five_hour") return "5 小时额度"
+  if (focus === "weekly") return "周限额度"
+  return "Fable 周限"
 }
 function SingleInfoRow({ icon, label, value, width }: { icon: string; label: string; value: string; width: number }) {
   return <HStack spacing={4} frame={{ width }}>
@@ -167,7 +197,7 @@ function SingleWindowView({ model, family, displayMode, focusWindow }: { model: 
   const focus = model.snapshot ? pickFocusWindow(model.snapshot, focusWindow) : null
   const used = focus?.usedPercent ?? 0
   const shown = displayMode === "remaining" ? focus?.remainingPercent : focus?.usedPercent
-  const title = singleWindowTitle(focus)
+  const title = singleWindowTitle(focusWindow)
   const barWidth = Math.max(90, width - (small ? 24 : 40))
 
   if (small) return <ZStack frame={{ maxWidth: "infinity", maxHeight: "infinity" }} widgetBackground={C.bg}>
@@ -213,8 +243,10 @@ export function UsageWidgetView({ result, family, displayMode, focusWindow, widg
   if (widgetStyle === "single") return <SingleWindowView model={model} family={family} displayMode={displayMode} focusWindow={focusWindow}/>
   const firstWindow = dualQuotaPreset === "weekly_fable" ? model.weekly : model.fiveHour
   const secondWindow = dualQuotaPreset === "weekly_fable" ? model.weeklyFable : model.weekly
-  const firstTitle = dualQuotaPreset === "weekly_fable" ? "每周额度" : "5 小时额度"
-  const secondTitle = dualQuotaPreset === "weekly_fable" ? "Fable 每周额度" : "每周额度"
+  const firstTitle = dualQuotaPreset === "weekly_fable" ? "周限额度" : "5 小时额度"
+  const secondTitle = dualQuotaPreset === "weekly_fable" ? "Fable 周限" : "周限额度"
+  const smallFirstTitle = dualQuotaPreset === "weekly_fable" ? "周限" : "5h 额度"
+  const smallSecondTitle = dualQuotaPreset === "weekly_fable" ? "Fable 周限" : "周限"
   const small = isSmall(family)
   const width = displayWidth(family)
 
@@ -226,8 +258,8 @@ export function UsageWidgetView({ result, family, displayMode, focusWindow, widg
         <PlanBadge label={model.planLabel} small/><Spacer/>
         <Text fontDesign="default" fontWidth="standard" font={8} fontWeight="medium" foregroundStyle={C.secondary}>{model.fetched}</Text>
       </HStack>
-      <SmallWindow title={firstTitle} window={firstWindow} mode={displayMode} width={contentWidth} top={43}/>
-      <SmallWindow title={secondTitle} window={secondWindow} mode={displayMode} width={contentWidth} top={99}/>
+      <SmallWindow title={smallFirstTitle} window={firstWindow} mode={displayMode} width={contentWidth} top={43}/>
+      <SmallWindow title={smallSecondTitle} window={secondWindow} mode={displayMode} width={contentWidth} top={99}/>
       {!model.live && model.detail ? <HStack frame={{ maxWidth: "infinity", maxHeight: "infinity", alignment: "bottomLeading" }} padding={{ horizontal: 12, bottom: 2 }}><Text font={7} foregroundStyle={C.warn} lineLimit={1}>{model.detail}</Text></HStack> : null}
     </ZStack>
   }

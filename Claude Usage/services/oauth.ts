@@ -91,7 +91,7 @@ function parseAuthorizationInput(input: string, expectedState: string): { code: 
   let value = input.trim()
   if (!value) throw new Error("请粘贴 Anthropic 页面显示的授权码")
 
-  // 兼容复制 hosted callback URL。
+  // 支持粘贴 hosted callback URL。
   if (/^https?:\/\//i.test(value)) {
     const url = new URL(value)
     const error = url.searchParams.get("error")
@@ -103,7 +103,7 @@ function parseAuthorizationInput(input: string, expectedState: string): { code: 
     return { code, state }
   }
 
-  // Claude Code 的手动授权码通常为 code#state；也兼容只复制 code。
+  // 手动授权码通常为 code#state，也支持只粘贴 code。
   const splitAt = value.lastIndexOf("#")
   if (splitAt > 0) {
     const code = value.slice(0, splitAt).trim()
