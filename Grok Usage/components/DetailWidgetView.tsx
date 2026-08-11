@@ -1,5 +1,4 @@
 import { HStack, Image, Script, Spacer, Text, VStack, Widget, ZStack } from "scripting"
-import { pickFocusWindow } from "../services/api"
 import { formatPercent, formatResetDate } from "../services/format"
 import { PlanBadge } from "./PlanBadge"
 import type { DisplayMode, LimitWindow, MediumWidgetLayout, UsageResult, UsageSnapshot } from "../services/types"
@@ -40,9 +39,9 @@ type Model = {
 }
 function modelFor(result: UsageResult, mode: DisplayMode, focusName: Props["focusWindow"]): Model {
   const snapshot = result.ok ? result.snapshot : result.cache || null
-  const focus = snapshot ? pickFocusWindow(snapshot, focusName) : null
+  const focus = snapshot?.windows.find(window => window.name === focusName) || null
   const used = focus?.usedPercent ?? 0
-  const remaining = focus?.remainingPercent ?? (focus?.usedPercent == null ? 0 : 100 - focus.usedPercent)
+  const remaining = focus?.remainingPercent ?? (focus?.usedPercent == null ? null : 100 - focus.usedPercent)
   return {
     snapshot, focus, used,
     main: formatPercent(mode === "remaining" ? remaining : focus?.usedPercent),
@@ -97,18 +96,9 @@ function MetaColumn({ icon, label, value, width, layout, alignment }: { icon: st
     </HStack>
   </VStack>
 }
-function smallLimitTitle(window: LimitWindow | null): string {
-  if (window?.name === "weekly") return "每周额度"
-  if (window?.name === "monthly") return "每月额度"
-    return "限额"
-}
-function usageTitle(window: LimitWindow | null): string {
-    if (window?.name === "monthly") return "每月额度"
-  if (window?.name === "weekly") return "每周额度"
-  return window?.label ? `${window.label}用量` : "Grok 用量"
-}
-function otherWindows(snapshot: UsageSnapshot | null, focus: LimitWindow | null): LimitWindow[] {
-  return snapshot ? snapshot.windows.filter(window => window.id !== focus?.id).slice(0, 2) : []
+function focusTitle(focus: Props["focusWindow"], compact = false): string {
+  if (focus === "monthly") return compact ? "月额度" : "每月额度"
+  return compact ? "周额度" : "每周额度"
 }
 
 export function DetailWidgetView({ result, family, displayMode, focusWindow }: Props) {
@@ -120,9 +110,7 @@ export function DetailWidgetView({ result, family, displayMode, focusWindow }: P
   const mediumContentWidth = Math.max(180, displayWidth(family) - layout.left - layout.right)
   const metaGap = 8
   const metaColumnWidth = Math.max(58, (mediumContentWidth - metaGap * 2) / 3)
-  // 保留用户已调好的底栏位置，仅将进度条到元信息行的间距增加 2pt。
   const balancedFooterY = layout.footerY + 2
-  const secondary = otherWindows(model.snapshot, model.focus)
 
   if (small) return <ZStack frame={{ maxWidth: "infinity", maxHeight: "infinity" }} widgetBackground={C.bg}>
     <HStack frame={{ maxWidth: "infinity", maxHeight: "infinity", alignment: "bottomTrailing" }} padding={{ trailing: -6, bottom: -6 }}>
@@ -130,7 +118,7 @@ export function DetailWidgetView({ result, family, displayMode, focusWindow }: P
     </HStack>
     <ZStack frame={{ maxWidth: "infinity", maxHeight: "infinity" }}>
       <HStack alignment="center" frame={{ maxWidth: "infinity", maxHeight: "infinity", alignment: "topLeading" }} padding={{ leading: 12, trailing: 12, top: 19 }}>
-        <Text fontDesign="default" fontWidth="standard" font={16} fontWeight="bold" foregroundStyle={C.primary}>{smallLimitTitle(model.focus)}</Text>
+        <Text fontDesign="default" fontWidth="standard" font={16} fontWeight="bold" foregroundStyle={C.primary}>{focusTitle(focusWindow, true)}</Text>
         <Spacer/>
         <PlanBadge label={model.planLabel} small/>
       </HStack>
@@ -180,8 +168,7 @@ export function DetailWidgetView({ result, family, displayMode, focusWindow }: P
       </HStack>
 
       <HStack frame={{ maxWidth: "infinity", maxHeight: "infinity", alignment: "topLeading" }} padding={{ leading: layout.left, trailing: layout.right, top: layout.titleY }}>
-        <Text fontDesign="default" fontWidth="standard" font={layout.titleFont} fontWeight="bold" foregroundStyle={C.primary}>{usageTitle(model.focus)}</Text>
-        {secondary.length ? <Text fontDesign="default" fontWidth="standard" font={9} foregroundStyle={C.secondary} lineLimit={1}>　{secondary.map(w => `${w.label} ${formatPercent(w.usedPercent)}`).join(" · ")}</Text> : null}
+        <Text fontDesign="default" fontWidth="standard" font={layout.titleFont} fontWeight="bold" foregroundStyle={C.primary}>{focusTitle(focusWindow)}</Text>
         <Spacer/>
       </HStack>
 

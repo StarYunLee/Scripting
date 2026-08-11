@@ -8,7 +8,7 @@ import type { UsageResult } from "./services/types"
 function parameterProfileId(): string | null {
   const raw = String(Widget.parameter || "").trim()
   if (!raw) return getDefaultProfileId()
-  // 兼容旧 JSON 参数；新参数可直接填写邮箱、profileId 或账号显示名。
+  // 参数支持邮箱、profileId、账号显示名或 JSON 账号信息。
   try {
     const parsed = JSON.parse(raw) as { accountId?: string; email?: string }
     const profile = resolveProfile(parsed.accountId || parsed.email || "")

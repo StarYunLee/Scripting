@@ -10,11 +10,11 @@
 - Access Token、Refresh Token 和 ID Token 保存在本机 Keychain
 - Token 到期前自动刷新
 - 多账号管理，每个账号独立保存凭证和额度缓存
-- 读取每周额度和月度 Credits
+- 读取每周额度和月度 Billing 数据
 - 支持单额度详情和双额度概览两种布局
 - 支持显示已用或剩余百分比
 - 展示额度进度条和重置时间
-- Medium 双额度概览额外展示月度 Credits 已用值与总额
+- Medium 双额度概览在服务端提供有效月度 Credits 时显示已用值与总额
 - SuperGrok / SuperGrok Heavy 套餐徽章
 - 网络失败时回退到本机最近一次成功缓存
 - 支持 AppIntent 手动刷新
@@ -96,12 +96,14 @@ Grok Build 当前返回两套额度数据：
 
 ### 每月额度
 
-来自月度 Credits 数据，包含：
+来自月度 Billing 数据，可能包含：
 
 - 已用 Credits；
 - 月度 Credits 总额；
-- 已用和剩余百分比；
+- 月度已用和剩余百分比；
 - 月度周期结束/重置时间。
+
+当服务端返回 `monthlyLimit = 0`、`used = 0` 时，月度百分比无法计算，组件显示 `—`，但仍保留服务端提供的重置时间。
 
 两个窗口属于同一 Grok Build 额度体系，可通过设置选择双额度概览或聚焦其中一个额度的单额度详情。
 
@@ -154,19 +156,16 @@ iOS WidgetKit 可能根据系统调度策略延后刷新，所选时间是请求
 - 月度额度：`https://cli-chat-proxy.grok.com/v1/billing`
 - 每周额度：`https://cli-chat-proxy.grok.com/v1/billing?format=credits`
 - CLI 请求标识：`x-xai-token-auth: xai-grok-cli`
+- CLI 用户标识：OAuth 用户 `sub`（通过 `x-userid` 发送）
+- CLI 客户端标识：`x-grok-client-version`
 
 OAuth 使用 xAI 认证端点；Billing 数据来自 Grok Build / CLI 当前使用的订阅额度接口，并非面向第三方承诺长期稳定的公开 API。xAI 更新后，路径、字段或访问策略可能变化。
 
 ## 套餐标签
 
-Billing 接口当前不直接返回统一的标准套餐名称。本项目参考 Grok CLI 社区实现，根据月度额度推断显示：
+Grok Billing 响应并不总是提供统一、稳定的套餐名称。组件优先展示已识别的 SuperGrok / SuperGrok Heavy 标签；月度额度仅作为缺少明确套餐信息时的兜底判断。
 
-- SuperGrok
-- SuperGrok Heavy
-
-当前分层规则为：月度额度大于 `20,000` 时显示 SuperGrok Heavy，否则显示 SuperGrok。项目按当前设计不单独显示 Lite / Free 标签。
-
-套餐标签是基于额度字段的推断，仅供界面展示，不应视为 xAI 官方账户套餐判定。
+套餐标签仅用于界面展示，不应视为 xAI 官方账户套餐判定。Small 小组件为避免截断，会将 `SUPERGROK HEAVY` 简写为 `HEAVY`；Medium 保留完整名称。
 
 ## 隐私与安全
 
@@ -182,6 +181,8 @@ Billing 接口当前不直接返回统一的标准套餐名称。本项目参考
 
 - Grok Build / CLI Billing 接口可能随时变化；
 - OAuth 成功不代表所有账号都具有 Grok Build 订阅额度访问权限；
+- 服务端可能只返回每周百分比和月度周期信息；月度 Credits 为 `0 / 0` 时无法计算月度百分比；
+- 运行日志只记录请求状态、额度结果和脱敏错误，不输出 Token、用户标识或完整响应；
 - 套餐名称属于推断结果；
 - WidgetKit 不保证严格按照所选分钟数刷新；
 - Small 和 Medium 以外的组件尺寸未专门适配。

@@ -11,7 +11,8 @@ type Props = {
 }
 
 export function UsageWidgetView(props: Props) {
+  const detailFocus = props.focusWindow === "monthly" ? "monthly" : "weekly"
   return props.widgetLayout === "detail"
-    ? <DetailWidgetView result={props.result} family={props.family} displayMode={props.displayMode} focusWindow={props.focusWindow}/>
-    : <OverviewWidgetView result={props.result} family={props.family} displayMode={props.displayMode} focusWindow={props.focusWindow}/>
+    ? <DetailWidgetView result={props.result} family={props.family} displayMode={props.displayMode} focusWindow={detailFocus}/>
+    : <OverviewWidgetView result={props.result} family={props.family} displayMode={props.displayMode} focusWindow={detailFocus}/>
 }
