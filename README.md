@@ -6,7 +6,9 @@
 
 ### Codex Usage
 
-OpenAI Codex 用量小组件，支持 OpenAI OAuth、多账号、5 小时/每周/每月额度，以及双额度概览和单额度详情布局。
+OpenAI Codex 用量小组件，支持 OpenAI OAuth、多账号、账号级显示设置、5 小时/每周/每月额度，以及双额度概览和单额度详情布局。
+
+![Codex Usage 小组件预览](./Codex%20Usage/assets/codex-usage-preview.png)
 
 - [查看源码与使用说明](./Codex%20Usage/)
 - [直接安装 Codex-Usage.scripting](https://raw.githubusercontent.com/StarYunLee/Scripting/main/Codex-Usage.scripting)

@@ -11,9 +11,7 @@ declare const Storage: {
 
 const CACHE_KEY = "codex_usage_cache_v2"
 const USAGE_URL = "https://chatgpt.com/backend-api/wham/usage"
-const ACCOUNT_URL = "https://chatgpt.com/backend-api/accounts/check"
-const RESET_CREDITS_URL = "https://chatgpt.com/backend-api/wham/rate-limit-reset-credits"
-
+const MIN_LIVE_INTERVAL_MS = 3 * 60_000
 export function getReloadMinutes(): number { return getSettings().reloadMinutes }
 function asObject(v: unknown): Record<string, unknown> | null {
   return v && typeof v === "object" && !Array.isArray(v) ? v as Record<string, unknown> : null
@@ -117,59 +115,29 @@ function extractWindows(payload: Record<string, unknown>): LimitWindow[] {
   }
   return unique.sort((a, b) => (a.windowSeconds || 1e20) - (b.windowSeconds || 1e20))
 }
-function firstDate(obj: Record<string, unknown> | null, keys: string[]): string | null {
-  if (!obj) return null
-  for (const key of keys) {
-    const d = epoch(obj[key])
-    if (d.iso) return d.iso
-  }
-  return null
-}
-function parseSubscriptionExpiry(payload: Record<string, unknown> | null): string | null {
-  if (!payload) return null
-  const keys = [
-    "subscription_expires_at_timestamp", "subscription_expires_at",
-    "subscription_expiration", "subscription_expiry", "subscription_end_date",
-    "current_period_end", "period_end", "plan_expires_at", "renewal_date", "renews_at",
-  ]
-  const seen = new Set<unknown>()
-  function visit(value: unknown, depth: number): string | null {
-    if (depth > 6 || !value || seen.has(value)) return null
-    if (typeof value !== "object") return null
-    seen.add(value)
-    const obj = asObject(value)
-    if (obj) {
-      const direct = firstDate(obj, keys)
-      if (direct) return direct
-      for (const [key, child] of Object.entries(obj)) {
-        // 避免把 OAuth/JWT access token 的 expires_at 误判为订阅到期。
-        if (/token|oauth|session|auth/i.test(key)) continue
-        const found = visit(child, depth + 1)
-        if (found) return found
-      }
-    } else if (Array.isArray(value)) {
-      for (const child of value) {
-        const found = visit(child, depth + 1)
-        if (found) return found
-      }
-    }
-    return null
-  }
-  return visit(payload, 0)
-}
-function planLabel(payload: Record<string, unknown>, accountPayload: Record<string, unknown> | null): string | null {
+function planLabel(payload: Record<string, unknown>): string | null {
   const raw = String(payload.plan_type || "").toLowerCase()
-  const source = JSON.stringify({ usage: payload, account: accountPayload }).toLowerCase()
+  const source = JSON.stringify(payload).toLowerCase()
   if (/pro[_ -]?20x|pro[_ -]?5x|"multiplier"\s*:\s*(20|5)|"usage_multiplier"\s*:\s*(20|5)/.test(source)) return "Pro"
   if (raw === "plus") return "Plus"
   if (raw === "team" || raw === "business" || raw.includes("business")) return "Team"
   if (raw === "pro" || raw === "prolite") return "Pro"
   return raw ? raw.replace(/(^|_)(\w)/g, (_, __, c) => c.toUpperCase()) : null
 }
-function resetCreditsFrom(payload: Record<string, unknown> | null): number | null {
-  if (!payload) return null
-  const value = toNumber(payload.available_count ?? asObject(payload.rate_limit_reset_credits)?.available_count)
-  return value == null ? null : Math.max(0, Math.floor(value))
+function resetCreditsInfo(payload: Record<string, unknown> | null): { count: number | null; container: "snake" | "camel" | "root" | "missing"; valueKey: "snake" | "camel" | "missing" } {
+  if (!payload) return { count: null, container: "missing", valueKey: "missing" }
+  const snake = asObject(payload.rate_limit_reset_credits)
+  const camel = asObject(payload.rateLimitResetCredits)
+  const container = snake || camel || payload
+  const containerName = snake ? "snake" : camel ? "camel" : "root"
+  const snakeValue = container.available_count
+  const camelValue = container.availableCount
+  const value = toNumber(snakeValue ?? camelValue)
+  return {
+    count: value == null ? null : Math.max(0, Math.floor(value)),
+    container: containerName,
+    valueKey: snakeValue != null ? "snake" : camelValue != null ? "camel" : "missing",
+  }
 }
 function authHeaders(token: string, accountId: string | null): Record<string, string> {
   const h: Record<string, string> = { Authorization: `Bearer ${token}`, Accept: "application/json", Origin: "https://chatgpt.com", Referer: "https://chatgpt.com/" }
@@ -197,13 +165,30 @@ export function clearUsageCache(profileId?: string | null): void {
 export function pickFocusWindow(snapshot: UsageSnapshot, focus: "weekly" | "five_hour" | "monthly" = "weekly"): LimitWindow | null {
   return snapshot.windows.find(w => w.name === focus) || null
 }
+function recent(cache: UsageSnapshot | null): boolean {
+  if (!cache?.fetchedAt) return false
+  const fetchedAt = new Date(cache.fetchedAt).getTime()
+  return Number.isFinite(fetchedAt) && Date.now() - fetchedAt < MIN_LIVE_INTERVAL_MS
+}
+function recoverRecentCache(profileId: string, force: boolean, reason: string): UsageResult | null {
+  if (force) return null
+  const latest = readCache(profileId)
+  if (!recent(latest)) return null
+  debug("cache.recover", { reason, fetchedAt: latest!.fetchedAt })
+  return { ok: true, snapshot: latest! }
+}
 
 export async function fetchUsage(options?: { force?: boolean; profileId?: string | null }): Promise<UsageResult> {
   const profile = resolveProfile(options?.profileId)
   if (!profile) return { ok: false, error: { code: "missing_token", message: "未找到指定账号" }, cache: null }
   const cache = readCache(profile.id)
   const accountId = getProfileAccountId(profile.id)
-  debug("fetch.start", { force: Boolean(options?.force), hasCache: Boolean(cache), cacheFetchedAt: cache?.fetchedAt || null, hasAccountId: Boolean(accountId) })
+  const cacheIsRecent = recent(cache)
+  debug("fetch.start", { force: Boolean(options?.force), hasCache: Boolean(cache), cacheFetchedAt: cache?.fetchedAt || null, cacheIsRecent, hasAccountId: Boolean(accountId) })
+  if (!options?.force && cacheIsRecent) {
+    debug("cache.hit", { fetchedAt: cache!.fetchedAt })
+    return { ok: true, snapshot: cache! }
+  }
   let token = await refreshOAuthToken(profile.id, Boolean(options?.force && !cache))
   if (!token) token = getProfileAccessToken(profile.id)
   if (!token) return { ok: false, error: { code: "missing_token", message: `账号“${profile.name}”尚未授权` }, cache }
@@ -223,40 +208,36 @@ export async function fetchUsage(options?: { force?: boolean; profileId?: string
     if (!response.ok) {
       const unauthorized = response.status === 401 || response.status === 403
       debug("http.error", { endpoint: "usage", status: response.status, unauthorized })
-      return { ok: false, error: { code: unauthorized ? "unauthorized" : "http_error", message: unauthorized ? "登录已失效，请重新登录" : `请求失败 HTTP ${response.status}` }, cache }
+      const recovered = recoverRecentCache(profile.id, Boolean(options?.force), `http_${response.status}`)
+      if (recovered) return recovered
+      const latestCache = readCache(profile.id) || cache
+      return { ok: false, error: { code: unauthorized ? "unauthorized" : "http_error", message: unauthorized ? "登录已失效，请重新登录" : `请求失败 HTTP ${response.status}` }, cache: latestCache }
     }
-    if (!payload) return { ok: false, error: { code: "invalid_json", message: "用量响应不是合法 JSON" }, cache }
-
-    let accountPayload: Record<string, unknown> | null = null
-    let resetPayload: Record<string, unknown> | null = null
-    try {
-      const accountResponse = await fetch(ACCOUNT_URL, { method: "GET", headers: authHeaders(token!, accountId), timeout: 12, debugLabel: "CodexAccount" })
-      if (accountResponse.ok) {
-        accountPayload = asObject(JSON.parse(await accountResponse.text()))
-      } else {
-        debug("http.error", { endpoint: "account", status: accountResponse.status, optional: true })
-      }
-    } catch (e) { debug("optional.error", { endpoint: "account", message: e instanceof Error ? e.message : String(e) }) }
-    try {
-      const resetResponse = await fetch(RESET_CREDITS_URL, { method: "GET", headers: authHeaders(token!, accountId), timeout: 12, debugLabel: "CodexResetCredits" })
-      if (resetResponse.ok) {
-        resetPayload = asObject(JSON.parse(await resetResponse.text()))
-      } else {
-        debug("http.error", { endpoint: "resetCredits", status: resetResponse.status, optional: true })
-      }
-    } catch (e) { debug("optional.error", { endpoint: "resetCredits", message: e instanceof Error ? e.message : String(e) }) }
+    if (!payload) {
+      const recovered = recoverRecentCache(profile.id, Boolean(options?.force), "invalid_json")
+      if (recovered) return recovered
+      return { ok: false, error: { code: "invalid_json", message: "用量响应不是合法 JSON" }, cache: readCache(profile.id) || cache }
+    }
 
     const windows = extractWindows(payload)
+    if (!windows.length) {
+      debug("parse.error", { reason: "no_windows" })
+      const recovered = recoverRecentCache(profile.id, Boolean(options?.force), "no_windows")
+      if (recovered) return recovered
+      return { ok: false, error: { code: "invalid_json", message: "用量响应中没有可用额度窗口" }, cache: readCache(profile.id) || cache }
+    }
     const rawPlanType = typeof payload.plan_type === "string" ? payload.plan_type : null
+    const resetCredits = resetCreditsInfo(payload)
+    const liveResetCredits = resetCredits.count
+    const resetCreditsAvailable = liveResetCredits ?? cache?.resetCreditsAvailable ?? null
     const snapshot: UsageSnapshot = {
       windows,
       fiveHour: windows.find(w => w.name === "five_hour") || null,
       weekly: windows.find(w => w.name === "weekly") || null,
       monthly: windows.find(w => w.name === "monthly") || null,
       planType: rawPlanType,
-      planLabel: planLabel(payload, accountPayload),
-      subscriptionExpiresAt: parseSubscriptionExpiry(accountPayload) || parseSubscriptionExpiry(payload),
-      resetCreditsAvailable: resetCreditsFrom(resetPayload) ?? resetCreditsFrom(payload),
+      planLabel: planLabel(payload),
+      resetCreditsAvailable,
       fetchedAt: new Date().toISOString(),
       source: "live",
       raw: payload,
@@ -266,12 +247,16 @@ export async function fetchUsage(options?: { force?: boolean; profileId?: string
       plan: snapshot.planLabel || snapshot.planType || null,
       windows: windows.map(window => ({ name: window.name, usedPercent: window.usedPercent, resetAt: window.resetAt })),
       resetCreditsAvailable: snapshot.resetCreditsAvailable ?? null,
-      subscriptionExpiresAt: snapshot.subscriptionExpiresAt,
+      resetCreditsSource: liveResetCredits != null ? "live" : resetCreditsAvailable != null ? "cache" : "missing",
+      resetCreditsShape: { container: resetCredits.container, valueKey: resetCredits.valueKey },
       fetchedAt: snapshot.fetchedAt,
     })
     return { ok: true, snapshot }
   } catch (e) {
-    debug("fetch.error", { name: e instanceof Error ? e.name : "unknown", message: e instanceof Error ? e.message : String(e), hasCache: Boolean(cache) })
-    return { ok: false, error: { code: "network_error", message: "网络请求失败", detail: e instanceof Error ? e.message : String(e) }, cache }
+    const recovered = recoverRecentCache(profile.id, Boolean(options?.force), "network_error")
+    if (recovered) return recovered
+    const latestCache = readCache(profile.id) || cache
+    debug("fetch.error", { name: e instanceof Error ? e.name : "unknown", message: e instanceof Error ? e.message : String(e), hasCache: Boolean(latestCache) })
+    return { ok: false, error: { code: "network_error", message: "网络请求失败", detail: e instanceof Error ? e.message : String(e) }, cache: latestCache }
   }
 }

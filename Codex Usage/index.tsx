@@ -1,6 +1,6 @@
 import { Button, List, Navigation, NavigationStack, Picker, Script, Section, Text, TextField, Widget, useState } from "scripting"
 import { clearUsageCache, fetchUsage, getCachedUsage, pickFocusWindow } from "./services/api"
-import { getSettings, setSettings } from "./services/credentials"
+import { clearProfileSettings, getEffectiveSettings, hasProfileSettings, setProfileSettings, setReloadMinutes } from "./services/credentials"
 import {
   createAccount, deleteAccount, ensureAccountMigration, getDefaultProfileId,
   getProfileAccessToken, listAccounts, resolveProfile, setDefaultAccount,
@@ -37,7 +37,7 @@ function App() {
   const [usageText, setUsageText] = useState(() => summary(getCachedUsage(selectedId)))
   const [deleteArmed, setDeleteArmed] = useState(false)
   const [copiedEmail, setCopiedEmail] = useState("")
-  const [widgetSettings, setWidgetSettingsState] = useState(() => getSettings())
+  const [widgetSettings, setWidgetSettingsState] = useState(() => getEffectiveSettings(pendingInitial || getDefaultProfileId() || initial[0]?.id || ""))
   const selected = resolveProfile(selectedId)
   const authTarget = resolveProfile(authTargetId)
 
@@ -45,14 +45,23 @@ function App() {
     const next = listAccounts(); setAccounts([...next])
     const wanted = preferId || selectedId || getDefaultProfileId() || next[0]?.id || ""
     const id = next.some(a => a.id === wanted) ? wanted : (getDefaultProfileId() || next[0]?.id || "")
-    setSelectedId(id); setUsageText(summary(getCachedUsage(id))); setDeleteArmed(false)
+    setSelectedId(id); setUsageText(summary(getCachedUsage(id))); setWidgetSettingsState(getEffectiveSettings(id)); setDeleteArmed(false)
   }
   function selectAccount(id: string) {
-    setSelectedId(id); setUsageText(summary(getCachedUsage(id))); setStatus(""); setDeleteArmed(false)
+    setSelectedId(id); setUsageText(summary(getCachedUsage(id))); setWidgetSettingsState(getEffectiveSettings(id)); setStatus(""); setDeleteArmed(false)
   }
   function reloadWidgets() { try { Widget.reloadUserWidgets() } catch { try { Widget.reloadAll() } catch {} } }
-  function updateWidgetSettings(patch: Parameters<typeof setSettings>[0]) {
-    const next = setSettings(patch); setWidgetSettingsState({ ...next }); reloadWidgets()
+  function updateProfileWidgetSettings(patch: Parameters<typeof setProfileSettings>[1]) {
+    if (!selectedId) return
+    const next = setProfileSettings(selectedId, patch); setWidgetSettingsState({ ...next }); reloadWidgets()
+  }
+  function updateReloadMinutes(reloadMinutes: number) {
+    setReloadMinutes(reloadMinutes)
+    const next = getEffectiveSettings(selectedId); setWidgetSettingsState({ ...next }); reloadWidgets()
+  }
+  function restoreProfileDefaults() {
+    if (!selectedId) return
+    const next = clearProfileSettings(selectedId); setWidgetSettingsState({ ...next }); setStatus("当前账号已恢复默认显示设置"); reloadWidgets()
   }
   async function refreshSelected() {
     if (!selectedId) return
@@ -73,7 +82,7 @@ function App() {
     const target = resolveProfile(authTargetId)
     clearPendingOAuth(); setCallbackUrl(""); setAuthTargetId(""); setStatus("已取消授权")
     // 未完成授权的临时账号直接清理，避免留下“账号 N”。
-    if (target && !getProfileAccessToken(target.id)) { clearUsageCache(target.id); deleteAccount(target.id); refreshRegistry() }
+    if (target && !getProfileAccessToken(target.id)) { clearUsageCache(target.id); clearProfileSettings(target.id); deleteAccount(target.id); refreshRegistry() }
   }
 
   return <NavigationStack><List navigationTitle="Codex Usage">
@@ -102,10 +111,10 @@ function App() {
       </>}
     </Section> : null}
 
-    {selected ? <Section header={<Text>账号管理 · {selected.email || selected.name}</Text>} footer={<Text>删除后会清除该账号的 OAuth 凭证和本机用量缓存，此操作不可撤销。</Text>}>
+    {selected ? <Section header={<Text>账号管理 · {selected.email || selected.name}</Text>} footer={<Text>删除后会清除该账号的 OAuth 凭证、本机用量缓存和独立显示设置，此操作不可撤销。</Text>}>
       {!deleteArmed ? <Button title="删除当前账号…" action={() => setDeleteArmed(true)}/> : <>
         <Text foregroundStyle="systemRed">确认删除当前账号 {selected.email || selected.name}？</Text>
-        <Button title="确认删除当前账号" action={() => { const id = selected.id; clearUsageCache(id); deleteAccount(id); refreshRegistry(); setStatus("当前账号已删除"); reloadWidgets() }}/>
+        <Button title="确认删除当前账号" action={() => { const id = selected.id; clearUsageCache(id); clearProfileSettings(id); deleteAccount(id); refreshRegistry(); setStatus("当前账号已删除"); reloadWidgets() }}/>
         <Button title="取消" action={() => setDeleteArmed(false)}/>
       </>}
     </Section> : null}
@@ -120,11 +129,11 @@ function App() {
       <Text font={12} foregroundStyle="secondary">长按主屏幕小组件 → 编辑小组件 → 参数 → 粘贴邮箱。</Text>
     </Section>
 
-    <Section header={<Text>小组件显示设置</Text>} footer={<Text>这些设置对所有 Codex 小组件生效，修改后自动刷新。</Text>}>
+    {selected ? <Section header={<Text>小组件设置 · {selected.email || selected.name}</Text>} footer={<Text>布局和显示选项仅应用于当前账号；刷新频率对所有账号生效。</Text>}>
       <Picker
         title="组件布局"
         value={widgetSettings.widgetLayout}
-        onChanged={(value) => updateWidgetSettings({ widgetLayout: value as "detail" | "overview" })}
+        onChanged={(value) => updateProfileWidgetSettings({ widgetLayout: value as "detail" | "overview" })}
         pickerStyle="navigationLink"
       >
         <Text tag="detail">单额度详情</Text>
@@ -133,7 +142,7 @@ function App() {
       <Picker
         title="用量显示"
         value={widgetSettings.displayMode}
-        onChanged={(value) => updateWidgetSettings({ displayMode: value as "used" | "remaining" })}
+        onChanged={(value) => updateProfileWidgetSettings({ displayMode: value as "used" | "remaining" })}
         pickerStyle="navigationLink"
       >
         <Text tag="used">已用</Text>
@@ -142,7 +151,7 @@ function App() {
       {widgetSettings.widgetLayout === "detail" ? <Picker
         title="显示额度"
         value={widgetSettings.focusWindow}
-        onChanged={(value) => updateWidgetSettings({ focusWindow: value as "five_hour" | "weekly" | "monthly" })}
+        onChanged={(value) => updateProfileWidgetSettings({ focusWindow: value as "five_hour" | "weekly" | "monthly" })}
         pickerStyle="navigationLink"
       >
         <Text tag="five_hour">5 小时额度</Text>
@@ -152,7 +161,7 @@ function App() {
       <Picker
         title="刷新频率"
         value={String(widgetSettings.reloadMinutes)}
-        onChanged={(value) => updateWidgetSettings({ reloadMinutes: Number(value) })}
+        onChanged={(value) => updateReloadMinutes(Number(value))}
         pickerStyle="navigationLink"
       >
         <Text tag="5">5 分钟</Text>
@@ -161,7 +170,8 @@ function App() {
         <Text tag="30">30 分钟</Text>
         <Text tag="60">60 分钟</Text>
       </Picker>
-    </Section>
+      {hasProfileSettings(selectedId) ? <Button title="恢复当前账号默认显示设置" action={restoreProfileDefaults}/> : <Text font={12} foregroundStyle="secondary">当前账号使用全局默认显示设置</Text>}
+    </Section> : null}
   </List></NavigationStack>
 }
 Navigation.present({ element: <App /> }).then(() => Script.exit())

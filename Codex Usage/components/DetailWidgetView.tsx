@@ -34,7 +34,6 @@ type Model = {
   main: string
   suffix: string
   fetched: string
-  subscription: string
   planLabel: string
   resetCredits: string
   live: boolean
@@ -50,7 +49,6 @@ function modelFor(result: UsageResult, mode: DisplayMode, focusName: Props["focu
     main: formatPercent(mode === "remaining" ? remaining : focus?.usedPercent),
     suffix: mode === "remaining" ? "剩余" : "已用",
     fetched: snapshot ? formatResetDate(snapshot.fetchedAt) : "—",
-    subscription: snapshot?.subscriptionExpiresAt ? formatSubscriptionRemaining(snapshot.subscriptionExpiresAt) : "未提供",
     planLabel: snapshot?.planLabel || snapshot?.planType || "—",
     resetCredits: snapshot?.resetCreditsAvailable == null ? "—" : `${snapshot.resetCreditsAvailable} 次`,
     live: result.ok,
@@ -99,12 +97,6 @@ function MetaColumn({ icon, label, value, width, layout, alignment }: { icon: st
       <Text fontDesign="default" fontWidth="standard" font={layout.footerValueFont} fontWeight="bold" foregroundStyle={C.primary} lineLimit={1} minimumScaleFactor={0.65}>{value}</Text>
     </HStack>
   </VStack>
-}
-function formatSubscriptionRemaining(iso: string): string {
-  const target = new Date(iso).getTime()
-  if (!Number.isFinite(target)) return "未提供"
-  const days = Math.max(0, Math.ceil((target - Date.now()) / 86_400_000))
-  return `剩余 ${days} 天`
 }
 function focusTitle(focus: Props["focusWindow"]): string {
   if (focus === "five_hour") return "5 小时额度"
@@ -167,9 +159,6 @@ export function DetailWidgetView({ result, family, displayMode, focusWindow }: P
     <ZStack frame={{ maxWidth: "infinity", maxHeight: "infinity" }}>
       <HStack spacing={6} frame={{ maxWidth: "infinity", maxHeight: "infinity", alignment: "topLeading" }} padding={{ leading: layout.left, top: layout.planY }}>
         <PlanBadge label={model.planLabel}/>
-        {model.subscription !== "未提供" ? <HStack padding={{ horizontal: 8, vertical: layout.planVertical }} background={dynamic("#ECFFF7", "#163D34")} border={{ color: dynamic("#9CEBCD", "#347A68"), width: 1 }} clipShape={{ type: "capsule" }}>
-          <Text fontDesign="default" fontWidth="standard" font={layout.subscriptionBadgeFont} fontWeight="semibold" foregroundStyle={dynamic("#087A5B", "#8EE3C8")}>{model.subscription}</Text>
-        </HStack> : null}
       </HStack>
 
       <HStack frame={{ maxWidth: "infinity", maxHeight: "infinity", alignment: "topTrailing" }} padding={{ trailing: layout.right, top: layout.topY }}>

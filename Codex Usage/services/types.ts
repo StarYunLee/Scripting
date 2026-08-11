@@ -33,7 +33,6 @@ export type UsageSnapshot = {
   monthly: LimitWindow | null
   planType: string | null
   planLabel: string | null
-  subscriptionExpiresAt: string | null
   resetCreditsAvailable: number | null
   fetchedAt: string
   source: "live" | "cache"
@@ -84,7 +83,6 @@ export type MediumWidgetLayout = {
   planFont: number
   planHorizontal: number
   planVertical: number
-  subscriptionBadgeFont: number
   resetCountFont: number
   watermarkSize: number
   watermarkRight: number
