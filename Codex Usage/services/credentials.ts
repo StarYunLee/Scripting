@@ -14,7 +14,7 @@ const DEFAULT_SETTINGS: WidgetSettings = {
   widgetLayout: "detail",
 }
 
-/** 当前单窗口 Medium 布局基线；后续新增布局时应拆成独立视图，不再读取隐藏调试设置。 */
+/** Medium 单额度详情布局基线。 */
 export const MEDIUM_LAYOUT: MediumWidgetLayout = {
   left: 20, right: 20, topY: 10, topFont: 10,
   chipFont: 12, chipHorizontal: 10, chipVertical: 6,

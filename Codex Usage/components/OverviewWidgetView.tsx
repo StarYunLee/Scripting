@@ -27,6 +27,7 @@ type Model = {
   fiveHour: LimitWindow | null
   weekly: LimitWindow | null
   planLabel: string
+  resetCredits: string
   fetched: string
   live: boolean
   detail: string
@@ -38,6 +39,7 @@ function modelFor(result: UsageResult): Model {
     fiveHour: snapshot?.fiveHour || snapshot?.windows.find(w => w.name === "five_hour") || null,
     weekly: snapshot?.weekly || snapshot?.windows.find(w => w.name === "weekly") || null,
     planLabel: snapshot?.planLabel || snapshot?.planType || "Plus",
+    resetCredits: snapshot?.resetCreditsAvailable == null ? "—" : `${snapshot.resetCreditsAvailable} 次`,
     fetched: snapshot ? formatResetDate(snapshot.fetchedAt) : "—",
     live: result.ok,
     detail: result.ok ? "" : result.error.message,
@@ -94,14 +96,20 @@ function SmallWindow({ title, window, mode, width, top }: { title: string; windo
     </HStack>
   </>
 }
-function MediumReset({ value }: { value: string }) {
-  return <HStack alignment="center" spacing={3}>
+function MediumReset({ value, resetCredits }: { value: string; resetCredits?: string }) {
+  return <HStack alignment="center" spacing={3} frame={{ maxWidth: "infinity", alignment: "leading" }}>
     <Image systemName="calendar" resizable scaleToFit imageScale="small" foregroundStyle={C.secondary} frame={{ width: 10, height: 10 }}/>
     <Text fontDesign="default" fontWidth="standard" font={10} fontWeight="medium" foregroundStyle={C.secondary}>重置</Text>
     <Text fontDesign="default" fontWidth="standard" font={12} fontWeight="bold" foregroundStyle={C.primary} lineLimit={1}>{value}</Text>
+    {resetCredits ? <>
+      <Spacer/>
+      <Image systemName="arrow.clockwise" resizable scaleToFit imageScale="small" foregroundStyle={C.secondary} frame={{ width: 10, height: 10 }}/>
+      <Text fontDesign="default" fontWidth="standard" font={10} fontWeight="medium" foregroundStyle={C.secondary}>重置次数</Text>
+      <Text fontDesign="default" fontWidth="standard" font={12} fontWeight="bold" foregroundStyle={C.primary} lineLimit={1}>{resetCredits}</Text>
+    </> : null}
   </HStack>
 }
-function MediumWindow({ title, window, mode, width, top }: { title: string; window: LimitWindow | null; mode: DisplayMode; width: number; top: number }) {
+function MediumWindow({ title, window, mode, width, top, resetCredits }: { title: string; window: LimitWindow | null; mode: DisplayMode; width: number; top: number; resetCredits?: string }) {
   return <>
     <HStack alignment="lastTextBaseline" frame={{ maxWidth: "infinity", maxHeight: "infinity", alignment: "topLeading" }} padding={{ leading: 20, trailing: 20, top }}>
       <Text fontDesign="default" fontWidth="standard" font={15} fontWeight="bold" foregroundStyle={C.primary}>{title}</Text>
@@ -114,8 +122,8 @@ function MediumWindow({ title, window, mode, width, top }: { title: string; wind
     <HStack frame={{ maxWidth: "infinity", maxHeight: "infinity", alignment: "topLeading" }} padding={{ leading: 20, top: top + 24 }}>
       <Progress value={window?.usedPercent ?? 0} width={width} height={7}/>
     </HStack>
-    <HStack alignment="center" frame={{ maxWidth: "infinity", maxHeight: "infinity", alignment: "topLeading" }} padding={{ leading: 20, top: top + 36 }}>
-      <MediumReset value={formatResetDate(window?.resetAt)}/>
+    <HStack alignment="center" frame={{ maxWidth: "infinity", maxHeight: "infinity", alignment: "topLeading" }} padding={{ leading: 20, trailing: 20, top: top + 36 }}>
+      <MediumReset value={formatResetDate(window?.resetAt)} resetCredits={resetCredits}/>
     </HStack>
   </>
 }
@@ -147,7 +155,7 @@ export function OverviewWidgetView({ result, family, displayMode }: Props) {
       <Text fontDesign="default" fontWidth="standard" font={9} fontWeight="medium" foregroundStyle={C.secondary}>更新 {model.fetched}</Text>
     </HStack>
     <MediumWindow title="5 小时额度" window={model.fiveHour} mode={displayMode} width={contentWidth} top={38}/>
-    <MediumWindow title="每周额度" window={model.weekly} mode={displayMode} width={contentWidth} top={96}/>
+    <MediumWindow title="每周额度" window={model.weekly} mode={displayMode} width={contentWidth} top={96} resetCredits={model.resetCredits}/>
     {!model.live && model.detail ? <HStack frame={{ maxWidth: "infinity", maxHeight: "infinity", alignment: "bottomLeading" }} padding={{ horizontal: 20, bottom: 2 }}><Text font={8} foregroundStyle={C.warn} lineLimit={1}>{model.detail}</Text></HStack> : null}
   </ZStack>
 }

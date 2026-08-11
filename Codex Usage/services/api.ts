@@ -24,6 +24,9 @@ function toNumber(v: unknown): number | null {
   return null
 }
 function clamp(n: number): number { return Math.max(0, Math.min(100, n)) }
+function debug(event: string, data: Record<string, unknown> = {}): void {
+  try { console.log(`[Codex Usage] ${event} ${JSON.stringify(data)}`) } catch { /* logging must not affect runtime */ }
+}
 function epoch(v: unknown): { iso: string | null; ms: number | null } {
   if (typeof v === "string" && !/^\d+(\.\d+)?$/.test(v)) {
     const ms = new Date(v).getTime()
@@ -199,32 +202,49 @@ export async function fetchUsage(options?: { force?: boolean; profileId?: string
   const profile = resolveProfile(options?.profileId)
   if (!profile) return { ok: false, error: { code: "missing_token", message: "未找到指定账号" }, cache: null }
   const cache = readCache(profile.id)
+  const accountId = getProfileAccountId(profile.id)
+  debug("fetch.start", { force: Boolean(options?.force), hasCache: Boolean(cache), cacheFetchedAt: cache?.fetchedAt || null, hasAccountId: Boolean(accountId) })
   let token = await refreshOAuthToken(profile.id, Boolean(options?.force && !cache))
   if (!token) token = getProfileAccessToken(profile.id)
   if (!token) return { ok: false, error: { code: "missing_token", message: `账号“${profile.name}”尚未授权` }, cache }
-  const accountId = getProfileAccountId(profile.id)
   try {
     let response = await fetch(USAGE_URL, { method: "GET", headers: authHeaders(token, accountId), timeout: 20, debugLabel: "CodexUsage" })
     if (response.status === 401) {
-      token = await refreshOAuthToken(profile.id, true)
-      if (token) response = await fetch(USAGE_URL, { method: "GET", headers: authHeaders(token, accountId), timeout: 20, debugLabel: "CodexUsageRetry" })
+      const refreshedToken = await refreshOAuthToken(profile.id, true)
+      debug("auth.retry", { status: 401, refreshed: Boolean(refreshedToken) })
+      if (refreshedToken) {
+        token = refreshedToken
+        response = await fetch(USAGE_URL, { method: "GET", headers: authHeaders(token, accountId), timeout: 20, debugLabel: "CodexUsageRetry" })
+      }
     }
     const text = await response.text()
     let payload: Record<string, unknown> | null = null
     try { payload = asObject(JSON.parse(text)) } catch { /* handled below */ }
-    if (!response.ok) return { ok: false, error: { code: response.status === 401 || response.status === 403 ? "unauthorized" : "http_error", message: response.status === 401 || response.status === 403 ? "登录已失效，请重新登录" : `请求失败 HTTP ${response.status}` }, cache }
+    if (!response.ok) {
+      const unauthorized = response.status === 401 || response.status === 403
+      debug("http.error", { endpoint: "usage", status: response.status, unauthorized })
+      return { ok: false, error: { code: unauthorized ? "unauthorized" : "http_error", message: unauthorized ? "登录已失效，请重新登录" : `请求失败 HTTP ${response.status}` }, cache }
+    }
     if (!payload) return { ok: false, error: { code: "invalid_json", message: "用量响应不是合法 JSON" }, cache }
 
     let accountPayload: Record<string, unknown> | null = null
     let resetPayload: Record<string, unknown> | null = null
     try {
       const accountResponse = await fetch(ACCOUNT_URL, { method: "GET", headers: authHeaders(token!, accountId), timeout: 12, debugLabel: "CodexAccount" })
-      if (accountResponse.ok) accountPayload = asObject(JSON.parse(await accountResponse.text()))
-    } catch { /* 到期时间为可选，不影响用量 */ }
+      if (accountResponse.ok) {
+        accountPayload = asObject(JSON.parse(await accountResponse.text()))
+      } else {
+        debug("http.error", { endpoint: "account", status: accountResponse.status, optional: true })
+      }
+    } catch (e) { debug("optional.error", { endpoint: "account", message: e instanceof Error ? e.message : String(e) }) }
     try {
       const resetResponse = await fetch(RESET_CREDITS_URL, { method: "GET", headers: authHeaders(token!, accountId), timeout: 12, debugLabel: "CodexResetCredits" })
-      if (resetResponse.ok) resetPayload = asObject(JSON.parse(await resetResponse.text()))
-    } catch { /* 重置次数为可选，不影响用量 */ }
+      if (resetResponse.ok) {
+        resetPayload = asObject(JSON.parse(await resetResponse.text()))
+      } else {
+        debug("http.error", { endpoint: "resetCredits", status: resetResponse.status, optional: true })
+      }
+    } catch (e) { debug("optional.error", { endpoint: "resetCredits", message: e instanceof Error ? e.message : String(e) }) }
 
     const windows = extractWindows(payload)
     const rawPlanType = typeof payload.plan_type === "string" ? payload.plan_type : null
@@ -242,8 +262,16 @@ export async function fetchUsage(options?: { force?: boolean; profileId?: string
       raw: payload,
     }
     writeCache(profile.id, snapshot)
+    debug("fetch.success", {
+      plan: snapshot.planLabel || snapshot.planType || null,
+      windows: windows.map(window => ({ name: window.name, usedPercent: window.usedPercent, resetAt: window.resetAt })),
+      resetCreditsAvailable: snapshot.resetCreditsAvailable ?? null,
+      subscriptionExpiresAt: snapshot.subscriptionExpiresAt,
+      fetchedAt: snapshot.fetchedAt,
+    })
     return { ok: true, snapshot }
   } catch (e) {
+    debug("fetch.error", { name: e instanceof Error ? e.name : "unknown", message: e instanceof Error ? e.message : String(e), hasCache: Boolean(cache) })
     return { ok: false, error: { code: "network_error", message: "网络请求失败", detail: e instanceof Error ? e.message : String(e) }, cache }
   }
 }
