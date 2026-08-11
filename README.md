@@ -21,7 +21,9 @@ https://raw.githubusercontent.com/StarYunLee/Scripting/main/Codex-Usage.scriptin
 
 ### Claude Usage
 
-Claude Code 用量小组件，支持 Anthropic OAuth、多账号、5 小时/每周/Fable 每周额度，以及双额度概览和单额度详情布局。
+Claude Code 用量小组件，支持 Anthropic OAuth、多账号、账号级显示设置、5 小时/周限/Fable 周限，以及双额度概览和单额度详情布局。
+
+![Claude Usage 小组件预览](./Claude%20Usage/assets/claude-usage-preview.png)
 
 - [查看源码与使用说明](./Claude%20Usage/)
 - [直接安装 Claude-Usage.scripting](https://raw.githubusercontent.com/StarYunLee/Scripting/main/Claude-Usage.scripting)

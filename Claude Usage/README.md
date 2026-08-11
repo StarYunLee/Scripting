@@ -1,5 +1,7 @@
 # Claude Usage
 
+![Claude Usage 小组件预览](assets/claude-usage-preview.png)
+
 面向 [Scripting App](https://scriptingapp.github.io/) 的非官方 Claude Code 用量小组件。支持 Anthropic OAuth、多账号、5 小时/周限/Fable 周限，以及 Small、Medium 两种尺寸。
 
 > 本项目不是 Anthropic 或 Claude 官方产品，与 Anthropic 无隶属或合作关系。
