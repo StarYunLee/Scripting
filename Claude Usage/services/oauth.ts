@@ -9,8 +9,8 @@ import {
 // 但它们属于 Claude Code 登录/用量链路，不是面向第三方承诺稳定的公共 API。
 const CLIENT_ID = "9d1c250a-e61b-44d9-88ed-5944d1962f5e"
 const AUTHORIZATION_URL = "https://claude.ai/oauth/authorize"
-const TOKEN_URL = "https://console.anthropic.com/v1/oauth/token"
-const REDIRECT_URI = "https://console.anthropic.com/oauth/code/callback"
+const TOKEN_URL = "https://api.anthropic.com/v1/oauth/token"
+const REDIRECT_URI = "https://platform.claude.com/oauth/code/callback"
 const SCOPE = "org:create_api_key user:profile user:inference"
 const PENDING_KEY = "claude_oauth_pending_v3"
 const PENDING_TTL_MS = 10 * 60_000
@@ -32,8 +32,9 @@ type TokenPayload = {
   id_token?: string
   expires_in?: number
   expires_at?: number
-  error?: string
-  error_description?: string
+  error?: unknown
+  error_description?: unknown
+  request_id?: unknown
   account?: { uuid?: string; email_address?: string; email?: string }
 }
 
@@ -66,6 +67,22 @@ function decodeJwtPayload(token: string | null): Record<string, unknown> | null 
 async function jsonObject(response: Response): Promise<Record<string, unknown>> {
   const text = await response.text()
   try { return asObject(JSON.parse(text)) || {} } catch { throw new Error(`OAuth 响应异常（HTTP ${response.status}）`) }
+}
+function oauthErrorMessage(data: TokenPayload, status: number): { message: string; type: string | null; requestId: string | null } {
+  const nested = asObject(data.error)
+  const description = typeof data.error_description === "string" ? data.error_description.trim() : ""
+  const nestedMessage = typeof nested?.message === "string" ? nested.message.trim() : ""
+  const directError = typeof data.error === "string" ? data.error.trim() : ""
+  const nestedType = typeof nested?.type === "string" ? nested.type.trim() : ""
+  const requestId = typeof data.request_id === "string" ? data.request_id : null
+  return {
+    message: description || nestedMessage || directError || nestedType || `Token 请求失败（HTTP ${status}）`,
+    type: nestedType || directError || null,
+    requestId,
+  }
+}
+function debugOAuth(event: string, data: Record<string, unknown>): void {
+  try { console.log(`[Claude Usage] oauth.${event} ${JSON.stringify(data)}`) } catch { /* ignore */ }
 }
 function identityFromTokens(tokens: TokenPayload): { email: string | null; accountId: string | null } {
   const jwt = decodeJwtPayload(tokens.id_token || tokens.access_token || null)
@@ -122,7 +139,11 @@ async function tokenRequest(payload: Record<string, string>): Promise<TokenPaylo
     timeout: 25,
   })
   const data = await jsonObject(response) as TokenPayload
-  if (!response.ok || !data.access_token) throw new Error(data.error_description || data.error || `Token 请求失败（HTTP ${response.status}）`)
+  if (!response.ok || !data.access_token) {
+    const error = oauthErrorMessage(data, response.status)
+    debugOAuth("token_error", { status: response.status, type: error.type, requestId: error.requestId })
+    throw new Error(error.message)
+  }
   return data
 }
 function tokenExpiry(tokens: TokenPayload): number {
@@ -140,8 +161,7 @@ export function clearPendingOAuth(): void { clearPending() }
 export async function startClaudeLogin(profileId: string): Promise<void> {
   if (!profileId) throw new Error("未指定要授权的账号")
   const pkce = createPkce()
-  // Claude Code 当前流程使用 verifier 作为 state。
-  const state = pkce.verifier
+  const state = randomUrlSafe()
   savePending({ state, verifier: pkce.verifier, createdAt: Date.now(), profileId })
   const opened = await Safari.openURL(authorizationUrl(state, pkce.challenge))
   if (!opened) { clearPending(); throw new Error("无法打开系统默认浏览器") }

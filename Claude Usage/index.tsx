@@ -29,6 +29,17 @@ function summary(snapshot: UsageSnapshot | null): string {
     `更新时间：${formatFetchedAt(snapshot.fetchedAt)}`,
   ].join("\n")
 }
+function errorText(error: unknown): string {
+  if (error instanceof Error && error.message) return error.message
+  if (error && typeof error === "object") {
+    const value = error as Record<string, unknown>
+    for (const key of ["message", "localizedDescription", "error_description", "description"]) {
+      if (typeof value[key] === "string" && value[key]) return value[key]
+    }
+  }
+  const text = String(error)
+  return text === "[object Object]" ? "未知授权错误，请查看运行日志" : text
+}
 function App() {
   const initial = listAccounts()
   const pendingInitial = getPendingOAuthProfileId()
@@ -76,7 +87,7 @@ function App() {
   async function beginAuth(profileId: string) {
     setAuthTargetId(profileId); setAuthorizationInput("")
     const profile = resolveProfile(profileId); setStatus(`正在授权 ${profile?.email || profile?.name || "账号"}…`)
-    try { await startClaudeLogin(profileId); setStatus("请在 Anthropic 页面完成授权，然后复制页面显示的授权码") } catch (e) { setStatus("启动授权失败：" + (e instanceof Error ? e.message : String(e))) }
+    try { await startClaudeLogin(profileId); setStatus("请在 Anthropic 页面完成授权，然后复制页面显示的授权码") } catch (e) { setStatus("启动授权失败：" + errorText(e)) }
   }
   async function addAndAuthorize() {
     const account = createAccount(); refreshRegistry(account.id); await beginAuth(account.id)
@@ -107,7 +118,7 @@ function App() {
             const result = await fetchUsage({ force: true, profileId: completedId })
             if (result.ok) { setUsageText(summary(result.snapshot)); reloadWidgets() }
             else setStatus(`授权成功，但额度读取失败：${result.error.message}`)
-          } catch (e) { setAuthorizationInput(""); setStatus("授权失败：" + (e instanceof Error ? e.message : String(e))) }
+          } catch (e) { setAuthorizationInput(""); setStatus("授权失败：" + errorText(e)) }
         }}/>
         <Button title="取消授权" action={cancelAuth}/>
       </> : <>

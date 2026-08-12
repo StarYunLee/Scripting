@@ -42,8 +42,8 @@
 Claude Usage 使用 Claude Code 当前的 Authorization Code + PKCE 登录流程：
 
 - Authorize：`https://claude.ai/oauth/authorize`
-- Token：`https://console.anthropic.com/v1/oauth/token`
-- Callback：`https://console.anthropic.com/oauth/code/callback`
+- Token：`https://api.anthropic.com/v1/oauth/token`
+- Callback：`https://platform.claude.com/oauth/code/callback`
 - Scope：`org:create_api_key user:profile user:inference`
 
 登录步骤：
@@ -140,7 +140,7 @@ iOS WidgetKit 可能根据系统调度策略延后刷新；所选时间是请求
 ## 数据来源
 
 - OAuth Authorize：`https://claude.ai/oauth/authorize`
-- OAuth Token：`https://console.anthropic.com/v1/oauth/token`
+- OAuth Token：`https://api.anthropic.com/v1/oauth/token`
 - 用量：`https://api.anthropic.com/api/oauth/usage`
 - OAuth Beta：`oauth-2025-04-20`
 
