@@ -1,0 +1,27 @@
+{
+  "icon": "speedometer",
+  "name": "Surge Metrics",
+  "color": "rgba(10, 132, 255, 1)",
+  "entry": "index.tsx",
+  "permissions": null,
+  "runInApp": true,
+  "contributors": [],
+  "version": "1.0.0",
+  "intentInputTypes": [],
+  "localizedNames": {
+    "zh": "Surge 监控",
+    "en": "Surge Metrics"
+  },
+  "description": "Medium and Large widgets for Surge iOS Prometheus metrics: cumulative traffic, memory, active requests, DNS cache, uptime, and policy traffic.",
+  "remoteResource": null,
+  "author": {
+    "name": "StarYunLee",
+    "email": null,
+    "homepage": null
+  },
+  "localizedDescriptions": {
+    "zh": "Surge iOS Prometheus 指标小组件：Medium 聚焦吞吐与核心状态，Large 展开策略流量。",
+    "en": "Medium and Large widgets for Surge iOS cumulative traffic, runtime metrics, and policy traffic."
+  },
+  "iconImage": null
+}
