@@ -5,15 +5,13 @@ const CONNECTION_KEY = "surge_metrics_connection_v1"
 const SNAPSHOT_KEY = "surge_metrics_last_snapshot_v1"
 
 declare const Storage: {
-  get<T = any>(key: string): T | null
-  set<T = any>(key: string, value: T): boolean
+  get<T = unknown>(key: string): T | null
+  set<T = unknown>(key: string, value: T): boolean
   remove?(key: string): void
 }
 
 const DEFAULT_SETTINGS: WidgetSettings = {
   reloadMinutes: 5,
-  topPolicyCount: 5,
-  hideBuiltInPolicies: true,
 }
 
 const DEFAULT_CONNECTION: ConnectionConfig = {
@@ -33,17 +31,9 @@ export function getSettings(): WidgetSettings {
     if (!isObject(value)) return { ...DEFAULT_SETTINGS }
     return {
       reloadMinutes:
-        typeof value.reloadMinutes === "number" && value.reloadMinutes >= 1
+        typeof value.reloadMinutes === "number" && value.reloadMinutes >= 5
           ? Math.min(Math.floor(value.reloadMinutes), 360)
           : DEFAULT_SETTINGS.reloadMinutes,
-      topPolicyCount:
-        typeof value.topPolicyCount === "number" && value.topPolicyCount >= 1
-          ? Math.min(Math.floor(value.topPolicyCount), 5)
-          : DEFAULT_SETTINGS.topPolicyCount,
-      hideBuiltInPolicies:
-        typeof value.hideBuiltInPolicies === "boolean"
-          ? value.hideBuiltInPolicies
-          : DEFAULT_SETTINGS.hideBuiltInPolicies,
     }
   } catch {
     return { ...DEFAULT_SETTINGS }
@@ -54,17 +44,9 @@ export function setSettings(patch: Partial<WidgetSettings>): WidgetSettings {
   const current = getSettings()
   const next: WidgetSettings = {
     reloadMinutes:
-      typeof patch.reloadMinutes === "number" && patch.reloadMinutes >= 1
+      typeof patch.reloadMinutes === "number" && patch.reloadMinutes >= 5
         ? Math.min(Math.floor(patch.reloadMinutes), 360)
         : current.reloadMinutes,
-    topPolicyCount:
-      typeof patch.topPolicyCount === "number" && patch.topPolicyCount >= 1
-        ? Math.min(Math.floor(patch.topPolicyCount), 5)
-        : current.topPolicyCount,
-    hideBuiltInPolicies:
-      typeof patch.hideBuiltInPolicies === "boolean"
-        ? patch.hideBuiltInPolicies
-        : current.hideBuiltInPolicies,
   }
   try {
     Storage.set(SETTINGS_KEY, next)

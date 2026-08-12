@@ -2,22 +2,26 @@ import {
   baseUrl,
   getCachedSnapshot,
   getConnection,
-  getSettings,
   metricsUrl,
   setCachedSnapshot,
 } from "./settings"
 import type {
   ConnectionConfig,
+  InterfaceTraffic,
   MetricSample,
   MetricsResult,
   MetricsSnapshot,
-  PolicyTraffic,
 } from "./types"
-
-const BUILTIN_POLICY_RE = /^(DIRECT|REJECT|REJECT-DROP|REJECT-TINYGIF|REJECT-NO-DROP|REJECT-IMG|REJECT-VIDEO|REJECT-DICT|REJECT-ARRAY|Auto\s*Test)$/i
 
 function debug(event: string, data: Record<string, unknown> = {}): void {
   try { console.log(`[Surge Metrics] ${event} ${JSON.stringify(data)}`) } catch { /* ignore */ }
+}
+
+function redactDetail(value: unknown, connection: ConnectionConfig): string {
+  let detail = value instanceof Error ? value.message : String(value)
+  const key = connection.apiKey.trim()
+  if (key) detail = detail.split(key).join("[REDACTED]")
+  return detail.replace(/([?&]x-key=)[^&\s]+/gi, "$1[REDACTED]")
 }
 
 function parseLabels(raw: string): Record<string, string> {
@@ -47,8 +51,8 @@ export function parsePrometheusText(text: string, fetchedAtMs = Date.now()): Met
     build: { version: null, build: null },
     interfaceInBytes: 0,
     interfaceOutBytes: 0,
-    policyIn: {},
-    policyOut: {},
+    interfaceIn: {},
+    interfaceOut: {},
   }
 
   for (const line of text.split(/\r?\n/)) {
@@ -70,16 +74,16 @@ export function parsePrometheusText(text: string, fetchedAtMs = Date.now()): Met
       case "surge_build_info":
         sample.build = { version: labels.version || null, build: labels.build || null }
         break
-      case "surge_interface_in_bytes_total": sample.interfaceInBytes += value; break
-      case "surge_interface_out_bytes_total": sample.interfaceOutBytes += value; break
-      case "surge_policy_in_bytes_total": {
-        const policy = labels.policy || "unknown"
-        sample.policyIn[policy] = (sample.policyIn[policy] || 0) + value
+      case "surge_interface_in_bytes_total": {
+        const name = labels.interface || "unknown"
+        sample.interfaceInBytes += value
+        sample.interfaceIn[name] = (sample.interfaceIn[name] || 0) + value
         break
       }
-      case "surge_policy_out_bytes_total": {
-        const policy = labels.policy || "unknown"
-        sample.policyOut[policy] = (sample.policyOut[policy] || 0) + value
+      case "surge_interface_out_bytes_total": {
+        const name = labels.interface || "unknown"
+        sample.interfaceOutBytes += value
+        sample.interfaceOut[name] = (sample.interfaceOut[name] || 0) + value
         break
       }
     }
@@ -87,20 +91,13 @@ export function parsePrometheusText(text: string, fetchedAtMs = Date.now()): Met
   return sample
 }
 
-function isBuiltinPolicy(name: string): boolean {
-  return BUILTIN_POLICY_RE.test(name.trim())
-}
-
 function buildSnapshot(curr: MetricSample): MetricsSnapshot {
-  const settings = getSettings()
-  const names = new Set([...Object.keys(curr.policyIn), ...Object.keys(curr.policyOut)])
-  const policies: PolicyTraffic[] = []
-  for (const name of names) {
-    if (settings.hideBuiltInPolicies && isBuiltinPolicy(name)) continue
-    const totalBytes = (curr.policyIn[name] || 0) + (curr.policyOut[name] || 0)
-    policies.push({ name, totalBytes })
-  }
-  policies.sort((a, b) => b.totalBytes - a.totalBytes)
+  const names = new Set([...Object.keys(curr.interfaceIn), ...Object.keys(curr.interfaceOut)])
+  const interfaces: InterfaceTraffic[] = [...names].map(name => {
+    const inBytes = curr.interfaceIn[name] || 0
+    const outBytes = curr.interfaceOut[name] || 0
+    return { name, inBytes, outBytes, totalBytes: inBytes + outBytes }
+  }).sort((a, b) => b.totalBytes - a.totalBytes)
 
   const version = curr.build.version || "—"
   return {
@@ -113,7 +110,7 @@ function buildSnapshot(curr: MetricSample): MetricsSnapshot {
     buildLabel: curr.build.build ? `Surge ${version} • Build ${curr.build.build}` : `Surge ${version}`,
     totalInBytes: curr.interfaceInBytes,
     totalOutBytes: curr.interfaceOutBytes,
-    topPolicies: policies.slice(0, 5),
+    interfaces,
   }
 }
 
@@ -122,12 +119,19 @@ async function fetchMetricsText(connection: ConnectionConfig): Promise<
   { ok: false; status?: number; message: string; detail?: string }
 > {
   try {
-    const response = await fetch(metricsUrl(connection), {
+    const requestUrl = `${metricsUrl(connection)}&refresh=${Date.now()}`
+    const response = await fetch(requestUrl, {
       method: "GET",
-      headers: { Accept: "text/plain, */*", "X-Key": connection.apiKey },
+      headers: {
+        Accept: "text/plain, */*",
+        "X-Key": connection.apiKey,
+        "Cache-Control": "no-cache, no-store",
+        Pragma: "no-cache",
+      },
       timeout: 12,
-      privilegeLabel: "SurgeMetrics",
-    } as RequestInit & { timeout?: number; privilegeLabel?: string })
+      allowInsecureRequest: !connection.useTls,
+      debugLabel: "SurgeMetrics",
+    })
     const text = await response.text()
     if (!response.ok) {
       return {
@@ -136,25 +140,25 @@ async function fetchMetricsText(connection: ConnectionConfig): Promise<
         message: response.status === 401 || response.status === 403
           ? "API Key 无效或无权限"
           : `请求失败 HTTP ${response.status}`,
-        detail: text.slice(0, 200),
+        detail: redactDetail(text.slice(0, 200), connection),
       }
     }
     if (!text.includes("surge_")) {
-      return { ok: false, message: "响应不是有效的 Surge metrics", detail: text.slice(0, 200) }
+      return { ok: false, message: "响应不是有效的 Surge metrics", detail: redactDetail(text.slice(0, 200), connection) }
     }
     return { ok: true, text }
   } catch (error) {
     return {
       ok: false,
       message: "无法连接 Surge HTTP API",
-      detail: error instanceof Error ? error.message : String(error),
+      detail: redactDetail(error, connection),
     }
   }
 }
 
 export async function fetchMetrics(): Promise<MetricsResult> {
   const connection = getConnection()
-  const cache = getCachedSnapshot<MetricsSnapshot>()
+  const cache = getCachedMetrics()
   if (!connection.apiKey.trim()) {
     return {
       ok: false,
@@ -178,7 +182,7 @@ export async function fetchMetrics(): Promise<MetricsResult> {
     const snapshot = buildSnapshot(parsePrometheusText(result.text))
     setCachedSnapshot(snapshot)
     debug("fetch.ok", {
-      policies: snapshot.topPolicies.length,
+      interfaces: snapshot.interfaces.length,
       totalInBytes: snapshot.totalInBytes,
       totalOutBytes: snapshot.totalOutBytes,
       memoryBytes: snapshot.memoryBytes,
@@ -206,10 +210,11 @@ export async function testConnection(): Promise<{ ok: boolean; message: string; 
   return {
     ok: true,
     message: `连通成功 · Surge ${sample.build.version || "unknown"}`,
-    detail: `uptime=${sample.uptimeSeconds ?? "—"}s mem=${sample.memoryBytes ?? "—"} policies=${Object.keys(sample.policyIn).length}`,
+    detail: `uptime=${sample.uptimeSeconds ?? "—"}s mem=${sample.memoryBytes ?? "—"} interfaces=${Object.keys(sample.interfaceIn).length}`,
   }
 }
 
 export function getCachedMetrics(): MetricsSnapshot | null {
-  return getCachedSnapshot<MetricsSnapshot>()
+  const value = getCachedSnapshot<MetricsSnapshot>()
+  return value && Array.isArray(value.interfaces) ? value : null
 }

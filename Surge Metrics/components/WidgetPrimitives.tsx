@@ -1,7 +1,6 @@
-import { Button, HStack, Image, Script, Spacer, Text, VStack, ZStack } from "scripting"
+import { Button, HStack, Image, Script, Spacer, Text, VStack } from "scripting"
 import { RefreshSurgeMetricsIntent } from "../app_intents"
-import { formatBytes, formatFetchedAt, shortPolicyName } from "../services/format"
-import type { PolicyTraffic } from "../services/types"
+import { formatFetchedAt } from "../services/format"
 
 const dynamic = (light: string, dark: string) => ({ light, dark })
 
@@ -15,7 +14,6 @@ export const C = {
   up: dynamic("#FF9F0A", "#FF9F0A"),
   warn: "systemOrange",
   track: dynamic("#E5E5EA", "#3A3A3C"),
-  chip: dynamic("rgba(10,132,255,0.12)", "rgba(100,210,255,0.16)"),
 }
 
 function normalizedBuildLabel(value: string): string {
@@ -41,12 +39,12 @@ function normalizedBuildLabel(value: string): string {
   return `Surge ${raw}`
 }
 
-export function Header({ fetchedAt, cached }: { fetchedAt: string; cached: boolean }) {
+export function Header({ fetchedAt, cached, inset = 0, titleFont = 11 }: { fetchedAt: string; cached: boolean; inset?: number; titleFont?: number }) {
   const updated = `${cached ? "缓存" : "更新"} ${formatFetchedAt(fetchedAt)}`
-  return <HStack alignment="center" frame={{ maxWidth: "infinity" }}>
-    <HStack spacing={5} alignment="center" padding={{ horizontal: 8, vertical: 4 }} background={C.chip} clipShape={{ type: "capsule" }}>
+  return <HStack alignment="center" frame={{ maxWidth: "infinity" }} padding={{ horizontal: inset }}>
+    <HStack spacing={5} alignment="center">
       <Image filePath={`${Script.directory}/assets/surge-metrics-icon.png`} resizable scaleToFit frame={{ width: 15, height: 15 }}/>
-      <Text font={11} fontWeight="bold" foregroundStyle={C.accent}>Surge</Text>
+      <Text font={titleFont} fontWeight="bold" foregroundStyle={C.accent}>Surge</Text>
     </HStack>
     <Spacer/>
     <HStack spacing={7} alignment="center">
@@ -58,8 +56,8 @@ export function Header({ fetchedAt, cached }: { fetchedAt: string; cached: boole
   </HStack>
 }
 
-export function VersionLabel({ value }: { value: string }) {
-  return <Text font={9} fontWeight="medium" foregroundStyle={C.tertiary} lineLimit={1} minimumScaleFactor={0.7}>{normalizedBuildLabel(value)}</Text>
+export function VersionLabel({ value, font = 9 }: { value: string; font?: number }) {
+  return <Text font={font} fontWeight="medium" foregroundStyle={C.tertiary} lineLimit={1} minimumScaleFactor={0.7}>{normalizedBuildLabel(value)}</Text>
 }
 
 export function RateCard({ icon, label, value, color }: {
@@ -68,12 +66,12 @@ export function RateCard({ icon, label, value, color }: {
   value: string
   color: string | { light: string; dark: string }
 }) {
-  return <VStack spacing={3} alignment="leading" padding={{ horizontal: 5, vertical: 5 }} frame={{ maxWidth: "infinity", alignment: "leading" }}>
+  return <VStack spacing={3} alignment="center" padding={{ horizontal: 5, vertical: 5 }} frame={{ maxWidth: "infinity", alignment: "center" }}>
     <HStack spacing={5} alignment="center">
       <Image systemName={icon} resizable scaleToFit foregroundStyle={color} frame={{ width: 11, height: 11 }}/>
-      <Text font={10} fontWeight="medium" foregroundStyle={C.secondary}>{label}</Text>
+      <Text font={10} fontWeight="medium" foregroundStyle={C.secondary} multilineTextAlignment="center">{label}</Text>
     </HStack>
-    <Text font={22} fontWeight="bold" fontDesign="rounded" foregroundStyle={C.primary} lineLimit={1} minimumScaleFactor={0.58}>{value}</Text>
+    <Text font={22} fontWeight="bold" fontDesign="rounded" foregroundStyle={C.primary} lineLimit={1} minimumScaleFactor={0.58} multilineTextAlignment="center">{value}</Text>
   </VStack>
 }
 
@@ -90,32 +88,6 @@ export function StatusBlock({ icon, label, value, color }: {
     </HStack>
     <Text font={13} fontWeight="bold" fontDesign="rounded" foregroundStyle={C.primary} lineLimit={1} minimumScaleFactor={0.68}>{value}</Text>
   </VStack>
-}
-
-function policyWeight(item: PolicyTraffic): number {
-  return Math.max(0, item.totalBytes)
-}
-
-export function PolicyRow({ item, maxWeight, barWidth }: { item: PolicyTraffic; maxWeight: number; barWidth: number }) {
-  const weight = policyWeight(item)
-  const ratio = maxWeight > 0 ? Math.max(0.035, Math.min(1, weight / maxWeight)) : 0
-  const fill = Math.max(4, Math.round(barWidth * ratio))
-  const value = formatBytes(item.totalBytes)
-  return <VStack spacing={3} alignment="leading" frame={{ maxWidth: "infinity", alignment: "leading" }}>
-    <HStack alignment="center" frame={{ maxWidth: "infinity" }}>
-      <Text font={11} fontWeight="semibold" foregroundStyle={C.primary} lineLimit={1} minimumScaleFactor={0.75}>{shortPolicyName(item.name, 22)}</Text>
-      <Spacer/>
-      <Text font={11} fontWeight="bold" fontDesign="rounded" foregroundStyle={C.secondary} lineLimit={1}>{value}</Text>
-    </HStack>
-    <ZStack alignment="leading" frame={{ width: barWidth, height: 4 }}>
-      <HStack frame={{ width: barWidth, height: 4 }} background={C.track} clipShape={{ type: "capsule" }}/>
-      <HStack frame={{ width: fill, height: 4 }} background={C.accent} clipShape={{ type: "capsule" }}/>
-    </ZStack>
-  </VStack>
-}
-
-export function maxPolicyWeight(items: PolicyTraffic[]): number {
-  return Math.max(1, ...items.map(policyWeight))
 }
 
 export function EmptyState({ title, detail }: { title: string; detail?: string }) {

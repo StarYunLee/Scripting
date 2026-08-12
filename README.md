@@ -6,7 +6,7 @@
 
 ### Surge Metrics
 
-Surge iOS 运行指标小组件，通过官方 Prometheus Metrics 端点展示累计上下行、内存占用、活跃请求、DNS 缓存、运行时长和策略累计流量 Top；支持 Medium、Large、明暗模式及手动刷新。
+Surge iOS 运行指标小组件，通过官方 Prometheus Metrics 端点展示累计上下行、内存占用、活跃请求、DNS 缓存、运行时长及网络接口累计流量 Top 3；支持 Medium、Large、明暗模式、WidgetKit 请求刷新及手动刷新。
 
 ![Surge Metrics 小组件预览](./Surge%20Metrics/assets/surge-metrics-preview.png)
 

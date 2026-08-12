@@ -28,8 +28,8 @@ export function MediumWidgetView({ result }: Props) {
   const uptime = formatUptime(snapshot.uptimeSeconds)
   const bans = snapshot.activeBans == null ? 0 : Math.max(0, Math.round(snapshot.activeBans))
 
-  return <VStack spacing={0} alignment="leading" frame={{ maxWidth: "infinity", maxHeight: "infinity", alignment: "topLeading" }} padding={{ horizontal: 14, vertical: 11 }} widgetBackground={C.bg}>
-    <Header fetchedAt={snapshot.fetchedAt} cached={!live}/>
+  return <VStack spacing={0} alignment="leading" frame={{ maxWidth: "infinity", maxHeight: "infinity", alignment: "topLeading" }} padding={{ horizontal: 14, top: 14, bottom: 8 }} widgetBackground={C.bg}>
+    <Header fetchedAt={snapshot.fetchedAt} cached={!live} inset={8} titleFont={12}/>
 
     <HStack spacing={8} alignment="center" frame={{ maxWidth: "infinity" }} padding={{ top: 8 }}>
       <RateCard icon="arrow.down.circle.fill" label="累计下行" value={down} color={C.down}/>
@@ -42,21 +42,21 @@ export function MediumWidgetView({ result }: Props) {
     <HStack alignment="center" frame={{ maxWidth: "infinity" }} padding={{ top: 6, bottom: 5 }}>
       <StatusBlock icon="cpu" label="内存占用" value={mem} color={C.accent}/>
       <Spacer/>
-      <StatusBlock icon="link" label="活跃请求" value={active}/>
+      <StatusBlock icon="link" label="活跃请求" value={active} color={C.accent}/>
       <Spacer/>
-      <StatusBlock icon="globe" label="DNS 缓存" value={dns}/>
+      <StatusBlock icon="globe" label="DNS 缓存" value={dns} color={C.accent}/>
       <Spacer/>
-      <StatusBlock icon="clock" label="运行时长" value={uptime}/>
+      <StatusBlock icon="clock" label="运行时长" value={uptime} color={C.accent}/>
     </HStack>
 
     <HStack frame={{ maxWidth: "infinity", height: 1 }} background={C.track}/>
 
-    <HStack alignment="center" frame={{ maxWidth: "infinity" }} padding={{ top: 5 }}>
+    <HStack alignment="center" frame={{ maxWidth: "infinity" }} padding={{ horizontal: 8, top: 5 }}>
       {bans > 0
-        ? <Text font={9} fontWeight="bold" foregroundStyle={C.warn}>未授权封禁 {bans}</Text>
-        : <Text font={9} foregroundStyle={C.tertiary}>引擎累计 · 重启归零</Text>}
+        ? <Text font={10} fontWeight="medium" foregroundStyle={C.warn}>未授权封禁 {bans}</Text>
+        : <Text font={10} fontWeight="medium" foregroundStyle={C.tertiary}>引擎累计 · 重启归零</Text>}
       <Spacer/>
-      <VersionLabel value={snapshot.buildLabel}/>
+      <VersionLabel value={snapshot.buildLabel} font={10}/>
     </HStack>
 
     {!live && errorText ? <Text font={8} foregroundStyle={C.warn} lineLimit={1} padding={{ top: 2 }}>{errorText}</Text> : null}

@@ -29,15 +29,16 @@ async function run() {
   const settings = getSettings()
   const result = await loadResult()
   const family = String(Widget.family || "systemMedium")
-  const minutes = Math.max(1, settings.reloadMinutes || 5)
+  const minutes = Math.max(5, settings.reloadMinutes || 5)
+  const nextRequestedAt = new Date(Date.now() + minutes * 60 * 1000)
   const view = family.toLowerCase().includes("large")
-    ? <LargeWidgetView result={result} maxPolicies={settings.topPolicyCount}/>
+    ? <LargeWidgetView result={result}/>
     : <MediumWidgetView result={result}/>
 
   Widget.present(view, {
     reloadPolicy: {
       policy: "after",
-      date: new Date(Date.now() + minutes * 60 * 1000),
+      date: nextRequestedAt,
     },
   })
 }

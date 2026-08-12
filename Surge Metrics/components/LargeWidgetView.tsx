@@ -1,23 +1,74 @@
-import { HStack, Spacer, Text, VStack, Widget, ZStack } from "scripting"
-import { formatBytes, formatMemory, formatUptime } from "../services/format"
-import type { MetricsResult, MetricsSnapshot } from "../services/types"
-import { C, EmptyState, Header, maxPolicyWeight, PolicyRow, RateCard, StatusBlock, VersionLabel } from "./WidgetPrimitives"
+import { Divider, HStack, Image, Spacer, Text, VStack, ZStack } from "scripting"
+import { formatBytes, formatDetailBytes, formatMemory, formatUptime } from "../services/format"
+import type { InterfaceTraffic, MetricsResult, MetricsSnapshot } from "../services/types"
+import { C, EmptyState, Header, RateCard, StatusBlock, VersionLabel } from "./WidgetPrimitives"
 
-type Props = { result: MetricsResult; maxPolicies?: number }
+type Props = { result: MetricsResult }
 
 function snapshotOf(result: MetricsResult): MetricsSnapshot | null {
   return result.ok ? result.snapshot : result.cache || null
 }
 
-function displayWidth(): number {
-  try {
-    const width = (Widget as { displaySize?: { width?: number } }).displaySize?.width
-    if (width && width > 40) return width
-  } catch { /* ignore */ }
-  return 338
+function interfaceInfo(name: string): { title: string; icon: string } {
+  const value = String(name || "unknown")
+  if (/^pdp_ip\d+$/i.test(value)) return { title: "蜂窝数据", icon: "antenna.radiowaves.left.and.right" }
+  if (value === "en0") return { title: "Wi-Fi", icon: "wifi" }
+  if (value === "lo0") return { title: "回环接口", icon: "arrow.triangle.2.circlepath" }
+  if (/^awdl\d+$/i.test(value)) return { title: "Apple 直连", icon: "dot.radiowaves.left.and.right" }
+  if (/^llw\d+$/i.test(value)) return { title: "低延迟无线", icon: "wave.3.right" }
+  if (/^utun\d+$/i.test(value)) return { title: "隧道", icon: "lock.shield" }
+  if (/^bridge\d+$/i.test(value)) return { title: "网桥", icon: "point.3.connected.trianglepath.dotted" }
+  return { title: value, icon: "network" }
 }
 
-export function LargeWidgetView({ result, maxPolicies = 5 }: Props) {
+function DirectionValue({ direction, value }: { direction: "down" | "up"; value: number }) {
+  const down = direction === "down"
+  return <HStack
+    spacing={4}
+    alignment="center"
+    frame={{ maxWidth: "infinity", alignment: down ? "leading" : "trailing" }}
+  >
+    {down ? <Image systemName="arrow.down" resizable scaleToFit foregroundStyle={C.down} frame={{ width: 9, height: 9 }}/> : null}
+    <Text font={11} fontWeight="semibold" fontDesign="rounded" foregroundStyle={C.primary} lineLimit={1}>{formatDetailBytes(value, 1)}</Text>
+    {!down ? <Image systemName="arrow.up" resizable scaleToFit foregroundStyle={C.up} frame={{ width: 9, height: 9 }}/> : null}
+  </HStack>
+}
+
+function TrafficComposition({ item }: { item: InterfaceTraffic }) {
+  const segments = 20
+  const downCount = item.totalBytes > 0
+    ? Math.max(0, Math.min(segments, Math.round(item.inBytes / item.totalBytes * segments)))
+    : 0
+  return <HStack spacing={2} alignment="center" frame={{ maxWidth: "infinity", height: 5, alignment: "center" }}>
+    {Array.from({ length: segments }, (_, index) => <HStack
+      key={String(index)}
+      frame={{ width: 13.7, height: 5 }}
+      background={item.totalBytes <= 0 ? C.track : index < downCount ? C.down : C.up}
+      clipShape={{ type: "capsule" }}
+    />)}
+  </HStack>
+}
+
+function InterfaceDetail({ item }: { item: InterfaceTraffic }) {
+  const info = interfaceInfo(item.name)
+  return <VStack spacing={5} alignment="leading" frame={{ maxWidth: "infinity" }}>
+    <HStack alignment="center" frame={{ maxWidth: "infinity" }}>
+      <HStack spacing={7} alignment="center">
+        <Image systemName={info.icon} resizable scaleToFit foregroundStyle={C.accent} frame={{ width: 15, height: 15 }}/>
+        <Text font={12} fontWeight="semibold" foregroundStyle={C.primary} lineLimit={1}>{info.title}</Text>
+      </HStack>
+      <Spacer/>
+      <Text font={12} fontWeight="bold" fontDesign="rounded" foregroundStyle={C.primary} lineLimit={1}>{formatDetailBytes(item.totalBytes, 1)}</Text>
+    </HStack>
+    <HStack spacing={0} alignment="center" frame={{ maxWidth: "infinity" }}>
+      <DirectionValue direction="down" value={item.inBytes}/>
+      <DirectionValue direction="up" value={item.outBytes}/>
+    </HStack>
+    <TrafficComposition item={item}/>
+  </VStack>
+}
+
+export function LargeWidgetView({ result }: Props) {
   const snapshot = snapshotOf(result)
   const live = result.ok
   const errorText = result.ok ? "" : result.error.message
@@ -28,18 +79,17 @@ export function LargeWidgetView({ result, maxPolicies = 5 }: Props) {
     </ZStack>
   }
 
-  const policies = (snapshot.topPolicies || []).slice(0, Math.max(1, Math.min(maxPolicies, 5)))
-  const maxWeight = maxPolicyWeight(policies)
-  const barWidth = Math.max(220, displayWidth() - 36)
+  const interfaces = (snapshot.interfaces || []).slice(0, 3)
   const down = formatBytes(snapshot.totalInBytes)
   const up = formatBytes(snapshot.totalOutBytes)
   const mem = formatMemory(snapshot.memoryBytes)
   const active = snapshot.activeRequests == null ? "—" : String(Math.round(snapshot.activeRequests))
   const dns = snapshot.dnsCacheEntries == null ? "—" : String(Math.round(snapshot.dnsCacheEntries))
   const uptime = formatUptime(snapshot.uptimeSeconds)
+  const bans = snapshot.activeBans == null ? 0 : Math.max(0, Math.round(snapshot.activeBans))
 
-  return <VStack spacing={0} alignment="leading" frame={{ maxWidth: "infinity", maxHeight: "infinity", alignment: "topLeading" }} padding={{ horizontal: 18, vertical: 13 }} widgetBackground={C.bg}>
-    <Header fetchedAt={snapshot.fetchedAt} cached={!live}/>
+  return <VStack spacing={0} alignment="leading" frame={{ maxWidth: "infinity", maxHeight: "infinity", alignment: "topLeading" }} padding={{ horizontal: 18, top: 18, bottom: 8 }} widgetBackground={C.bg}>
+    <Header fetchedAt={snapshot.fetchedAt} cached={!live} inset={8} titleFont={12}/>
 
     <HStack spacing={9} alignment="center" frame={{ maxWidth: "infinity" }} padding={{ top: 10 }}>
       <RateCard icon="arrow.down.circle.fill" label="累计下行" value={down} color={C.down}/>
@@ -50,30 +100,30 @@ export function LargeWidgetView({ result, maxPolicies = 5 }: Props) {
     <HStack alignment="center" frame={{ maxWidth: "infinity" }} padding={{ top: 9, bottom: 8 }}>
       <StatusBlock icon="cpu" label="内存占用" value={mem} color={C.accent}/>
       <Spacer/>
-      <StatusBlock icon="link" label="活跃请求" value={active}/>
+      <StatusBlock icon="link" label="活跃请求" value={active} color={C.accent}/>
       <Spacer/>
-      <StatusBlock icon="globe" label="DNS 缓存" value={dns}/>
+      <StatusBlock icon="globe" label="DNS 缓存" value={dns} color={C.accent}/>
       <Spacer/>
-      <StatusBlock icon="clock" label="运行时长" value={uptime}/>
+      <StatusBlock icon="clock" label="运行时长" value={uptime} color={C.accent}/>
     </HStack>
 
-    <HStack frame={{ maxWidth: "infinity", height: 1 }} background={C.track}/>
+    <Divider padding={{ horizontal: 8, top: 2 }}/>
 
-    <HStack alignment="center" frame={{ maxWidth: "infinity" }} padding={{ top: 8, bottom: 7 }}>
-      <Text font={13} fontWeight="bold" foregroundStyle={C.primary}>策略 Top</Text>
-      <Text font={10} foregroundStyle={C.tertiary} padding={{ leading: 7 }}>按本次运行累计流量</Text>
-      <Spacer/>
-      <Text font={10} foregroundStyle={C.tertiary}>引擎重启后归零</Text>
-    </HStack>
-
-    <VStack spacing={7} alignment="leading" frame={{ maxWidth: "infinity", maxHeight: "infinity", alignment: "topLeading" }}>
-      {policies.length ? policies.map(item => <PolicyRow key={item.name} item={item} maxWeight={maxWeight} barWidth={barWidth}/>) : <Text font={11} foregroundStyle={C.secondary}>暂无策略流量</Text>}
+    <VStack spacing={8} alignment="leading" frame={{ maxWidth: "infinity" }} padding={{ horizontal: 8, top: 11 }}>
+      {interfaces.length
+        ? interfaces.map(item => <InterfaceDetail key={item.name} item={item}/>)
+        : <Text font={11} foregroundStyle={C.secondary} padding={{ vertical: 12 }}>暂无接口流量</Text>}
     </VStack>
 
-    <HStack frame={{ maxWidth: "infinity" }} padding={{ top: 7 }}>
-      <Text font={10} foregroundStyle={C.tertiary}>累计 counter · 引擎重启归零</Text>
+    {bans > 0 ? <HStack spacing={5} alignment="center" padding={{ top: 7 }}>
+      <Image systemName="exclamationmark.triangle.fill" foregroundStyle={C.warn} frame={{ width: 10, height: 10 }}/>
+      <Text font={9} fontWeight="semibold" foregroundStyle={C.warn}>未授权访问封禁 {bans}</Text>
+    </HStack> : null}
+
+    <Spacer/>
+    <HStack frame={{ maxWidth: "infinity" }} padding={{ top: 5, trailing: 8 }}>
       <Spacer/>
-      <VersionLabel value={snapshot.buildLabel}/>
+      <VersionLabel value={snapshot.buildLabel} font={10}/>
     </HStack>
 
     {!live && errorText ? <Text font={8} foregroundStyle={C.warn} lineLimit={1} padding={{ top: 2 }}>{errorText}</Text> : null}

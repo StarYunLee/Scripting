@@ -14,7 +14,7 @@ import {
 } from "scripting"
 import { LargeWidgetView } from "./components/LargeWidgetView"
 import { MediumWidgetView } from "./components/MediumWidgetView"
-import { formatFetchedAt, maskKey } from "./services/format"
+import { formatFetchedAtWithSeconds, maskKey } from "./services/format"
 import { fetchMetrics, getCachedMetrics, testConnection } from "./services/metrics"
 import {
   clearCache,
@@ -27,13 +27,9 @@ import type { ConnectionConfig, MetricsResult, WidgetSettings } from "./services
 
 function reloadWidgets() {
   try {
-    Widget.reloadUserWidgets()
+    Widget.reloadAll()
   } catch {
-    try {
-      Widget.reloadAll()
-    } catch {
-      /* ignore */
-    }
+    /* ignore */
   }
 }
 
@@ -45,14 +41,17 @@ function App() {
   const [apiKey, setApiKey] = useState(initialConnection.apiKey)
   const [useTls, setUseTls] = useState(initialConnection.useTls)
   const [reloadMinutes, setReloadMinutes] = useState(String(initialSettings.reloadMinutes))
-  const [topPolicyCount, setTopPolicyCount] = useState(String(initialSettings.topPolicyCount))
-  const [hideBuiltInPolicies, setHideBuiltIn] = useState(initialSettings.hideBuiltInPolicies)
   const [status, setStatus] = useState(initialConnection.apiKey.trim() ? "已加载本地配置" : "请填写本机 Surge HTTP API")
   const [preview, setPreview] = useState<MetricsResult | null>(() => {
     const cache = getCachedMetrics()
     return cache ? { ok: true, snapshot: cache } : null
   })
   const [busy, setBusy] = useState(false)
+  const [saveTitle, setSaveTitle] = useState("保存")
+
+  function markEdited() {
+    setSaveTitle("保存")
+  }
 
   function saveConnection(): ConnectionConfig {
     const parsedPort = Number(port)
@@ -66,11 +65,8 @@ function App() {
 
   function saveSettings(): WidgetSettings {
     const minutes = Number(reloadMinutes)
-    const top = Number(topPolicyCount)
     return setSettings({
       reloadMinutes: Number.isFinite(minutes) ? minutes : 5,
-      topPolicyCount: Number.isFinite(top) ? top : 5,
-      hideBuiltInPolicies,
     })
   }
 
@@ -78,6 +74,7 @@ function App() {
     const conn = saveConnection()
     const settings = saveSettings()
     setStatus(`已保存 · ${conn.host}:${conn.port} · 刷新 ${settings.reloadMinutes} 分钟 · Key ${maskKey(conn.apiKey)}`)
+    setSaveTitle("已保存")
     reloadWidgets()
   }
 
@@ -105,7 +102,7 @@ function App() {
       const result = await fetchMetrics()
       setPreview(result)
       if (result.ok) {
-        setStatus(`已更新 · ${formatFetchedAt(result.snapshot.fetchedAt)} · 策略 ${result.snapshot.topPolicies.length}`)
+        setStatus(`已更新 · ${formatFetchedAtWithSeconds(result.snapshot.fetchedAt)} · 接口 ${result.snapshot.interfaces.length}`)
         reloadWidgets()
       } else {
         setStatus(`拉取失败：${result.error.message}${result.error.detail ? " · " + result.error.detail : ""}`)
@@ -130,7 +127,7 @@ function App() {
         navigationTitle="Surge 监控"
         navigationBarTitleDisplayMode="inline"
         toolbar={{
-          topBarTrailing: <Button title="保存" action={onSave} />,
+          topBarTrailing: <Button title={saveTitle} action={onSave} />,
         }}
       >
         <Section
@@ -141,44 +138,30 @@ function App() {
             </Text>
           }
         >
-          <TextField title="Host" value={host} onChanged={setHost} prompt="127.0.0.1" />
-          <TextField title="Port" value={port} onChanged={setPort} prompt="6171" />
-          <TextField title="API Key" value={apiKey} onChanged={setApiKey} prompt="与 http-api 中的 key 一致" />
-          <Toggle title="使用 HTTPS (http-api-tls)" value={useTls} onChanged={setUseTls} />
+          <TextField title="Host" value={host} onChanged={(value) => { setHost(value); markEdited() }} prompt="127.0.0.1" />
+          <TextField title="Port" value={port} onChanged={(value) => { setPort(value); markEdited() }} prompt="6171" />
+          <TextField title="API Key" value={apiKey} onChanged={(value) => { setApiKey(value); markEdited() }} prompt="与 http-api 中的 key 一致" />
+          <Toggle title="使用 HTTPS (http-api-tls)" value={useTls} onChanged={(value) => { setUseTls(value); markEdited() }} />
         </Section>
 
-        <Section header={<Text>小组件</Text>} footer={<Text>流量直接读取 Surge 原生累计 counter，引擎重启后归零。Medium 只显示引擎核心总览；Large 展示策略累计流量 Top。</Text>}>
+        <Section header={<Text>小组件</Text>} footer={<Text>流量直接读取 Surge 原生累计 counter，引擎重启后归零。Medium 显示引擎核心总览；Large 额外展示累计流量最高的 3 个网络接口。</Text>}>
           <Picker
-            title="自动刷新间隔"
+            title="请求刷新间隔"
             value={reloadMinutes}
-            onChanged={(value) => setReloadMinutes(String(value))}
+            onChanged={(value) => { setReloadMinutes(String(value)); markEdited() }}
             pickerStyle="navigationLink"
           >
-            <Text tag="1">1 分钟</Text>
             <Text tag="5">5 分钟</Text>
             <Text tag="10">10 分钟</Text>
             <Text tag="15">15 分钟</Text>
             <Text tag="30">30 分钟</Text>
             <Text tag="60">60 分钟</Text>
           </Picker>
-          <Picker
-            title="Large 策略数量"
-            value={topPolicyCount}
-            onChanged={(value) => setTopPolicyCount(String(value))}
-            pickerStyle="navigationLink"
-          >
-            <Text tag="1">Top 1</Text>
-            <Text tag="2">Top 2</Text>
-            <Text tag="3">Top 3</Text>
-            <Text tag="4">Top 4</Text>
-            <Text tag="5">Top 5</Text>
-          </Picker>
-          <Toggle title="隐藏 DIRECT / REJECT 等内置策略" value={hideBuiltInPolicies} onChanged={setHideBuiltIn} />
         </Section>
 
-        <Section header={<Text>刷新状态</Text>} footer={<Text>WidgetKit 可能根据系统调度延后刷新，所选间隔不是严格定时器。</Text>}>
-          <Text>上次数据刷新：{preview ? formatFetchedAt(preview.ok ? preview.snapshot.fetchedAt : preview.cache?.fetchedAt) : "尚未刷新"}</Text>
-          <Text>自动刷新间隔：每 {reloadMinutes} 分钟</Text>
+        <Section header={<Text>刷新状态</Text>} footer={<Text>这里设置的是 WidgetKit 最早请求刷新时间，不是严格定时器；iOS 可能根据电量、使用频率和系统预算延后执行。</Text>}>
+          <Text>上次数据刷新：{preview ? formatFetchedAtWithSeconds(preview.ok ? preview.snapshot.fetchedAt : preview.cache?.fetchedAt) : "尚未刷新"}</Text>
+          <Text>最早请求刷新：每 {reloadMinutes} 分钟</Text>
         </Section>
 
         <Section header={<Text>操作</Text>} footer={<Text>{status}</Text>}>
@@ -208,7 +191,7 @@ function App() {
           />
         </Section>
 
-        <Section header={<Text>Large 预览</Text>} footer={<Text>使用当前“Large 策略数量”设置；修改 Picker 后预览会立即同步。</Text>}>
+        <Section header={<Text>Large 预览</Text>}>
           <LargeWidgetView
             result={
               preview || {
@@ -216,7 +199,6 @@ function App() {
                 error: { code: "missing_config", message: "点击上方刷新以加载预览" },
               }
             }
-            maxPolicies={Number(topPolicyCount) || 5}
           />
         </Section>
 

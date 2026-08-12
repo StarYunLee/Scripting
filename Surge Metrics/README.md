@@ -12,13 +12,13 @@
 - 展示本次引擎运行的累计下行和累计上行，重启后归零
 - 展示内存占用、活跃请求、DNS 缓存、运行时长
 - `active_bans > 0` 时在 Medium 底部显示未授权访问封禁告警
-- Medium：聚焦累计流量和核心运行状态，不展示策略统计
-- Large：在核心总览下展示策略累计流量 Top 1–5
-- 策略列表可隐藏 `DIRECT`、`REJECT` 等内置策略
-- 支持 1 / 5 / 10 / 15 / 30 / 60 分钟自动刷新请求
+- Medium：聚焦累计流量和核心运行状态
+- Large：在核心总览下展示接口累计流量详情，固定显示累计流量最高的 3 个接口
+- 支持 5 / 10 / 15 / 30 / 60 分钟请求下一次 Widget 刷新
 - Medium / Large 右上角显示 metrics 实际更新时间（如“更新 13:41”），并紧贴 AppIntent 手动刷新按钮
 - 设置页使用绝对时间显示上次数据刷新，便于精确核对
 - 设置页提供 HTTP API 配置、连通测试、缓存清理及双尺寸预览
+- 配置仅在点击“保存”“测试连通”或“立即刷新并预览”时写入；保存成功后按钮显示“已保存”
 - 使用透明背景渐变图标，适配浅色和深色模式
 
 ## 系统要求
@@ -78,36 +78,29 @@ http-api-tls = true
 ### Large
 
 - Medium 的全部核心数据
-- 策略累计流量 Top 1–5
-- 策略相对进度条
+- 按累计流量排序，固定展示前 3 个接口
+- 每个接口显示累计总量、累计下行、累计上行及下行/上行构成条
+- `active_bans > 0` 时显示未授权访问封禁告警
 - 本次引擎运行累计口径与版本信息
 
 ## 小组件设置
 
-### 自动刷新间隔
+### 请求刷新间隔
 
-- 1 分钟
 - 5 分钟（默认）
 - 10 分钟
 - 15 分钟
 - 30 分钟
 - 60 分钟
 
-WidgetKit 可能根据系统调度策略延后刷新；所选时间是请求下一次时间线的最早时间，不是严格定时器。需要立即更新时，可点击小组件右上角的刷新按钮。
-
-### Large 策略数量
-
-- Top 1
-- Top 2
-- Top 3
-- Top 4
-- Top 5（默认）
+WidgetKit 可能根据电量、使用频率和系统刷新预算延后执行；所选时间只是请求下一次时间线的最早时间，不是严格定时器。组件会在每次实际运行时重新请求 `/v1/metrics`，并使用时间戳与禁用缓存请求头避免复用 HTTP 缓存。需要立即更新时，可点击小组件右上角的刷新按钮。
 
 ### 其他设置
 
-- 隐藏 `DIRECT` / `REJECT` 等内置策略
-- 使用 HTTPS (`http-api-tls`)
+- Host、Port、API Key 与 HTTPS (`http-api-tls`)
 - Medium / Large 设置页预览
+
+配置仅在点击“保存”“测试连通”或“立即刷新并预览”时写入本机 Storage；只修改字段后直接关闭设置页不会保存。
 
 ## 数据来源与口径
 
@@ -125,10 +118,11 @@ GET /v1/metrics
 - `surge_active_requests`：活跃请求数
 - `surge_dns_cache_entries`：DNS 缓存条目数
 - `surge_active_bans`：未授权访问封禁数
-- `surge_interface_in_bytes_total` / `surge_interface_out_bytes_total`：接口累计流量
-- `surge_policy_in_bytes_total` / `surge_policy_out_bytes_total`：策略累计流量
+- `surge_interface_in_bytes_total` / `surge_interface_out_bytes_total`：接口累计流量及明细标签
 
-流量 counter 从 Surge 引擎本次启动开始累计，重启后归零。多个 interface 会分别返回，组件将同方向 counter 汇总；如果不同接口的统计范围重叠，汇总值可能重复计算，因此适合观察本次运行流量规模，不应视为运营商账单。
+流量 counter 从 Surge 引擎本次启动开始累计，重启后归零。多个 interface 会分别返回，组件将同方向 counter 汇总，并在 Large 中按接口的下行与上行总量排序展示；如果不同接口的统计范围重叠，汇总值和接口明细可能包含重复口径，因此适合观察本次运行流量规模，不应视为运营商账单。
+
+Large 会将常见 iOS / Darwin 接口名映射为可读名称：`pdp_ipN` 通常为蜂窝数据，`en0` 通常为 Wi‑Fi，`lo0` 为回环，`awdlN` 为 Apple 直连，`llwN` 为低延迟无线，`utunN` 为隧道，`bridgeN` 为网桥。Surge 官方仅定义为“每个网络接口”的 counter，没有保证具体标签名称；未识别的接口会直接显示原始标签。
 
 组件不根据 Widget 刷新间隔推导或展示所谓“实时速率”，避免 iOS 调度延迟造成误导。
 
@@ -146,8 +140,8 @@ GET /v1/metrics
 - 仅支持 Surge iOS 5.22.0+；
 - WidgetKit 不保证严格按照所选分钟数刷新；
 - 手动刷新会立即请求指标，但画面重载仍由 WidgetKit 执行；
-- 多接口 counter 汇总可能存在统计范围重叠；
-- Metrics 端点不提供 CPU 占用、节点延迟、规则命中、DNS 命中率或历史趋势；
+- 多接口 counter 汇总及明细可能存在统计范围重叠；
+- Metrics 端点不提供 CPU 占用、节点延迟、规则命中、DNS 命中率或长期历史趋势；
 - 仅对 Medium 和 Large 尺寸进行专门适配。
 
 ## 项目结构
@@ -159,7 +153,7 @@ Surge Metrics/
 │   └── surge-metrics-preview.png    Medium / Large 明暗模式预览
 ├── components/
 │   ├── MediumWidgetView.tsx         Medium 核心总览
-│   ├── LargeWidgetView.tsx          Large 策略展开
+│   ├── LargeWidgetView.tsx          Large 接口流量明细
 │   └── WidgetPrimitives.tsx         共用视觉组件
 ├── services/
 │   ├── format.ts                    流量、时间和版本格式化
