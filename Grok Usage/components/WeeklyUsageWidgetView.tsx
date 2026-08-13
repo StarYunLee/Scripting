@@ -1,5 +1,5 @@
 import { HStack, Image, Script, Spacer, Text, VStack, Widget, ZStack } from "scripting"
-import { formatPercent, formatResetDate, resetCreditsSummary } from "../services/format"
+import { formatPercent, formatResetDate, formatSmallDate, resetCreditsSummary } from "../services/format"
 import { PlanBadge } from "./PlanBadge"
 import type { DisplayMode, LimitWindow, MediumWidgetLayout, UsageResult, UsageSnapshot } from "../services/types"
 
@@ -32,6 +32,7 @@ type Model = {
   planLabel: string
   resetLabel: string
   resetExpiration: string
+  resetExpirationAt: string | null
   live: boolean
   detail: string
 }
@@ -49,6 +50,7 @@ function modelFor(result: UsageResult, mode: DisplayMode): Model {
     planLabel: snapshot?.planLabel || snapshot?.planType || "—",
     resetLabel: resets.available == null ? "重置 —" : `重置 ${resets.available} 次`,
     resetExpiration: formatResetDate(resets.nearestExpiration),
+    resetExpirationAt: resets.nearestExpiration,
     live: result.ok,
     detail: result.ok ? "" : result.error.message,
   }
@@ -75,11 +77,12 @@ function Progress({ value, width, height = 5 }: { value: number; width: number; 
   </ZStack>
 }
 function SmallInfoRow({ icon, label, value, width }: { icon: string; label: string; value: string; width: number }) {
+  const valueWidth = 76
   return <HStack spacing={4} frame={{ width }}>
     <Image systemName={icon} resizable scaleToFit imageScale="small" foregroundStyle={C.secondary} frame={{ width: 8, height: 8 }}/>
-    <Text fontDesign="default" fontWidth="standard" font={9} fontWeight="bold" foregroundStyle={C.secondary}>{label}</Text>
-    <Spacer/>
-    <Text fontDesign="default" fontWidth="standard" font={9} fontWeight="bold" foregroundStyle={C.primary} lineLimit={1} minimumScaleFactor={0.65}>{value}</Text>
+    <Text fontDesign="default" fontWidth="standard" font={9} fontWeight="bold" foregroundStyle={C.secondary} lineLimit={1}>{label}</Text>
+    <Spacer minLength={0}/>
+    <Text fontDesign="default" fontWidth="standard" font={9} fontWeight="bold" foregroundStyle={C.primary} monospacedDigit lineLimit={1} minimumScaleFactor={0.65} frame={{ width: valueWidth, alignment: value === "—" ? "center" : "leading" }}>{value}</Text>
   </HStack>
 }
 type MetaAlignment = "leading" | "center" | "trailing"
@@ -139,9 +142,9 @@ export function WeeklyUsageWidgetView({ result, family, displayMode }: Props) {
       </HStack>
 
       <VStack spacing={3} alignment="leading" frame={{ maxWidth: "infinity", maxHeight: "infinity", alignment: "topLeading" }} padding={{ leading: 12, trailing: 12, top: 100 }}>
-        <SmallInfoRow icon="clock" label="更新时间" value={model.fetched} width={barWidth}/>
-        <SmallInfoRow icon="calendar" label="重置时间" value={formatResetDate(model.focus?.resetAt)} width={barWidth}/>
-        <SmallInfoRow icon="arrow.clockwise" label={model.resetLabel} value={model.resetExpiration} width={barWidth}/>
+        <SmallInfoRow icon="clock" label="更新时间" value={formatSmallDate(model.snapshot?.fetchedAt)} width={barWidth}/>
+        <SmallInfoRow icon="calendar" label="重置时间" value={formatSmallDate(model.focus?.resetAt)} width={barWidth}/>
+        <SmallInfoRow icon="arrow.clockwise" label={model.resetLabel} value={formatSmallDate(model.resetExpirationAt)} width={barWidth}/>
 
       </VStack>
 

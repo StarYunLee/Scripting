@@ -33,7 +33,7 @@ function billingHeaders(token: string, userId: string | null): Record<string, st
   const headers: Record<string, string> = {
     Authorization: `Bearer ${token}`,
     "x-xai-token-auth": "xai-grok-cli",
-    "x-grok-client-version": "grok-usage-scripting/1.5.0",
+    "x-grok-client-version": "grok-usage-scripting/1.5.1",
     Accept: "application/json",
   }
   if (userId) headers["x-userid"] = userId
@@ -99,7 +99,7 @@ async function requestRemainingResets(token: string, userId: string | null): Pro
   const headers: Record<string, string> = {
     Authorization: `Bearer ${token}`,
     "x-xai-token-auth": "xai-grok-cli",
-    "x-grok-client-version": "grok-usage-scripting/1.5.0",
+    "x-grok-client-version": "grok-usage-scripting/1.5.1",
     "Content-Type": "application/grpc+proto",
     Accept: "application/grpc",
     TE: "trailers",
