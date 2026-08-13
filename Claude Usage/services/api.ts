@@ -1,5 +1,10 @@
 import { getProfileAccessToken, resolveProfile } from "./accounts"
 import { getSettings } from "./credentials"
+import {
+  noteDiagnostic,
+  writeLastUsageProbe,
+  type UsageProbe,
+} from "./diagnostics"
 import { refreshOAuthToken } from "./oauth"
 import type { LimitWindow, UsageResult, UsageSnapshot } from "./types"
 
@@ -12,8 +17,12 @@ declare const Storage: {
 const CACHE_KEY = "claude_usage_cache_v4"
 const USAGE_URL = "https://api.anthropic.com/api/oauth/usage"
 const MIN_LIVE_INTERVAL_MS = 3 * 60_000
+const CLIENT_USER_AGENT = "claude-code/1.3.4"
 
+export function getClientUserAgent(): string { return CLIENT_USER_AGENT }
+export function getUsageEndpoint(): string { return USAGE_URL }
 export function getReloadMinutes(): number { return Math.max(5, getSettings().reloadMinutes) }
+
 function asObject(v: unknown): Record<string, unknown> | null { return v && typeof v === "object" && !Array.isArray(v) ? v as Record<string, unknown> : null }
 function toNumber(v: unknown): number | null {
   if (typeof v === "number" && Number.isFinite(v)) return v
@@ -22,7 +31,7 @@ function toNumber(v: unknown): number | null {
 }
 function clamp(n: number): number { return Math.max(0, Math.min(100, n)) }
 function debug(event: string, data: Record<string, unknown> = {}): void {
-  try { console.log(`[Claude Usage] ${event} ${JSON.stringify(data)}`) } catch { /* logging must not affect runtime */ }
+  noteDiagnostic(event, data)
 }
 function isoDate(v: unknown): { iso: string | null; ms: number | null } {
   if (typeof v !== "string") return { iso: null, ms: null }
@@ -34,6 +43,7 @@ function usageHeaders(token: string): Record<string, string> {
     Authorization: `Bearer ${token}`,
     Accept: "application/json",
     "Content-Type": "application/json",
+    "User-Agent": CLIENT_USER_AGENT,
     "anthropic-beta": "oauth-2025-04-20",
     "anthropic-version": "2023-06-01",
   }
@@ -89,33 +99,98 @@ function recent(cache: UsageSnapshot | null): boolean {
   return Number.isFinite(fetchedAt) && Date.now() - fetchedAt < MIN_LIVE_INTERVAL_MS
 }
 async function requestUsage(token: string): Promise<Response> {
-  return fetch(USAGE_URL, { method: "GET", headers: usageHeaders(token), timeout: 20, debugLabel: "ClaudeOAuthUsage" })
+  return fetch(USAGE_URL, { method: "GET", headers: usageHeaders(token), timeout: 20, deviceLabel: "ClaudeOAuthUsage" })
 }
 function errorMessage(payload: Record<string, unknown> | null): string | null {
   const error = asObject(payload?.error)
   return typeof error?.message === "string" ? error.message : null
 }
 
+function saveProbe(partial: Omit<UsageProbe, "at" | "clientUserAgent" | "endpoint">): void {
+  writeLastUsageProbe({
+    at: new Date().toISOString(),
+    clientUserAgent: CLIENT_USER_AGENT,
+    endpoint: USAGE_URL,
+    ...partial,
+  })
+}
+
 export async function fetchUsage(options?: { force?: boolean; profileId?: string | null }): Promise<UsageResult> {
   const profile = resolveProfile(options?.profileId)
-  if (!profile) return { ok: false, error: { code: "missing_token", message: "未找到指定账号" }, cache: null }
+  if (!profile) {
+    saveProbe({
+      profileId: null,
+      force: Boolean(options?.force),
+      ok: false,
+      fromCacheOnly: false,
+      errorCode: "missing_token",
+      errorMessage: "未找到指定账号",
+      httpStatus: null,
+      emptyWindows: null,
+      windowCount: null,
+      planLabel: null,
+      source: null,
+      hasCache: false,
+      cacheFetchedAt: null,
+    })
+    return { ok: false, error: { code: "missing_token", message: "未找到指定账号" }, cache: null }
+  }
   const cache = readCache(profile.id)
   const cacheIsRecent = recent(cache)
-  debug("fetch.start", { force: Boolean(options?.force), hasCache: Boolean(cache), cacheFetchedAt: cache?.fetchedAt || null, cacheIsRecent })
+  debug("fetch.start", {
+    force: Boolean(options?.force),
+    hasCache: Boolean(cache),
+    cacheFetchedAt: cache?.fetchedAt || null,
+    cacheIsRecent,
+    profileId: profile.id,
+    clientUserAgent: CLIENT_USER_AGENT,
+  })
   if (!options?.force && cacheIsRecent) {
-    debug("cache.hit", { fetchedAt: cache!.fetchedAt })
+    debug("cache.hit", { fetchedAt: cache!.fetchedAt, profileId: profile.id })
+    saveProbe({
+      profileId: profile.id,
+      force: false,
+      ok: true,
+      fromCacheOnly: true,
+      errorCode: null,
+      errorMessage: null,
+      httpStatus: null,
+      emptyWindows: cache!.windows.length === 0,
+      windowCount: cache!.windows.length,
+      planLabel: cache!.planLabel,
+      source: "cache",
+      hasCache: true,
+      cacheFetchedAt: cache!.fetchedAt,
+    })
     return { ok: true, snapshot: cache! }
   }
 
   let token = await refreshOAuthToken(profile.id)
   if (!token) token = getProfileAccessToken(profile.id)
-  if (!token) return { ok: false, error: { code: "missing_token", message: `账号“${profile.name}”尚未授权` }, cache }
+  if (!token) {
+    saveProbe({
+      profileId: profile.id,
+      force: Boolean(options?.force),
+      ok: false,
+      fromCacheOnly: false,
+      errorCode: "missing_token",
+      errorMessage: `账号尚未授权`,
+      httpStatus: null,
+      emptyWindows: null,
+      windowCount: null,
+      planLabel: null,
+      source: null,
+      hasCache: Boolean(cache),
+      cacheFetchedAt: cache?.fetchedAt || null,
+    })
+    return { ok: false, error: { code: "missing_token", message: `账号“${profile.name}”尚未授权` }, cache }
+  }
 
   try {
     let response = await requestUsage(token)
     if (response.status === 401) {
       const refreshedToken = await refreshOAuthToken(profile.id, true)
-      debug("auth.retry", { status: 401, refreshed: Boolean(refreshedToken) })
+      debug("auth.retry", { status: 401, refreshed: Boolean(refreshedToken), profileId: profile.id })
       if (refreshedToken) {
         token = refreshedToken
         response = await requestUsage(token)
@@ -133,10 +208,50 @@ export async function fetchUsage(options?: { force?: boolean; profileId?: string
         : rateLimited
           ? "Anthropic 用量接口限流，已保留最近缓存"
           : errorMessage(payload) || `Claude 用量请求失败 HTTP ${response.status}`
-      debug("http.error", { endpoint: "usage", status: response.status, unauthorized, rateLimited, hasCache: Boolean(cache) })
+      debug("http.error", {
+        endpoint: "usage",
+        status: response.status,
+        unauthorized,
+        rateLimited,
+        hasCache: Boolean(cache),
+        profileId: profile.id,
+        clientUserAgent: CLIENT_USER_AGENT,
+      })
+      saveProbe({
+        profileId: profile.id,
+        force: Boolean(options?.force),
+        ok: false,
+        fromCacheOnly: false,
+        errorCode: unauthorized ? "unauthorized" : rateLimited ? "rate_limited" : "http_error",
+        errorMessage: message,
+        httpStatus: response.status,
+        emptyWindows: null,
+        windowCount: null,
+        planLabel: null,
+        source: null,
+        hasCache: Boolean(cache),
+        cacheFetchedAt: cache?.fetchedAt || null,
+      })
       return { ok: false, error: { code: unauthorized ? "unauthorized" : rateLimited ? "rate_limited" : "http_error", message, status: response.status }, cache }
     }
-    if (!payload) return { ok: false, error: { code: "invalid_json", message: "Claude 用量响应不是合法 JSON" }, cache }
+    if (!payload) {
+      saveProbe({
+        profileId: profile.id,
+        force: Boolean(options?.force),
+        ok: false,
+        fromCacheOnly: false,
+        errorCode: "invalid_json",
+        errorMessage: "Claude 用量响应不是合法 JSON",
+        httpStatus: response.status,
+        emptyWindows: null,
+        windowCount: null,
+        planLabel: null,
+        source: null,
+        hasCache: Boolean(cache),
+        cacheFetchedAt: cache?.fetchedAt || null,
+      })
+      return { ok: false, error: { code: "invalid_json", message: "Claude 用量响应不是合法 JSON" }, cache }
+    }
 
     const fiveHour = parseWindow(payload, "five_hour", "five_hour", "5 小时", 5 * 3600)
     const weekly = parseWindow(payload, "seven_day", "weekly", "周限", 7 * 86400)
@@ -144,10 +259,7 @@ export async function fetchUsage(options?: { force?: boolean; profileId?: string
       || parseWindow(payload, "seven_day_fable_5", "weekly_fable", "Fable 周限", 7 * 86400)
       || parseWindow(payload, "fable_seven_day", "weekly_fable", "Fable 周限", 7 * 86400)
     const windows = [fiveHour, weekly, weeklyFable].filter((w): w is LimitWindow => Boolean(w))
-    if (!windows.length) {
-      debug("parse.error", { reason: "no_windows" })
-      return { ok: false, error: { code: "invalid_json", message: "Claude 用量响应中没有可用额度窗口" }, cache }
-    }
+    if (!windows.length) debug("parse.empty", { reason: "all_windows_null", profileId: profile.id })
 
     const plan = planLabel(payload)
     const snapshot: UsageSnapshot = {
@@ -166,10 +278,48 @@ export async function fetchUsage(options?: { force?: boolean; profileId?: string
       plan,
       windows: windows.map(window => ({ name: window.name, usedPercent: window.usedPercent, resetAt: window.resetAt })),
       fetchedAt: snapshot.fetchedAt,
+      emptyWindows: windows.length === 0,
+      profileId: profile.id,
+      clientUserAgent: CLIENT_USER_AGENT,
+    })
+    saveProbe({
+      profileId: profile.id,
+      force: Boolean(options?.force),
+      ok: true,
+      fromCacheOnly: false,
+      errorCode: null,
+      errorMessage: null,
+      httpStatus: response.status,
+      emptyWindows: windows.length === 0,
+      windowCount: windows.length,
+      planLabel: plan,
+      source: "live",
+      hasCache: Boolean(cache),
+      cacheFetchedAt: cache?.fetchedAt || null,
     })
     return { ok: true, snapshot }
   } catch (e) {
-    debug("fetch.error", { name: e instanceof Error ? e.name : "unknown", message: e instanceof Error ? e.message : String(e), hasCache: Boolean(cache) })
+    debug("fetch.error", {
+      name: e instanceof Error ? e.name : "unknown",
+      message: e instanceof Error ? e.message : String(e),
+      hasCache: Boolean(cache),
+      profileId: profile.id,
+    })
+    saveProbe({
+      profileId: profile.id,
+      force: Boolean(options?.force),
+      ok: false,
+      fromCacheOnly: false,
+      errorCode: "network_error",
+      errorMessage: e instanceof Error ? e.message : "网络请求失败",
+      httpStatus: null,
+      emptyWindows: null,
+      windowCount: null,
+      planLabel: null,
+      source: null,
+      hasCache: Boolean(cache),
+      cacheFetchedAt: cache?.fetchedAt || null,
+    })
     return { ok: false, error: { code: "network_error", message: e instanceof Error ? e.message : "网络请求失败", detail: e instanceof Error ? e.message : String(e) }, cache }
   }
 }

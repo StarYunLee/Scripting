@@ -17,6 +17,7 @@
 - 支持显示已用或剩余百分比
 - 展示进度条、更新时间和重置时间
 - 网络失败或接口限流时回退最近一次成功缓存
+- 设置页可复制脱敏诊断报告，便于 GitHub 反馈 429 / 空窗等问题
 - 支持 Small、Medium 主屏幕小组件
 - 支持 AppIntent 手动刷新
 
@@ -148,15 +149,50 @@ iOS WidgetKit 可能根据系统调度策略延后刷新；所选时间是请求
 
 这些 OAuth 和用量路径来自 Claude Code 当前实现，并非面向第三方承诺长期稳定的公共 API。Anthropic 更新后，端点、字段或访问策略可能变化。
 
+## 问题反馈 / 诊断报告
+
+遇到 429、空窗显示异常、授权后无法读用量时：
+
+1. 打开 Claude Usage 设置页，选中对应账号；
+2. 先点「刷新当前账号」；
+3. 再点「复制诊断报告」；
+4. 把报告粘贴到 GitHub Issue（报告已脱敏）。
+
+报告会包含：
+
+- 脚本版本、设备系统、`clientUserAgent`
+- HTTP 状态 / 错误码（如 `rate_limited`）
+- 是否空窗（`emptyWindows`）
+- 是否仅命中缓存（`fromCacheOnly`）
+- 是否持有 access/refresh token（布尔值，不含明文）
+- 最近脱敏事件
+
+报告**不会**包含：
+
+- Access Token / Refresh Token / Authorization 头
+- 完整邮箱本地部分（仅 `ab***@example.com`）
+- 授权码、PKCE verifier
+
+读报告时优先看：
+
+- `httpStatus=429`：仍被 Anthropic 限流，核对 `clientUserAgent` 是否为 `claude-code/*`
+- `emptyWindows=true` 且 `ok=true`：空窗合法快照，UI 应显示 `—`
+- `fromCacheOnly=true`：3 分钟内未打 live 接口
+- `hasAccessToken=false`：账号未授权或 Keychain 丢失
+
 ## 隐私与安全
 
 - OAuth Token 仅保存在当前设备的 Scripting Keychain；
-- 账号注册表、小组件设置和用量缓存仅保存在本机 Scripting Storage；
+- 账号注册表、小组件设置、用量缓存和诊断探针仅保存在本机 Scripting Storage；
+- 诊断报告复制前已脱敏：不含 Token / Authorization / 完整邮箱；
 - 项目不通过作者服务器转发登录或用量数据；
 - 项目源代码和正常导出的安装包不包含账号、邮箱、Token 或用量缓存；
 - 删除账号时会同时删除该账号的本机凭证、用量缓存和独立显示设置；
-- 不要分享授权码、Token、Keychain 导出或完整 App 容器备份；
-- Claude Usage 使用独立的 `claude_*` 本地命名空间，不会读取或覆盖其他组件数据。
+- 删除账号不会自动清空全局诊断环形缓冲（键：`claude_usage_diag_events_v1` / `claude_usage_diag_last_probe_v1`，本身已脱敏、不存 Token）；
+- 不要分享授权码、Token、Keychain 导出、完整 App 容器备份，或 Scripting 原始控制台全量截图；
+- Claude Usage 使用独立的 `claude_*` 本地命名空间，不会读取或覆盖其他组件数据；
+- 反馈时优先粘贴设置页生成的诊断报告即可；Pasteboard 写入仅本机剪贴板，不会上传；
+- 若需彻底清空诊断缓冲，可在 Scripting 中清除本脚本 Storage，或卸载后重装。
 
 ## 已知限制
 
@@ -164,6 +200,7 @@ iOS WidgetKit 可能根据系统调度策略延后刷新；所选时间是请求
 - Free 个人账号不能完成 Claude Code 订阅登录；
 - Fable 独立周限并非所有套餐或账号都会返回；
 - 用量接口可能返回 HTTP 429，此时组件会优先展示缓存；
+- 额度窗口全部为空时按合法空快照处理，对应位置显示 `—`，不再回退旧缓存；
 - 套餐字段并非所有响应都会提供，缺失时显示 `Claude`；
 - WidgetKit 不保证严格按照所选分钟数刷新；
 - Small 和 Medium 以外的组件尺寸未专门适配。
@@ -180,6 +217,7 @@ Claude Usage/
 │   ├── accounts.ts                 多账号注册表与 Keychain 凭证
 │   ├── api.ts                      用量请求、解析、缓存与限流处理
 │   ├── credentials.ts              小组件设置
+│   ├── diagnostics.ts              脱敏诊断事件、探针与报告
 │   ├── format.ts                   时间和百分比格式化
 │   ├── oauth.ts                    Anthropic OAuth、PKCE 与 Token 刷新
 │   └── types.ts                    类型定义

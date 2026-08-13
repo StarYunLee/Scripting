@@ -6,7 +6,7 @@
   "permissions": null,
   "runInApp": true,
   "contributors": [],
-  "version": "1.3.3",
+  "version": "1.3.4",
   "intentInputTypes": [],
   "localizedNames": {
     "zh": "Claude 用量",
@@ -17,7 +17,7 @@
   "author": {
     "name": "StarYunLee",
     "email": null,
-    "homepage": null
+    "homepage": "https://github.com/StarYunLee"
   },
   "localizedDescriptions": {
     "zh": "Claude Code 用量小组件。支持 Anthropic OAuth、多账号、5 小时/周限/Fable 周限，以及双额度概览和单额度详情布局。",

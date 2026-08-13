@@ -1,5 +1,5 @@
 import { Button, List, Navigation, NavigationStack, Picker, Script, Section, Text, TextField, Widget, useState } from "scripting"
-import { clearUsageCache, fetchUsage, getCachedUsage } from "./services/api"
+import { clearUsageCache, fetchUsage, getCachedUsage, getClientUserAgent, getUsageEndpoint } from "./services/api"
 import { clearProfileSettings, getEffectiveSettings, hasProfileSettings, setProfileSettings, setReloadMinutes } from "./services/credentials"
 import {
   createAccount, deleteAccount, ensureAccountMigration, getDefaultProfileId,
@@ -9,8 +9,9 @@ import {
   clearPendingOAuth, completeClaudeLogin, getPendingOAuthProfileId,
   hasPendingOAuth, startClaudeLogin,
 } from "./services/oauth"
+import { buildDiagnosticReport } from "./services/diagnostics"
 import { formatFetchedAt, formatPercent, formatResetDate } from "./services/format"
-import type { ClaudeAccountProfile, UsageSnapshot } from "./services/types"
+import type { ClaudeAccountProfile, UsageResult, UsageSnapshot } from "./services/types"
 
 declare const Pasteboard: { setString(value: string | null): Promise<void> }
 declare const Safari: { openURL(url: string): Promise<boolean> }
@@ -49,8 +50,10 @@ function App() {
   const [authorizationInput, setAuthorizationInput] = useState("")
   const [status, setStatus] = useState(hasPendingOAuth() ? "存在待完成的 Anthropic 授权" : "")
   const [usageText, setUsageText] = useState(() => summary(getCachedUsage(selectedId)))
+  const [lastResult, setLastResult] = useState<UsageResult | null>(null)
   const [deleteArmed, setDeleteArmed] = useState(false)
   const [copiedEmail, setCopiedEmail] = useState("")
+  const [diagCopied, setDiagCopied] = useState(false)
   const [widgetSettings, setWidgetSettingsState] = useState(() => getEffectiveSettings(pendingInitial || getDefaultProfileId() || initial[0]?.id || ""))
   const selected = resolveProfile(selectedId)
   const authTarget = resolveProfile(authTargetId)
@@ -80,9 +83,23 @@ function App() {
   async function refreshSelected() {
     if (!selectedId) return
     setUsageText("正在刷新…")
+    setDiagCopied(false)
     const result = await fetchUsage({ force: true, profileId: selectedId })
+    setLastResult(result)
     if (result.ok) { setUsageText(summary(result.snapshot)); setStatus("数据已更新"); reloadWidgets() }
     else setUsageText(`刷新失败：${result.error.message}${result.cache ? "\n\n缓存：\n" + summary(result.cache) : ""}`)
+  }
+  async function copyDiagnostic() {
+    const report = buildDiagnosticReport({
+      profileId: selectedId || null,
+      lastResult,
+      cache: selectedId ? getCachedUsage(selectedId) : null,
+      clientUserAgent: getClientUserAgent(),
+      endpoint: getUsageEndpoint(),
+    })
+    await Pasteboard.setString(report)
+    setDiagCopied(true)
+    setStatus("诊断报告已复制（已脱敏，可直接贴到 GitHub Issue）")
   }
   async function beginAuth(profileId: string) {
     setAuthTargetId(profileId); setAuthorizationInput("")
@@ -116,6 +133,7 @@ function App() {
             setStatus("正在验证授权…"); await completeClaudeLogin(authorizationInput); const completedId = authTarget.id
             setAuthorizationInput(""); setAuthTargetId(""); refreshRegistry(completedId); setStatus("授权成功")
             const result = await fetchUsage({ force: true, profileId: completedId })
+            setLastResult(result)
             if (result.ok) { setUsageText(summary(result.snapshot)); reloadWidgets() }
             else setStatus(`授权成功，但额度读取失败：${result.error.message}`)
           } catch (e) { setAuthorizationInput(""); setStatus("授权失败：" + errorText(e)) }
@@ -139,6 +157,14 @@ function App() {
       <Text>{usageText}</Text>
       <Button title="刷新当前账号" action={refreshSelected}/>
     </Section> : null}
+
+    <Section
+      header={<Text>问题反馈</Text>}
+      footer={<Text>建议先点「刷新当前账号」，再复制诊断报告。报告已脱敏，不含 Token / Authorization / 完整邮箱；可直接贴到 GitHub Issue。</Text>}
+    >
+      <Button title={diagCopied ? "✓ 已复制诊断报告" : "复制诊断报告"} action={copyDiagnostic}/>
+      <Text font={12} foregroundStyle="secondary">报告包含：版本、设备、clientUserAgent、HTTP 状态、空窗、是否回退缓存、最近事件。</Text>
+    </Section>
 
     <Section header={<Text>主屏幕多账号小组件</Text>} footer={<Text>给每个小组件的“参数”填写一个账号邮箱；参数为空时显示默认账号。</Text>}>
       {accounts.filter(a => a.email).map(account => <Button key={account.id} title={`${copiedEmail === account.email ? "✓ 已复制 " : "复制 "}${account.email}`} action={async () => { await Pasteboard.setString(account.email); setCopiedEmail(account.email || "") }}/>) }
