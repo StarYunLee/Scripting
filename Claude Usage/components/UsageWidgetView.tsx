@@ -1,6 +1,6 @@
 import { HStack, Image, Script, Spacer, Text, VStack, Widget, ZStack } from "scripting"
 import { pickFocusWindow } from "../services/api"
-import { formatPercent, formatResetDate } from "../services/format"
+import { formatPercent, formatResetDate, formatSmallDate } from "../services/format"
 import type { DisplayMode, DualQuotaPreset, FocusWindow, LimitWindow, UsageResult, UsageSnapshot, WidgetStyle } from "../services/types"
 
 type Props = {
@@ -184,11 +184,12 @@ function singleWindowTitle(focus: FocusWindow): string {
   return "Fable 周限"
 }
 function SingleInfoRow({ icon, label, value, width }: { icon: string; label: string; value: string; width: number }) {
+  const valueWidth = 76
   return <HStack spacing={4} frame={{ width }}>
     <Image systemName={icon} resizable scaleToFit imageScale="small" foregroundStyle={C.secondary} frame={{ width: 8, height: 8 }}/>
-    <Text font={9} fontWeight="bold" foregroundStyle={C.secondary}>{label}</Text>
-    <Spacer/>
-    <Text font={9} fontWeight="bold" foregroundStyle={C.primary} lineLimit={1} minimumScaleFactor={0.65}>{value}</Text>
+    <Text font={9} fontWeight="bold" foregroundStyle={C.secondary} lineLimit={1}>{label}</Text>
+    <Spacer minLength={0}/>
+    <Text fontDesign="default" fontWidth="standard" font={9} fontWeight="bold" foregroundStyle={C.primary} monospacedDigit lineLimit={1} minimumScaleFactor={0.65} frame={{ width: valueWidth, alignment: value === "—" ? "center" : "leading" }}>{value}</Text>
   </HStack>
 }
 function SingleWindowView({ model, family, displayMode, focusWindow }: { model: Model; family: string; displayMode: DisplayMode; focusWindow: FocusWindow }) {
@@ -212,8 +213,8 @@ function SingleWindowView({ model, family, displayMode, focusWindow }: { model: 
     </HStack>
     <HStack frame={{ maxWidth: "infinity", maxHeight: "infinity", alignment: "topLeading" }} padding={{ leading: 12, top: 87 }}><Progress value={used} width={barWidth} height={7}/></HStack>
     <VStack spacing={6} alignment="leading" frame={{ maxWidth: "infinity", maxHeight: "infinity", alignment: "topLeading" }} padding={{ leading: 12, trailing: 12, top: 103 }}>
-      <SingleInfoRow icon="clock" label="更新时间" value={model.fetched} width={barWidth}/>
-      <SingleInfoRow icon="calendar" label="重置时间" value={formatResetDate(focus?.resetAt)} width={barWidth}/>
+      <SingleInfoRow icon="clock" label="更新时间" value={formatSmallDate(model.snapshot?.fetchedAt)} width={barWidth}/>
+      <SingleInfoRow icon="calendar" label="重置时间" value={formatSmallDate(focus?.resetAt)} width={barWidth}/>
     </VStack>
     {!model.live && model.detail ? <HStack frame={{ maxWidth: "infinity", maxHeight: "infinity", alignment: "bottomLeading" }} padding={{ horizontal: 12, bottom: 2 }}><Text font={7} foregroundStyle={C.warn} lineLimit={1}>{model.detail}</Text></HStack> : null}
   </ZStack>
