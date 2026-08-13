@@ -9,7 +9,8 @@ import {
   clearPendingOAuth, completeOpenAILogin, getPendingOAuthProfileId,
   hasPendingOAuth, startOpenAILogin,
 } from "./services/oauth"
-import { formatCountdown, formatFetchedAt, formatPercent, formatResetDate } from "./services/format"
+import { formatCountdown, formatFetchedAt, formatPercent, formatResetDate, resetCreditsSummary } from "./services/format"
+import { isMockProfile, MOCK_PROFILE_EMAIL } from "./services/mock"
 import type { CodexAccountProfile, UsageSnapshot } from "./services/types"
 
 declare const Pasteboard: { setString(value: string | null): Promise<void> }
@@ -18,11 +19,15 @@ ensureAccountMigration()
 function summary(snapshot: UsageSnapshot | null): string {
   if (!snapshot) return "暂无数据，请刷新此账号"
   const window = pickFocusWindow(snapshot, "weekly")
+  const resets = resetCreditsSummary(snapshot.resetCreditsAvailable, snapshot.resetCreditExpirations)
+  const resetText = resets.available == null
+    ? "未提供"
+    : `${resets.available} 次${resets.nearestExpiration ? ` · 最近到期 ${formatResetDate(resets.nearestExpiration)}` : ""}`
   return [
     `套餐：${snapshot.planLabel || snapshot.planType || "未提供"}`,
     `${window?.label || "限额"}：已用 ${formatPercent(window?.usedPercent)} · 剩余 ${formatPercent(window?.remainingPercent)}`,
     `重置时间：${formatResetDate(window?.resetAt)}（${formatCountdown(window?.resetAt)}）`,
-    `重置次数：${snapshot.resetCreditsAvailable == null ? "未提供" : snapshot.resetCreditsAvailable + " 次"}`,
+    `重置次数：${resetText}`,
     `更新时间：${formatFetchedAt(snapshot.fetchedAt)}`,
   ].join("\n")
 }
@@ -39,6 +44,7 @@ function App() {
   const [copiedEmail, setCopiedEmail] = useState("")
   const [widgetSettings, setWidgetSettingsState] = useState(() => getEffectiveSettings(pendingInitial || getDefaultProfileId() || initial[0]?.id || ""))
   const selected = resolveProfile(selectedId)
+  const selectedIsMock = isMockProfile(selectedId)
   const authTarget = resolveProfile(authTargetId)
 
   function refreshRegistry(preferId?: string) {
@@ -91,7 +97,7 @@ function App() {
       <Button title="添加 Codex 账号" action={addAndAuthorize}/>
     </Section>
 
-    {selected ? <Section header={<Text>账号操作 · {selected.email || selected.name}</Text>} footer={<Text>{authTarget ? `此回调将保存到当前账号，授权成功后输入区自动收起。` : `默认账号用于参数为空的小组件。`}</Text>}>
+    {selected && !selectedIsMock ? <Section header={<Text>账号操作 · {selected.email || selected.name}</Text>} footer={<Text>{authTarget ? `此回调将保存到当前账号，授权成功后输入区自动收起。` : `默认账号用于参数为空的小组件。`}</Text>}>
       {status ? <Text>{status}</Text> : null}
 
       {authTarget ? <>
@@ -111,7 +117,7 @@ function App() {
       </>}
     </Section> : null}
 
-    {selected ? <Section header={<Text>账号管理 · {selected.email || selected.name}</Text>} footer={<Text>删除后会清除该账号的 OAuth 凭证、本机用量缓存和独立显示设置，此操作不可撤销。</Text>}>
+    {selected && !selectedIsMock ? <Section header={<Text>账号管理 · {selected.email || selected.name}</Text>} footer={<Text>删除后会清除该账号的 OAuth 凭证、本机用量缓存和独立显示设置，此操作不可撤销。</Text>}>
       {!deleteArmed ? <Button title="删除当前账号…" action={() => setDeleteArmed(true)}/> : <>
         <Text foregroundStyle="systemRed">确认删除当前账号 {selected.email || selected.name}？</Text>
         <Button title="确认删除当前账号" action={() => { const id = selected.id; clearUsageCache(id); clearProfileSettings(id); deleteAccount(id); refreshRegistry(); setStatus("当前账号已删除"); reloadWidgets() }}/>
@@ -119,13 +125,14 @@ function App() {
       </>}
     </Section> : null}
 
-    {selected ? <Section header={<Text>当前用量 · {selected.email || selected.name}</Text>} footer={<Text>点击顶部其他邮箱，可直接切换此处内容。</Text>}>
+    {selected ? <Section header={<Text>当前用量 · {selected.email || selected.name}</Text>} footer={<Text>{selectedIsMock ? "内置只读演示数据；刷新会重新生成滚动时间，不访问网络。" : "点击顶部其他邮箱，可直接切换此处内容。"}</Text>}>
       <Text>{usageText}</Text>
       <Button title="刷新当前账号" action={refreshSelected}/>
     </Section> : null}
 
     <Section header={<Text>主屏幕多账号小组件</Text>} footer={<Text>给每个小组件的“参数”填写一个账号邮箱；参数为空时显示默认账号。</Text>}>
-      {accounts.filter(a => a.email).map(account => <Button key={account.id} title={`${copiedEmail === account.email ? "✓ 已复制 " : "复制 "}${account.email}`} action={async () => { await Pasteboard.setString(account.email); setCopiedEmail(account.email || "") }}/>) }
+      {accounts.filter(a => a.email && !isMockProfile(a.id)).map(account => <Button key={account.id} title={`${copiedEmail === account.email ? "✓ 已复制 " : "复制 "}${account.email}`} action={async () => { await Pasteboard.setString(account.email); setCopiedEmail(account.email || "") }}/>) }
+      <Button title={`${copiedEmail === MOCK_PROFILE_EMAIL ? "✓ 已复制 " : "复制 "}Mock · Pro 20x 参数`} action={async () => { await Pasteboard.setString(MOCK_PROFILE_EMAIL); setCopiedEmail(MOCK_PROFILE_EMAIL) }}/>
       <Text font={12} foregroundStyle="secondary">长按主屏幕小组件 → 编辑小组件 → 参数 → 粘贴邮箱。</Text>
     </Section>
 

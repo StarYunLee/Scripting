@@ -21,7 +21,7 @@ https://raw.githubusercontent.com/StarYunLee/Scripting/main/Surge-Metrics.script
 
 ### Codex Usage
 
-OpenAI Codex 用量小组件，支持 OpenAI OAuth、多账号、账号级显示设置、5 小时/每周/每月额度，以及双额度概览和单额度详情布局。
+OpenAI Codex 用量小组件，支持 OpenAI OAuth、多账号、账号级显示设置、额度窗口、用量限额重置权益及最近到期时间，以及双额度概览和单额度详情布局。
 
 ![Codex Usage 小组件预览](./Codex%20Usage/assets/codex-usage-preview.png)
 

@@ -17,13 +17,12 @@ const DEFAULT_SETTINGS: WidgetSettings = {
 
 /** Medium 单额度详情布局基线。 */
 export const MEDIUM_LAYOUT: MediumWidgetLayout = {
-  left: 20, right: 20, topY: 10, topFont: 10,
+  left: 20, right: 20, topY: 10,
   chipFont: 12, chipHorizontal: 10, chipVertical: 6,
   titleY: 35, titleFont: 17, mainY: 56, mainFont: 40, suffixFont: 12,
   progressY: 110, progressHeight: 7, footerY: 122,
-  footerIcon: 10, footerLabelFont: 10, footerValueFont: 12, dividerHeight: 32,
-  planY: 9, planFont: 10, planHorizontal: 10, planVertical: 4,
-  resetCountFont: 10,
+  footerIcon: 10, footerLabelFont: 10, footerValueFont: 12,
+  planY: 9,
   watermarkSize: 135, watermarkRight: -8, watermarkBottom: -12,
 }
 

@@ -1,5 +1,6 @@
 import { getProfileAccountId, getProfileAccessToken, resolveProfile } from "./accounts"
 import { getSettings } from "./credentials"
+import { createMockUsageSnapshot, isMockProfile } from "./mock"
 import { refreshOAuthToken } from "./oauth"
 import type { LimitWindow, LimitWindowName, UsageResult, UsageSnapshot } from "./types"
 
@@ -11,6 +12,7 @@ declare const Storage: {
 
 const CACHE_KEY = "codex_usage_cache_v2"
 const USAGE_URL = "https://chatgpt.com/backend-api/wham/usage"
+const RESET_CREDITS_URL = "https://chatgpt.com/backend-api/wham/rate-limit-reset-credits"
 const MIN_LIVE_INTERVAL_MS = 3 * 60_000
 export function getReloadMinutes(): number { return getSettings().reloadMinutes }
 function asObject(v: unknown): Record<string, unknown> | null {
@@ -124,8 +126,14 @@ function planLabel(payload: Record<string, unknown>): string | null {
   if (raw === "pro" || raw === "prolite") return "Pro"
   return raw ? raw.replace(/(^|_)(\w)/g, (_, __, c) => c.toUpperCase()) : null
 }
-function resetCreditsInfo(payload: Record<string, unknown> | null): { count: number | null; container: "snake" | "camel" | "root" | "missing"; valueKey: "snake" | "camel" | "missing" } {
-  if (!payload) return { count: null, container: "missing", valueKey: "missing" }
+type ResetCreditsInfo = {
+  count: number | null
+  expirations: string[]
+  container: "snake" | "camel" | "root" | "missing"
+  valueKey: "snake" | "camel" | "missing"
+}
+function resetCreditsInfo(payload: Record<string, unknown> | null): ResetCreditsInfo {
+  if (!payload) return { count: null, expirations: [], container: "missing", valueKey: "missing" }
   const snake = asObject(payload.rate_limit_reset_credits)
   const camel = asObject(payload.rateLimitResetCredits)
   const container = snake || camel || payload
@@ -133,10 +141,36 @@ function resetCreditsInfo(payload: Record<string, unknown> | null): { count: num
   const snakeValue = container.available_count
   const camelValue = container.availableCount
   const value = toNumber(snakeValue ?? camelValue)
+  const collections = [container.credits, container.items, container.reset_credits, container.resetCredits]
+  const entries = collections.find(Array.isArray) as unknown[] | undefined
+  const expirations = (entries || [])
+    .map(item => {
+      const object = asObject(item)
+      const status = typeof object?.status === "string" ? object.status.toLowerCase() : "available"
+      if (status !== "available") return null
+      return epoch(object?.expires_at ?? object?.expiresAt ?? object?.expiration_at ?? object?.expirationAt).iso
+    })
+    .filter((item): item is string => Boolean(item))
+    .sort()
   return {
     count: value == null ? null : Math.max(0, Math.floor(value)),
+    expirations,
     container: containerName,
     valueKey: snakeValue != null ? "snake" : camelValue != null ? "camel" : "missing",
+  }
+}
+async function fetchResetCredits(token: string, accountId: string | null): Promise<ResetCreditsInfo | null> {
+  try {
+    const response = await fetch(RESET_CREDITS_URL, { method: "GET", headers: authHeaders(token, accountId), timeout: 12, debugLabel: "CodexResetCredits" })
+    if (!response.ok) {
+      debug("resets.http_error", { status: response.status })
+      return null
+    }
+    const payload = asObject(JSON.parse(await response.text()))
+    return payload ? resetCreditsInfo(payload) : null
+  } catch (error) {
+    debug("resets.error", { name: error instanceof Error ? error.name : "unknown" })
+    return null
   }
 }
 function authHeaders(token: string, accountId: string | null): Record<string, string> {
@@ -146,6 +180,7 @@ function authHeaders(token: string, accountId: string | null): Record<string, st
 }
 function cacheKey(profileId: string): string { return `${CACHE_KEY}_${profileId}` }
 function readCache(profileId?: string | null): UsageSnapshot | null {
+  if (isMockProfile(profileId)) return createMockUsageSnapshot()
   const profile = resolveProfile(profileId)
   if (!profile) return null
   try {
@@ -158,6 +193,7 @@ function writeCache(profileId: string, v: UsageSnapshot): void {
 }
 export const getCachedUsage = (profileId?: string | null) => readCache(profileId)
 export function clearUsageCache(profileId?: string | null): void {
+  if (isMockProfile(profileId)) return
   const profile = resolveProfile(profileId); if (!profile) return
   try { Storage.remove(cacheKey(profile.id)) } catch { /* ignore */ }
 }
@@ -179,6 +215,7 @@ function recoverRecentCache(profileId: string, force: boolean, reason: string): 
 }
 
 export async function fetchUsage(options?: { force?: boolean; profileId?: string | null }): Promise<UsageResult> {
+  if (isMockProfile(options?.profileId)) return { ok: true, snapshot: createMockUsageSnapshot() }
   const profile = resolveProfile(options?.profileId)
   if (!profile) return { ok: false, error: { code: "missing_token", message: "未找到指定账号" }, cache: null }
   const cache = readCache(profile.id)
@@ -227,9 +264,16 @@ export async function fetchUsage(options?: { force?: boolean; profileId?: string
       return { ok: false, error: { code: "invalid_json", message: "用量响应中没有可用额度窗口" }, cache: readCache(profile.id) || cache }
     }
     const rawPlanType = typeof payload.plan_type === "string" ? payload.plan_type : null
-    const resetCredits = resetCreditsInfo(payload)
-    const liveResetCredits = resetCredits.count
+    const embeddedResetCredits = resetCreditsInfo(payload)
+    const detailedResetCredits = await fetchResetCredits(token, accountId)
+    const liveResetCredits = detailedResetCredits?.count ?? embeddedResetCredits.count
+    const liveResetExpirations = detailedResetCredits != null
+      ? detailedResetCredits.expirations
+      : embeddedResetCredits.expirations
     const resetCreditsAvailable = liveResetCredits ?? cache?.resetCreditsAvailable ?? null
+    const resetCreditExpirations = detailedResetCredits != null || embeddedResetCredits.count != null
+      ? liveResetExpirations
+      : cache?.resetCreditExpirations ?? []
     const snapshot: UsageSnapshot = {
       windows,
       fiveHour: windows.find(w => w.name === "five_hour") || null,
@@ -238,6 +282,7 @@ export async function fetchUsage(options?: { force?: boolean; profileId?: string
       planType: rawPlanType,
       planLabel: planLabel(payload),
       resetCreditsAvailable,
+      resetCreditExpirations,
       fetchedAt: new Date().toISOString(),
       source: "live",
       raw: payload,
@@ -247,8 +292,8 @@ export async function fetchUsage(options?: { force?: boolean; profileId?: string
       plan: snapshot.planLabel || snapshot.planType || null,
       windows: windows.map(window => ({ name: window.name, usedPercent: window.usedPercent, resetAt: window.resetAt })),
       resetCreditsAvailable: snapshot.resetCreditsAvailable ?? null,
-      resetCreditsSource: liveResetCredits != null ? "live" : resetCreditsAvailable != null ? "cache" : "missing",
-      resetCreditsShape: { container: resetCredits.container, valueKey: resetCredits.valueKey },
+      resetCreditsSource: detailedResetCredits || embeddedResetCredits.count != null ? "live" : resetCreditsAvailable != null ? "cache" : "missing",
+      resetCreditsShape: { container: embeddedResetCredits.container, valueKey: embeddedResetCredits.valueKey, hasExpirations: resetCreditExpirations.length > 0 },
       fetchedAt: snapshot.fetchedAt,
     })
     return { ok: true, snapshot }

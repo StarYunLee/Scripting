@@ -34,6 +34,7 @@ export type UsageSnapshot = {
   planType: string | null
   planLabel: string | null
   resetCreditsAvailable: number | null
+  resetCreditExpirations: string[]
   fetchedAt: string
   source: "live" | "cache"
   raw: Record<string, unknown>
@@ -63,7 +64,6 @@ export type MediumWidgetLayout = {
   left: number
   right: number
   topY: number
-  topFont: number
   chipFont: number
   chipHorizontal: number
   chipVertical: number
@@ -78,12 +78,7 @@ export type MediumWidgetLayout = {
   footerIcon: number
   footerLabelFont: number
   footerValueFont: number
-  dividerHeight: number
   planY: number
-  planFont: number
-  planHorizontal: number
-  planVertical: number
-  resetCountFont: number
   watermarkSize: number
   watermarkRight: number
   watermarkBottom: number

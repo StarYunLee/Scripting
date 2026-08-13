@@ -1,7 +1,7 @@
 import { HStack, Image, Script, Spacer, Text, VStack, Widget, ZStack } from "scripting"
 import { MEDIUM_LAYOUT } from "../services/credentials"
 import { pickFocusWindow } from "../services/api"
-import { formatPercent, formatResetDate } from "../services/format"
+import { formatPercent, formatResetDate, resetCreditsSummary } from "../services/format"
 import { PlanBadge } from "./PlanBadge"
 import type { DisplayMode, LimitWindow, MediumWidgetLayout, UsageResult, UsageSnapshot } from "../services/types"
 
@@ -35,7 +35,8 @@ type Model = {
   suffix: string
   fetched: string
   planLabel: string
-  resetCredits: string
+  resetLabel: string
+  resetExpiration: string
   live: boolean
   detail: string
 }
@@ -44,13 +45,15 @@ function modelFor(result: UsageResult, mode: DisplayMode, focusName: Props["focu
   const focus = snapshot ? pickFocusWindow(snapshot, focusName) : null
   const used = focus?.usedPercent ?? 0
   const remaining = focus?.remainingPercent ?? (focus?.usedPercent == null ? null : 100 - focus.usedPercent)
+  const resets = resetCreditsSummary(snapshot?.resetCreditsAvailable, snapshot?.resetCreditExpirations)
   return {
     snapshot, focus, used,
     main: formatPercent(mode === "remaining" ? remaining : focus?.usedPercent),
     suffix: mode === "remaining" ? "剩余" : "已用",
     fetched: snapshot ? formatResetDate(snapshot.fetchedAt) : "—",
     planLabel: snapshot?.planLabel || snapshot?.planType || "—",
-    resetCredits: snapshot?.resetCreditsAvailable == null ? "—" : `${snapshot.resetCreditsAvailable} 次`,
+    resetLabel: resets.available == null ? "重置—" : `重置${resets.available}次`,
+    resetExpiration: formatResetDate(resets.nearestExpiration),
     live: result.ok,
     detail: result.ok ? "" : result.error.message,
   }
@@ -145,7 +148,7 @@ export function DetailWidgetView({ result, family, displayMode, focusWindow }: P
       <VStack spacing={5} alignment="leading" frame={{ maxWidth: "infinity", maxHeight: "infinity", alignment: "topLeading" }} padding={{ leading: 12, trailing: 12, top: 102 }}>
         <SmallInfoRow icon="clock" label="更新时间" value={model.fetched} width={barWidth}/>
         <SmallInfoRow icon="calendar" label="重置时间" value={formatResetDate(model.focus?.resetAt)} width={barWidth}/>
-        <SmallInfoRow icon="arrow.clockwise" label="重置次数" value={model.resetCredits} width={barWidth}/>
+        <SmallInfoRow icon="arrow.clockwise" label={model.resetLabel} value={model.resetExpiration} width={barWidth}/>
       </VStack>
 
       {!model.live && model.detail ? <HStack frame={{ maxWidth: "infinity", maxHeight: "infinity", alignment: "bottomLeading" }} padding={{ horizontal: 12, bottom: 2 }}><Text fontDesign="default" fontWidth="standard" font={7} foregroundStyle={C.warn} lineLimit={1}>{model.detail}</Text></HStack> : null}
@@ -163,7 +166,7 @@ export function DetailWidgetView({ result, family, displayMode, focusWindow }: P
 
       <HStack frame={{ maxWidth: "infinity", maxHeight: "infinity", alignment: "topTrailing" }} padding={{ trailing: layout.right, top: layout.topY }}>
         <HStack padding={{ horizontal: layout.chipHorizontal, vertical: layout.chipVertical }} background={C.chip} clipShape={{ type: "capsule" }}>
-          <Text fontDesign="default" fontWidth="standard" font={layout.chipFont} fontWeight="semibold" foregroundStyle={C.chipText}>剩余 {formatPercent(model.focus?.remainingPercent)}</Text>
+          <Text fontDesign="default" fontWidth="standard" font={layout.chipFont} fontWeight="semibold" foregroundStyle={C.chipText}>{displayMode === "remaining" ? `已用 ${formatPercent(model.focus?.usedPercent)}` : `剩余 ${formatPercent(model.focus?.remainingPercent)}`}</Text>
         </HStack>
       </HStack>
 
@@ -184,7 +187,7 @@ export function DetailWidgetView({ result, family, displayMode, focusWindow }: P
 
       <HStack spacing={metaGap} frame={{ maxWidth: "infinity", maxHeight: "infinity", alignment: "topLeading" }} padding={{ leading: layout.left, trailing: layout.right, top: balancedFooterY }}>
         <MetaColumn icon="clock" label="更新时间" value={model.fetched} width={metaColumnWidth} layout={layout} alignment="leading"/>
-        <MetaColumn icon="arrow.clockwise" label="重置次数" value={model.resetCredits} width={metaColumnWidth} layout={layout} alignment="center"/>
+        <MetaColumn icon="arrow.clockwise" label={model.resetLabel} value={model.resetExpiration} width={metaColumnWidth} layout={layout} alignment="center"/>
         <MetaColumn icon="calendar" label="重置时间" value={formatResetDate(model.focus?.resetAt)} width={metaColumnWidth} layout={layout} alignment="trailing"/>
       </HStack>
 

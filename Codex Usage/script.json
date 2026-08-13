@@ -6,22 +6,22 @@
   "permissions": null,
   "runInApp": true,
   "contributors": [],
-  "version": "1.4.1",
+  "version": "1.5.0",
   "intentInputTypes": [],
   "localizedNames": {
     "zh": "Codex 用量",
     "en": "Codex Usage"
   },
-  "description": "Codex usage widget with OpenAI Authorization Code OAuth + PKCE, multi-account support, five-hour/weekly/monthly limits, and detail/overview layouts.",
+  "description": "Codex usage widget with OpenAI OAuth, multi-account support, rate-limit reset credits with expiry, and detail/overview layouts.",
   "remoteResource": null,
   "author": {
     "name": "StarYunLee",
     "email": null,
-    "homepage": null
+    "homepage": "https://github.com/StarYunLee"
   },
   "localizedDescriptions": {
-    "zh": "Codex 用量小组件。支持 OpenAI OAuth、多账号、5 小时/每周/每月额度，以及单额度详情和双额度概览布局。",
-    "en": "Codex usage widget with OpenAI OAuth, multi-account support, five-hour/weekly/monthly limits, and detail/overview layouts."
+    "zh": "Codex 用量小组件。支持 OpenAI OAuth、多账号、额度窗口、重置权益及最近到期时间，以及单额度详情和双额度概览布局。",
+    "en": "Codex usage widget with OpenAI OAuth, multi-account support, rate-limit reset credits and expiry, plus detail/overview layouts."
   },
   "iconImage": null
 }

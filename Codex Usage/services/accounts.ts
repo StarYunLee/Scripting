@@ -1,4 +1,5 @@
 import type { AccountRegistry, CodexAccountProfile } from "./types"
+import { isMockProfile, MOCK_PROFILE } from "./mock"
 
 const REGISTRY_KEY = "codex_account_registry_v1"
 const LEGACY = {
@@ -79,12 +80,13 @@ export function ensureAccountMigration(): AccountRegistry {
   return writeRegistry(registry)
 }
 export function getAccountRegistry(): AccountRegistry { return ensureAccountMigration() }
-export function listAccounts(): CodexAccountProfile[] { return getAccountRegistry().accounts }
+export function listAccounts(): CodexAccountProfile[] { return [...getAccountRegistry().accounts, MOCK_PROFILE] }
 export function getDefaultProfileId(): string | null {
   const r = getAccountRegistry()
   return r.defaultAccountId || r.accounts[0]?.id || null
 }
 export function resolveProfile(profileId?: string | null): CodexAccountProfile | null {
+  if (isMockProfile(profileId)) return MOCK_PROFILE
   const r = getAccountRegistry()
   if (profileId) {
     const query = profileId.trim().toLowerCase()
@@ -103,10 +105,12 @@ export function createAccount(name = ""): CodexAccountProfile {
   return profile
 }
 export function setDefaultAccount(profileId: string): void {
+  if (isMockProfile(profileId)) return
   const r = getAccountRegistry(); if (!r.accounts.some(a => a.id === profileId)) return
   writeRegistry({ ...r, defaultAccountId: profileId })
 }
 export function updateProfileIdentity(profileId: string, identity: { accountId?: string | null; email?: string | null }): void {
+  if (isMockProfile(profileId)) return
   const r = getAccountRegistry()
   writeRegistry({ ...r, accounts: r.accounts.map(a => {
     if (a.id !== profileId) return a
@@ -115,15 +119,17 @@ export function updateProfileIdentity(profileId: string, identity: { accountId?:
   }) })
 }
 export function deleteAccount(profileId: string): void {
+  if (isMockProfile(profileId)) return
   const r = getAccountRegistry(); const accounts = r.accounts.filter(a => a.id !== profileId)
   for (const field of ["access_token", "refresh_token", "id_token", "expires_at", "account_id"]) setSecretRaw(secretKey(profileId, field), null)
   writeRegistry({ ...r, accounts, defaultAccountId: r.defaultAccountId === profileId ? accounts[0]?.id || null : r.defaultAccountId })
 }
-export function getProfileAccessToken(profileId?: string | null): string | null { const p = resolveProfile(profileId); return p ? getSecretRaw(secretKey(p.id, "access_token")) : null }
-export function getProfileRefreshToken(profileId?: string | null): string | null { const p = resolveProfile(profileId); return p ? getSecretRaw(secretKey(p.id, "refresh_token")) : null }
-export function getProfileAccountId(profileId?: string | null): string | null { const p = resolveProfile(profileId); return p ? getSecretRaw(secretKey(p.id, "account_id")) || p.accountId : null }
-export function getProfileTokenExpiresAt(profileId?: string | null): number | null { const p = resolveProfile(profileId); const raw = p ? getSecretRaw(secretKey(p.id, "expires_at")) : null; const n = raw ? Number(raw) : NaN; return Number.isFinite(n) ? n : null }
+export function getProfileAccessToken(profileId?: string | null): string | null { if (isMockProfile(profileId)) return null; const p = resolveProfile(profileId); return p ? getSecretRaw(secretKey(p.id, "access_token")) : null }
+export function getProfileRefreshToken(profileId?: string | null): string | null { if (isMockProfile(profileId)) return null; const p = resolveProfile(profileId); return p ? getSecretRaw(secretKey(p.id, "refresh_token")) : null }
+export function getProfileAccountId(profileId?: string | null): string | null { if (isMockProfile(profileId)) return null; const p = resolveProfile(profileId); return p ? getSecretRaw(secretKey(p.id, "account_id")) || p.accountId : null }
+export function getProfileTokenExpiresAt(profileId?: string | null): number | null { if (isMockProfile(profileId)) return null; const p = resolveProfile(profileId); const raw = p ? getSecretRaw(secretKey(p.id, "expires_at")) : null; const n = raw ? Number(raw) : NaN; return Number.isFinite(n) ? n : null }
 export function saveProfileCredentials(profileId: string, value: { accessToken: string; refreshToken?: string | null; idToken?: string | null; expiresAt?: number | null; accountId?: string | null; email?: string | null }): boolean {
+  if (isMockProfile(profileId)) return false
   const p = resolveProfile(profileId); if (!p) return false
   const ok = setSecretRaw(secretKey(p.id, "access_token"), value.accessToken)
   if (value.refreshToken) setSecretRaw(secretKey(p.id, "refresh_token"), value.refreshToken)
