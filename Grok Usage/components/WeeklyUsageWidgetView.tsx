@@ -1,5 +1,5 @@
 import { HStack, Image, Script, Spacer, Text, VStack, Widget, ZStack } from "scripting"
-import { formatPercent, formatResetDate } from "../services/format"
+import { formatPercent, formatResetDate, resetCreditsSummary } from "../services/format"
 import { PlanBadge } from "./PlanBadge"
 import type { DisplayMode, LimitWindow, MediumWidgetLayout, UsageResult, UsageSnapshot } from "../services/types"
 
@@ -7,21 +7,18 @@ type Props = {
   result: UsageResult
   family: string
   displayMode: DisplayMode
-  focusWindow: "weekly" | "monthly"
 }
 const dynamic = (light: string, dark: string) => ({ light, dark })
 const C = {
   bg: "systemBackground",
   primary: "label",
   secondary: "secondaryLabel",
-  tertiary: "tertiaryLabel",
   // 轨道使用独立中性灰：比 Logo 深、比主进度浅，穿过水印时仍能辨认。
   track: dynamic("#C7C8CC", "#55565C"),
   trackBorder: dynamic("rgba(0,0,0,0.07)", "rgba(255,255,255,0.10)"),
   fill: "label",
   chip: "label",
   chipText: "systemBackground",
-  divider: "separator",
   warn: "systemOrange",
   watermark: dynamic("rgba(35,35,38,0.09)", "rgba(245,245,247,0.075)"),
 }
@@ -32,23 +29,26 @@ type Model = {
   main: string
   suffix: string
   fetched: string
-  subscription: string
   planLabel: string
-    live: boolean
+  resetLabel: string
+  resetExpiration: string
+  live: boolean
   detail: string
 }
-function modelFor(result: UsageResult, mode: DisplayMode, focusName: Props["focusWindow"]): Model {
+function modelFor(result: UsageResult, mode: DisplayMode): Model {
   const snapshot = result.ok ? result.snapshot : result.cache || null
-  const focus = snapshot?.windows.find(window => window.name === focusName) || null
+  const focus = snapshot?.weekly || snapshot?.windows.find(window => window.name === "weekly") || null
   const used = focus?.usedPercent ?? 0
   const remaining = focus?.remainingPercent ?? (focus?.usedPercent == null ? null : 100 - focus.usedPercent)
+  const resets = resetCreditsSummary(snapshot?.resetCreditsAvailable, snapshot?.resetCreditExpirations)
   return {
     snapshot, focus, used,
     main: formatPercent(mode === "remaining" ? remaining : focus?.usedPercent),
     suffix: mode === "remaining" ? "剩余" : "已用",
     fetched: snapshot ? formatResetDate(snapshot.fetchedAt) : "—",
-    subscription: "未提供",
     planLabel: snapshot?.planLabel || snapshot?.planType || "—",
+    resetLabel: resets.available == null ? "重置 —" : `重置 ${resets.available} 次`,
+    resetExpiration: formatResetDate(resets.nearestExpiration),
     live: result.ok,
     detail: result.ok ? "" : result.error.message,
   }
@@ -96,16 +96,15 @@ function MetaColumn({ icon, label, value, width, layout, alignment }: { icon: st
     </HStack>
   </VStack>
 }
-function focusTitle(focus: Props["focusWindow"], compact = false): string {
-  if (focus === "monthly") return compact ? "月额度" : "每月额度"
-  return compact ? "周额度" : "每周额度"
+function focusTitle(): string {
+  return "每周额度"
 }
 
-export function DetailWidgetView({ result, family, displayMode, focusWindow }: Props) {
-  const model = modelFor(result, displayMode, focusWindow)
+export function WeeklyUsageWidgetView({ result, family, displayMode }: Props) {
+  const model = modelFor(result, displayMode)
   const small = isSmall(family)
   const pad = small ? 13 : 16
-  const layout: MediumWidgetLayout = { left: 20, right: 20, topY: 10, topFont: 10, chipFont: 12, chipHorizontal: 10, chipVertical: 6, titleY: 35, titleFont: 17, mainY: 56, mainFont: 40, suffixFont: 12, progressY: 110, progressHeight: 7, footerY: 124, footerIcon: 10, footerLabelFont: 10, footerValueFont: 12, dividerHeight: 32, planY: 9, planFont: 10, planHorizontal: 10, planVertical: 4, subscriptionBadgeFont: 9, resetCountFont: 10, watermarkSize: 140, watermarkRight: -8, watermarkBottom: -12 }
+  const layout: MediumWidgetLayout = { left: 20, right: 20, topY: 10, chipFont: 12, chipHorizontal: 10, chipVertical: 6, titleY: 35, titleFont: 17, mainY: 56, mainFont: 40, suffixFont: 12, progressY: 110, progressHeight: 7, footerY: 124, footerIcon: 10, footerLabelFont: 10, footerValueFont: 12, planY: 9, planVertical: 4, watermarkSize: 140, watermarkRight: -8, watermarkBottom: -12 }
   const barWidth = Math.max(90, displayWidth(family) - pad * 2)
   const mediumContentWidth = Math.max(180, displayWidth(family) - layout.left - layout.right)
   const metaGap = 8
@@ -118,7 +117,7 @@ export function DetailWidgetView({ result, family, displayMode, focusWindow }: P
     </HStack>
     <ZStack frame={{ maxWidth: "infinity", maxHeight: "infinity" }}>
       <HStack alignment="center" frame={{ maxWidth: "infinity", maxHeight: "infinity", alignment: "topLeading" }} padding={{ leading: 12, trailing: 12, top: 19 }}>
-        <Text fontDesign="default" fontWidth="standard" font={16} fontWeight="bold" foregroundStyle={C.primary}>{focusTitle(focusWindow, true)}</Text>
+        <Text fontDesign="default" fontWidth="standard" font={16} fontWeight="bold" foregroundStyle={C.primary}>{focusTitle()}</Text>
         <Spacer/>
         <PlanBadge label={model.planLabel} small/>
       </HStack>
@@ -139,9 +138,10 @@ export function DetailWidgetView({ result, family, displayMode, focusWindow }: P
         <Progress value={model.used} width={barWidth} height={7}/>
       </HStack>
 
-      <VStack spacing={5} alignment="leading" frame={{ maxWidth: "infinity", maxHeight: "infinity", alignment: "topLeading" }} padding={{ leading: 12, trailing: 12, top: 102 }}>
+      <VStack spacing={3} alignment="leading" frame={{ maxWidth: "infinity", maxHeight: "infinity", alignment: "topLeading" }} padding={{ leading: 12, trailing: 12, top: 100 }}>
         <SmallInfoRow icon="clock" label="更新时间" value={model.fetched} width={barWidth}/>
         <SmallInfoRow icon="calendar" label="重置时间" value={formatResetDate(model.focus?.resetAt)} width={barWidth}/>
+        <SmallInfoRow icon="arrow.clockwise" label={model.resetLabel} value={model.resetExpiration} width={barWidth}/>
 
       </VStack>
 
@@ -156,19 +156,16 @@ export function DetailWidgetView({ result, family, displayMode, focusWindow }: P
     <ZStack frame={{ maxWidth: "infinity", maxHeight: "infinity" }}>
       <HStack spacing={6} frame={{ maxWidth: "infinity", maxHeight: "infinity", alignment: "topLeading" }} padding={{ leading: layout.left, top: layout.planY }}>
         <PlanBadge label={model.planLabel}/>
-        {model.subscription !== "未提供" ? <HStack padding={{ horizontal: 8, vertical: layout.planVertical }} background={dynamic("#ECFFF7", "#163D34")} border={{ color: dynamic("#9CEBCD", "#347A68"), width: 1 }} clipShape={{ type: "capsule" }}>
-          <Text fontDesign="default" fontWidth="standard" font={layout.subscriptionBadgeFont} fontWeight="semibold" foregroundStyle={dynamic("#087A5B", "#8EE3C8")}>{model.subscription}</Text>
-        </HStack> : null}
       </HStack>
 
       <HStack frame={{ maxWidth: "infinity", maxHeight: "infinity", alignment: "topTrailing" }} padding={{ trailing: layout.right, top: layout.topY }}>
         <HStack padding={{ horizontal: layout.chipHorizontal, vertical: layout.chipVertical }} background={C.chip} clipShape={{ type: "capsule" }}>
-          <Text fontDesign="default" fontWidth="standard" font={layout.chipFont} fontWeight="semibold" foregroundStyle={C.chipText}>剩余 {formatPercent(model.focus?.remainingPercent)}</Text>
+          <Text fontDesign="default" fontWidth="standard" font={layout.chipFont} fontWeight="semibold" foregroundStyle={C.chipText}>{displayMode === "remaining" ? `已用 ${formatPercent(model.focus?.usedPercent)}` : `剩余 ${formatPercent(model.focus?.remainingPercent)}`}</Text>
         </HStack>
       </HStack>
 
       <HStack frame={{ maxWidth: "infinity", maxHeight: "infinity", alignment: "topLeading" }} padding={{ leading: layout.left, trailing: layout.right, top: layout.titleY }}>
-        <Text fontDesign="default" fontWidth="standard" font={layout.titleFont} fontWeight="bold" foregroundStyle={C.primary}>{focusTitle(focusWindow)}</Text>
+        <Text fontDesign="default" fontWidth="standard" font={layout.titleFont} fontWeight="bold" foregroundStyle={C.primary}>{focusTitle()}</Text>
         <Spacer/>
       </HStack>
 
@@ -184,7 +181,7 @@ export function DetailWidgetView({ result, family, displayMode, focusWindow }: P
 
       <HStack spacing={metaGap} frame={{ maxWidth: "infinity", maxHeight: "infinity", alignment: "topLeading" }} padding={{ leading: layout.left, trailing: layout.right, top: balancedFooterY }}>
         <MetaColumn icon="clock" label="更新时间" value={model.fetched} width={metaColumnWidth} layout={layout} alignment="leading"/>
-        <MetaColumn icon="chart.bar.fill" label="额度" value={model.focus?.usedValue == null || model.focus.limitValue == null ? "—" : `${Math.round(model.focus.usedValue)} / ${Math.round(model.focus.limitValue)}`} width={metaColumnWidth} layout={layout} alignment="center"/>
+        <MetaColumn icon="arrow.clockwise" label={model.resetLabel} value={model.resetExpiration} width={metaColumnWidth} layout={layout} alignment="center"/>
         <MetaColumn icon="calendar" label="重置时间" value={formatResetDate(model.focus?.resetAt)} width={metaColumnWidth} layout={layout} alignment="trailing"/>
       </HStack>
 

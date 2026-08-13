@@ -22,23 +22,19 @@ export function formatFetchedAt(iso: string | null | undefined): string {
   })
 }
 
-export function formatCountdown(resetAtIso: string | null | undefined): string {
-  if (!resetAtIso) return "—"
-  const target = new Date(resetAtIso).getTime()
-  if (Number.isNaN(target)) return "—"
-
-  let remain = Math.max(0, target - Date.now())
-  const days = Math.floor(remain / 86_400_000)
-  remain -= days * 86_400_000
-  const hours = Math.floor(remain / 3_600_000)
-  remain -= hours * 3_600_000
-  const minutes = Math.floor(remain / 60_000)
-
-  const hh = String(hours).padStart(2, "0")
-  const mm = String(minutes).padStart(2, "0")
-
-  if (days > 0) return `${days}d ${hh}:${mm}`
-  return `${hh}:${mm}`
+export function resetCreditsSummary(
+  available: number | null | undefined,
+  expirations: string[] | null | undefined,
+): { available: number | null; nearestExpiration: string | null } {
+  const count = available == null || !Number.isFinite(available) ? null : Math.max(0, Math.floor(available))
+  const parsed = (expirations || [])
+    .map(value => ({ value, ms: new Date(value).getTime() }))
+    .filter(item => Number.isFinite(item.ms))
+    .sort((a, b) => a.ms - b.ms)
+  const future = parsed.filter(item => item.ms > Date.now())
+  // 接口逐条返回权益；当缓存中的每条到期时间都已知时，剔除已过期项。
+  const effective = count != null && parsed.length >= count ? Math.min(count, future.length) : count
+  return { available: effective, nearestExpiration: future[0]?.value || null }
 }
 
 export function formatResetDate(resetAtIso: string | null | undefined): string {

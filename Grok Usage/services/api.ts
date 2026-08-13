@@ -11,6 +11,7 @@ declare const Storage: {
 
 const CACHE_KEY = "grok_usage_cache_v3"
 const BILLING_URL = "https://cli-chat-proxy.grok.com/v1/billing"
+const REMAINING_RESETS_URL = "https://grok.com/prod_mc_billing.ConsumerUiSvc/GetRemainingResets"
 const MIN_LIVE_INTERVAL_MS = 3 * 60_000
 
 export function getReloadMinutes(): number { return getSettings().reloadMinutes }
@@ -32,7 +33,7 @@ function billingHeaders(token: string, userId: string | null): Record<string, st
   const headers: Record<string, string> = {
     Authorization: `Bearer ${token}`,
     "x-xai-token-auth": "xai-grok-cli",
-    "x-grok-client-version": "grok-usage-scripting/1.4.1",
+    "x-grok-client-version": "grok-usage-scripting/1.5.0",
     Accept: "application/json",
   }
   if (userId) headers["x-userid"] = userId
@@ -43,6 +44,75 @@ async function requestBilling(token: string, userId: string | null, credits = fa
     method: "GET", headers: billingHeaders(token, userId), timeout: 20,
     debugLabel: credits ? "GrokWeeklyUsage" : "GrokMonthlyUsage",
   })
+}
+type ResetCreditsSummary = { available: number; expirations: string[] }
+function readVarint(data: Uint8Array, start: number): [number, number] {
+  let value = 0, shift = 0, index = start
+  while (index < data.length && shift <= 49) {
+    const byte = data[index++]; value += (byte & 0x7f) * 2 ** shift
+    if ((byte & 0x80) === 0) return [value, index]
+    shift += 7
+  }
+  throw new Error("重置权益响应不完整")
+}
+function protobufFields(data: Uint8Array): Array<{ number: number; wire: number; value: number | Uint8Array }> {
+  const out: Array<{ number: number; wire: number; value: number | Uint8Array }> = []
+  let index = 0
+  while (index < data.length) {
+    const [key, next] = readVarint(data, index); index = next
+    const number = Math.floor(key / 8), wire = key % 8
+    if (wire === 0) {
+      const [value, end] = readVarint(data, index); index = end; out.push({ number, wire, value })
+    } else if (wire === 2) {
+      const [length, bodyStart] = readVarint(data, index); const end = bodyStart + length
+      if (end > data.length) throw new Error("重置权益字段不完整")
+      out.push({ number, wire, value: data.subarray(bodyStart, end) }); index = end
+    } else if (wire === 1) index += 8
+    else if (wire === 5) index += 4
+    else throw new Error(`不支持的重置权益 wire type ${wire}`)
+  }
+  return out
+}
+function parseTimestamp(data: Uint8Array): string | null {
+  const seconds = protobufFields(data).find(field => field.number === 1 && field.wire === 0)?.value
+  if (typeof seconds !== "number" || seconds <= 0) return null
+  const ms = seconds * 1000
+  return Number.isFinite(ms) ? new Date(ms).toISOString() : null
+}
+function parseRemainingResetsFrame(bytes: Uint8Array): ResetCreditsSummary {
+  if (bytes.length < 5) throw new Error("重置权益 gRPC 帧不完整")
+  if (bytes[0] !== 0) throw new Error("暂不支持压缩的重置权益响应")
+  const messageLength = bytes[1] * 2 ** 24 + bytes[2] * 2 ** 16 + bytes[3] * 2 ** 8 + bytes[4]
+  if (bytes.length < 5 + messageLength) throw new Error("重置权益 gRPC 消息不完整")
+  const message = bytes.subarray(5, 5 + messageLength)
+  const entries = protobufFields(message).filter(field => field.number === 10 && field.wire === 2 && field.value instanceof Uint8Array)
+  const expirations: string[] = []
+  for (const entry of entries) {
+    // field 10 是敏感兑换 Token：只按存在性跳过，永不转换、缓存或记录。
+    const expiresField = protobufFields(entry.value as Uint8Array).find(field => field.number === 30 && field.wire === 2)?.value
+    const expiresAt = expiresField instanceof Uint8Array ? parseTimestamp(expiresField) : null
+    if (expiresAt) expirations.push(expiresAt)
+  }
+  return { available: entries.length, expirations: expirations.sort() }
+}
+async function requestRemainingResets(token: string, userId: string | null): Promise<ResetCreditsSummary> {
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${token}`,
+    "x-xai-token-auth": "xai-grok-cli",
+    "x-grok-client-version": "grok-usage-scripting/1.5.0",
+    "Content-Type": "application/grpc+proto",
+    Accept: "application/grpc",
+    TE: "trailers",
+  }
+  if (userId) headers["x-userid"] = userId
+  const response = await fetch(REMAINING_RESETS_URL, {
+    method: "POST", headers, body: new Uint8Array(5).buffer, timeout: 20,
+    debugLabel: "GrokRemainingResets",
+  })
+  if (!response.ok) throw new Error(`重置权益请求失败 HTTP ${response.status}`)
+  const bytes = await response.bytes()
+  try { return parseRemainingResetsFrame(bytes) }
+  finally { bytes.fill(0) }
 }
 function parseMonthly(payload: Record<string, unknown>): LimitWindow {
   const config = asObject(payload.config)
@@ -76,12 +146,15 @@ function parseWeekly(payload: Record<string, unknown>): LimitWindow | null {
   const period = asObject(config.currentPeriod)
   const periodType = period?.type
   if (periodType !== "USAGE_PERIOD_TYPE_WEEKLY") { debug("weekly.error", { reason: "period_not_weekly" }); return null }
-  const resetRaw = config.billingPeriodEnd
+  const resetRaw = period?.end ?? config.billingPeriodEnd
   const reset = isoDate(resetRaw)
   const productUsage = Array.isArray(config.productUsage) ? config.productUsage : []
   const grokBuildUsage = productUsage
     .map(item => asObject(item))
-    .find(item => item?.product === "GrokBuild")
+    .find(item => {
+      const product = typeof item?.product === "string" ? item.product.toLowerCase().replace(/[^a-z0-9]/g, "") : ""
+      return product === "grokbuild" || product === "productgrokbuild" || product === "grokcode"
+    })
   const productUsagePercent = toNumber(grokBuildUsage?.usagePercent)
   const creditUsagePercent = toNumber(config.creditUsagePercent)
   const usedNumber = productUsagePercent ?? creditUsagePercent
@@ -110,10 +183,6 @@ function readCache(profileId?: string | null): UsageSnapshot | null {
 function writeCache(profileId: string, value: UsageSnapshot): void { try { Storage.set(cacheKey(profileId), { ...value, source: "cache", raw: {} }) } catch { /* ignore */ } }
 export const getCachedUsage = (profileId?: string | null) => readCache(profileId)
 export function clearUsageCache(profileId?: string | null): void { const p = resolveProfile(profileId); if (p) try { Storage.remove(cacheKey(p.id)) } catch { /* ignore */ } }
-export function pickFocusWindow(snapshot: UsageSnapshot, focus: "weekly" | "five_hour" | "monthly" | "auto" = "auto"): LimitWindow | null {
-  if (focus !== "auto") return snapshot.windows.find(w => w.name === focus) || snapshot.windows[0] || null
-  return snapshot.weekly || snapshot.monthly || snapshot.windows[0] || null
-}
 function recent(cache: UsageSnapshot | null): boolean {
   if (!cache?.fetchedAt) return false
   const fetchedAt = new Date(cache.fetchedAt).getTime()
@@ -142,71 +211,83 @@ export async function fetchUsage(options?: { force?: boolean; profileId?: string
   if (!token) token = getProfileAccessToken(profile.id)
   if (!token) return { ok: false, error: { code: "missing_token", message: `账号“${profile.name}”尚未授权` }, cache }
   try {
-    let monthlyResponse = await requestBilling(token, userId)
-    if (monthlyResponse.status === 401) {
+    // 每周 Credits 是唯一核心数据源；旧月度 Billing 与重置权益均为可选辅助请求。
+    const startMonthlyCompat = (accessToken: string) => requestBilling(accessToken, userId)
+      .then(async response => {
+        if (!response.ok) throw new Error(`旧月度兼容请求失败 HTTP ${response.status}`)
+        const payload = asObject(JSON.parse(await response.text()))
+        return payload ? parseMonthly(payload) : null
+      })
+      .catch(error => {
+        debug("monthly.compat_error", { message: error instanceof Error ? error.message : String(error) })
+        return null
+      })
+    const startResets = (accessToken: string) => requestRemainingResets(accessToken, userId)
+      .then(summary => ({ summary, error: null as unknown }))
+      .catch(error => ({ summary: null, error }))
+    let monthlyPromise = startMonthlyCompat(token)
+    let resetPromise = startResets(token)
+
+    let weeklyResponse = await requestBilling(token, userId, true)
+    if (weeklyResponse.status === 401) {
       const refreshedToken = await refreshOAuthToken(profile.id, true)
-      debug("auth.retry", { status: 401, refreshed: Boolean(refreshedToken) })
+      debug("auth.retry", { endpoint: "weekly", status: 401, refreshed: Boolean(refreshedToken) })
       if (refreshedToken) {
         token = refreshedToken
-        monthlyResponse = await requestBilling(token, userId)
+        // 辅助请求也必须使用新 Token，避免旧 Token 的 401 结果覆盖有效缓存。
+        monthlyPromise = startMonthlyCompat(token)
+        resetPromise = startResets(token)
+        weeklyResponse = await requestBilling(token, userId, true)
       }
     }
-    const monthlyText = await monthlyResponse.text()
-    let monthlyPayload: Record<string, unknown> | null = null
-    try { monthlyPayload = asObject(JSON.parse(monthlyText)) } catch { /* handled below */ }
-    if (!monthlyResponse.ok) {
-      const unauthorized = monthlyResponse.status === 401 || monthlyResponse.status === 403
-      debug("http.error", { endpoint: "monthly", status: monthlyResponse.status, unauthorized })
-      const recovered = recoverRecentCache(profile.id, Boolean(options?.force), `monthly_http_${monthlyResponse.status}`)
+    if (!weeklyResponse.ok) {
+      const unauthorized = weeklyResponse.status === 401 || weeklyResponse.status === 403
+      debug("http.error", { endpoint: "weekly", status: weeklyResponse.status, unauthorized })
+      const recovered = recoverRecentCache(profile.id, Boolean(options?.force), `weekly_http_${weeklyResponse.status}`)
       if (recovered) return recovered
-      return { ok: false, error: { code: unauthorized ? "unauthorized" : "http_error", message: unauthorized ? "Grok Build 授权无效或当前账号没有订阅额度权限" : `Grok Build 额度请求失败 HTTP ${monthlyResponse.status}` }, cache: readCache(profile.id) || cache }
+      return { ok: false, error: { code: unauthorized ? "unauthorized" : "http_error", message: unauthorized ? "Grok 授权无效或当前账号没有用量权限" : `Grok 每周额度请求失败 HTTP ${weeklyResponse.status}` }, cache: readCache(profile.id) || cache }
     }
-    if (!monthlyPayload) {
-      const recovered = recoverRecentCache(profile.id, Boolean(options?.force), "monthly_invalid_json")
-      if (recovered) return recovered
-      return { ok: false, error: { code: "invalid_json", message: "月度额度响应不是合法 JSON" }, cache: readCache(profile.id) || cache }
-    }
-    const monthly = parseMonthly(monthlyPayload)
-
     let weekly: LimitWindow | null = null
-    let weeklySucceeded = false
-    let weeklySource: "live" | "cache" | "missing" = "missing"
-    try {
-      const weeklyResponse = await requestBilling(token, userId, true)
-      const weeklyText = await weeklyResponse.text()
-      if (weeklyResponse.ok) {
-        weekly = parseWeekly(asObject(JSON.parse(weeklyText)) || {})
-        weeklySucceeded = Boolean(weekly)
-        if (weeklySucceeded) weeklySource = "live"
-      } else {
-        debug("http.error", { endpoint: "weekly", status: weeklyResponse.status, unauthorized: weeklyResponse.status === 401 || weeklyResponse.status === 403 })
-      }
-    } catch (e) {
-      debug("weekly.error", { reason: "request_or_parse_failed", message: e instanceof Error ? e.message : String(e) })
+    try { weekly = parseWeekly(asObject(JSON.parse(await weeklyResponse.text())) || {}) } catch { /* handled below */ }
+    if (!weekly) {
+      debug("weekly.error", { reason: "invalid_or_missing_fields" })
+      const recovered = recoverRecentCache(profile.id, Boolean(options?.force), "weekly_invalid_payload")
+      if (recovered) return recovered
+      return { ok: false, error: { code: "invalid_json", message: "每周额度响应字段不完整" }, cache: readCache(profile.id) || cache }
     }
-    if (!weeklySucceeded) {
-      const cachedWeekly = cache?.weekly || cache?.windows.find(window => window.name === "weekly") || null
-      if (cachedWeekly) {
-        weekly = cachedWeekly
-        weeklySource = "cache"
-        debug("weekly.cache", { resetAt: cachedWeekly.resetAt, usedPercent: cachedWeekly.usedPercent })
-      }
+    const weeklySource = "live" as const
+
+    const resetResult = await resetPromise
+    const liveResetCredits = resetResult.summary
+    const resetCreditsAvailable = liveResetCredits?.available ?? cache?.resetCreditsAvailable ?? null
+    const resetCreditExpirations = liveResetCredits?.expirations ?? cache?.resetCreditExpirations ?? []
+    if (!liveResetCredits) {
+      debug("resets.error", {
+        message: resetResult.error instanceof Error ? resetResult.error.message : String(resetResult.error),
+        hasCache: cache?.resetCreditsAvailable != null,
+      })
     }
-    const windows = weekly ? [weekly, monthly] : [monthly]
-    const plan = planFromMonthly(monthly)
+    const monthly = await monthlyPromise
+    const windows = [weekly]
+    const cachedPlan = cache?.planLabel || cache?.planType || null
+    const plan = monthly ? planFromMonthly(monthly) : cachedPlan
     const snapshot: UsageSnapshot = {
       windows, fiveHour: null, weekly, monthly,
       planType: plan, planLabel: plan,
       subscriptionExpiresAt: null,
+      resetCreditsAvailable,
+      resetCreditExpirations,
       fetchedAt: new Date().toISOString(), source: "live", raw: {},
     }
     writeCache(profile.id, snapshot)
     debug("fetch.success", {
       plan,
       weeklySource,
-      weeklyPercent: weekly?.usedPercent ?? null,
-      monthlyPercent: monthly.usedPercent,
-      monthlyCredits: { used: monthly.usedValue ?? null, limit: monthly.limitValue ?? null },
+      weeklyPercent: weekly.usedPercent,
+      monthlyCompat: monthly ? { used: monthly.usedValue ?? null, limit: monthly.limitValue ?? null } : null,
+      resetCreditsAvailable,
+      resetCreditsSource: liveResetCredits ? "live" : resetCreditsAvailable != null ? "cache" : "missing",
+      resetCreditExpirations: resetCreditExpirations.length,
       fetchedAt: snapshot.fetchedAt,
     })
     return { ok: true, snapshot }

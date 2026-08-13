@@ -2,7 +2,7 @@
 
 ![Grok Usage 小组件预览](assets/grok-usage-preview.png)
 
-面向 [Scripting App](https://scriptingapp.github.io/) 的非官方 Grok Build 订阅额度小组件。支持 xAI OAuth、多账号、单额度详情/双额度概览，以及 Small、Medium 两种尺寸。
+面向 [Scripting App](https://scriptingapp.github.io/) 的非官方 Grok 订阅用量小组件。支持 xAI OAuth、多账号、统一每周额度、用量限额重置权益，以及 Small、Medium 两种尺寸。
 
 > 本项目不是 xAI 或 Grok 官方产品，与 xAI 无隶属或合作关系。
 
@@ -11,12 +11,11 @@
 - xAI Authorization Code OAuth + PKCE
 - Access Token、Refresh Token 和 ID Token 保存在本机 Keychain
 - Token 到期前自动刷新
-- 多账号管理，每个账号独立保存凭证、额度缓存和小组件显示设置
-- 读取每周额度和月度 Billing 数据
-- 支持单额度详情和双额度概览两种布局
-- 支持显示已用或剩余百分比
-- 展示额度进度条和重置时间
-- Medium 双额度概览在服务端提供有效月度 Credits 时显示已用值与总额
+- 多账号管理，每个账号独立保存凭证、额度缓存和已用/剩余显示设置
+- 读取统一每周额度、周重置时间和用量限额重置权益
+- 支持显示已用或剩余百分比，右上角同步显示互补数据
+- 展示额度进度条、重置时间、可重置次数及最近到期时间
+- Small 与 Medium 固定展示每周额度
 - SuperGrok / SuperGrok Heavy 套餐徽章
 - 网络失败时回退到本机最近一次成功缓存
 - 支持 AppIntent 手动刷新
@@ -74,8 +73,9 @@ Grok Usage 支持同时添加多个账号：
 - 可以设置一个默认账号；
 - 小组件参数为空时显示默认账号；
 - 每个主屏幕小组件可以绑定不同账号；
-- 组件布局、显示额度和已用/剩余模式按账号独立保存；
-- 新账号默认继承升级前的全局显示设置。
+- 已用/剩余模式按账号独立保存；
+- 旧版布局和额度窗口设置会被安全忽略，小组件统一显示每周额度；
+- 新账号默认继承升级前的全局已用/剩余设置。
 
 绑定账号的方法：
 
@@ -88,56 +88,31 @@ Grok Usage 支持同时添加多个账号：
 
 ## 额度与显示逻辑
 
-Grok Build 当前返回两套额度数据：
-
-### 每周额度
-
-来自周周期 Billing 数据，包含：
+Grok 当前对付费用户采用统一每周用量池。组件从 Credits Billing 数据读取：
 
 - 已用百分比；
 - 剩余百分比；
-- 周期结束/重置时间。
+- 每周周期结束/重置时间；
+- Grok Build 产品消耗；
+- 用量限额重置权益数量与每项到期时间。
 
-### 每月额度
-
-来自月度 Billing 数据，可能包含：
-
-- 已用 Credits；
-- 月度 Credits 总额；
-- 月度已用和剩余百分比；
-- 月度周期结束/重置时间。
-
-当服务端返回 `monthlyLimit = 0`、`used = 0` 时，月度百分比无法计算，组件显示 `—`，但仍保留服务端提供的重置时间。
-
-两个窗口属于同一 Grok Build 额度体系，可通过设置选择双额度概览或聚焦其中一个额度的单额度详情。
+旧版 `/v1/billing` 月度字段仍仅用于套餐标签兼容，不再作为 Widget 内容。
 
 ### Small
 
-- 双额度概览：套餐徽章、更新时间、每周和每月额度、进度条及重置时间；
-- 单额度详情：所选额度的已用/剩余百分比、进度条、更新时间和重置时间。
+- 显示周额度的已用与剩余百分比、进度条、更新时间、周重置时间；
+- 第三行显示可重置次数和最近一项有效权益的到期时间。
 
 ### Medium
 
-- 双额度概览：每周和每月额度，月度 Credits 已用值/总额，进度条、重置时间和 Grok 水印；
-- 单额度详情：所选额度的大百分比、进度条、更新时间、重置时间和 Grok 水印。
+- 中心显示已用或剩余百分比，右上角显示互补数据；
+- 底部三列显示更新时间、可重置次数及最近到期时间、周重置时间。
 
 无论“用量显示”选择已用还是剩余，进度条始终表示已使用比例。
 
 ## 小组件设置
 
-布局和显示选项仅应用于设置页当前选中的账号；刷新频率对所有账号生效。账号尚未创建独立设置时，会继承现有全局默认；首次切换到单额度详情时，旧版的自动额度会明确落为每周额度。点击“恢复当前账号默认显示设置”可删除该账号覆盖并重新继承全局默认。
-
-### 组件布局
-
-- 双额度概览（默认）：同时显示每周额度和每月额度
-- 单额度详情：突出显示一个额度窗口
-
-### 显示额度
-
-仅在“单额度详情”下显示：
-
-- 每周额度（默认）
-- 每月额度
+已用/剩余显示仅应用于设置页当前选中的账号；刷新频率对所有账号生效。旧版 `overview / monthly / auto` 设置继续兼容读取但不会影响渲染，所有账号会无感迁移为每周额度。点击“恢复当前账号默认显示设置”可删除该账号覆盖并重新继承全局默认。
 
 ### 用量显示
 
@@ -159,8 +134,9 @@ iOS WidgetKit 可能根据系统调度策略延后刷新，所选时间是请求
 - OAuth Discovery：`https://auth.x.ai/.well-known/openid-configuration`
 - OAuth Authorize：`https://auth.x.ai/oauth2/authorize`
 - OAuth Token：`https://auth.x.ai/oauth2/token`
-- 月度额度：`https://cli-chat-proxy.grok.com/v1/billing`
-- 每周额度：`https://cli-chat-proxy.grok.com/v1/billing?format=credits`
+- 月度兼容数据：`https://cli-chat-proxy.grok.com/v1/billing`
+- 统一每周额度：`https://cli-chat-proxy.grok.com/v1/billing?format=credits`
+- 重置权益：`https://grok.com/prod_mc_billing.ConsumerUiSvc/GetRemainingResets`
 - CLI 请求标识：`x-xai-token-auth: xai-grok-cli`
 - CLI 用户标识：OAuth 用户 `sub`（通过 `x-userid` 发送）
 - CLI 客户端标识：`x-grok-client-version`
@@ -185,9 +161,8 @@ Grok Billing 响应并不总是提供统一、稳定的套餐名称。组件优�
 
 ## 已知限制
 
-- Grok Build / CLI Billing 接口可能随时变化；
-- OAuth 成功不代表所有账号都具有 Grok Build 订阅额度访问权限；
-- 服务端可能只返回每周百分比和月度周期信息；月度 Credits 为 `0 / 0` 时无法计算月度百分比；
+- Grok 统一每周额度、旧月度兼容字段和重置权益接口可能随时变化；
+- OAuth 成功不代表所有账号都具有 Grok 订阅用量访问权限；
 - 运行日志只记录请求状态、额度结果和脱敏错误，不输出 Token、用户标识或完整响应；
 - 套餐名称属于推断结果；
 - WidgetKit 不保证严格按照所选分钟数刷新；
@@ -199,9 +174,8 @@ Grok Billing 响应并不总是提供统一、稳定的套餐名称。组件优�
 Grok Usage/
 ├── assets/                         Grok 水印资源
 ├── components/
-│   ├── UsageWidgetView.tsx         布局路由
-│   ├── OverviewWidgetView.tsx      双额度概览布局
-│   └── DetailWidgetView.tsx        单额度详情布局
+│   ├── UsageWidgetView.tsx         每周额度入口
+│   └── WeeklyUsageWidgetView.tsx   Small / Medium 每周额度布局
 ├── services/
 │   ├── accounts.ts                 多账号注册表与 Keychain 凭证
 │   ├── api.ts                      Grok Billing、额度解析与缓存

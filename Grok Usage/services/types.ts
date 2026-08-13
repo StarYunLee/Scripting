@@ -37,6 +37,8 @@ export type UsageSnapshot = {
   planType: string | null
   planLabel: string | null
   subscriptionExpiresAt: string | null
+  resetCreditsAvailable: number | null
+  resetCreditExpirations: string[]
   fetchedAt: string
   source: "live" | "cache"
   raw: Record<string, unknown>
@@ -59,15 +61,12 @@ export type UsageResult =
     }
 
 export type DisplayMode = "used" | "remaining"
-export type FocusWindow = "weekly" | "five_hour" | "monthly" | "auto"
 export type ProviderBrand = "chatgpt" | "claude" | "grok"
-export type WidgetLayout = "detail" | "overview"
 
 export type MediumWidgetLayout = {
   left: number
   right: number
   topY: number
-  topFont: number
   chipFont: number
   chipHorizontal: number
   chipVertical: number
@@ -82,13 +81,8 @@ export type MediumWidgetLayout = {
   footerIcon: number
   footerLabelFont: number
   footerValueFont: number
-  dividerHeight: number
   planY: number
-  planFont: number
-  planHorizontal: number
   planVertical: number
-  subscriptionBadgeFont: number
-  resetCountFont: number
   watermarkSize: number
   watermarkRight: number
   watermarkBottom: number
@@ -96,8 +90,6 @@ export type MediumWidgetLayout = {
 
 export type WidgetSettings = {
   displayMode: DisplayMode
-  focusWindow: FocusWindow
   reloadMinutes: number
   provider: ProviderBrand
-  widgetLayout: WidgetLayout
 }

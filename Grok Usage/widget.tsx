@@ -35,7 +35,7 @@ async function run() {
   const settings = getEffectiveSettings(profileId)
   const result = await loadResult(profileId)
   Widget.present(
-    <UsageWidgetView result={result} family={family} displayMode={settings.displayMode} focusWindow={settings.focusWindow} widgetLayout={settings.widgetLayout}/>,
+    <UsageWidgetView result={result} family={family} displayMode={settings.displayMode}/>,
     { reloadPolicy: { policy: "after", date: new Date(Date.now() + getReloadMinutes() * 60 * 1000) } },
   )
 }

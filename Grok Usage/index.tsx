@@ -9,7 +9,7 @@ import {
   clearPendingOAuth, completeGrokLogin, getPendingOAuthProfileId,
   hasPendingOAuth, startGrokLogin,
 } from "./services/oauth"
-import { formatFetchedAt, formatPercent, formatResetDate } from "./services/format"
+import { formatFetchedAt, formatPercent, formatResetDate, resetCreditsSummary } from "./services/format"
 import type { GrokAccountProfile, UsageSnapshot } from "./services/types"
 
 declare const Pasteboard: { setString(value: string | null): Promise<void> }
@@ -19,12 +19,14 @@ ensureAccountMigration()
 function summary(snapshot: UsageSnapshot | null): string {
   if (!snapshot) return "暂无数据，请刷新此账号"
   const weekly = snapshot.weekly || snapshot.windows.find(w => w.name === "weekly") || null
-  const monthly = snapshot.monthly || snapshot.windows.find(w => w.name === "monthly") || null
+  const resets = resetCreditsSummary(snapshot.resetCreditsAvailable, snapshot.resetCreditExpirations)
+  const resetText = resets.available == null
+    ? "未提供"
+    : `${resets.available} 次${resets.nearestExpiration ? ` · 最近到期 ${formatResetDate(resets.nearestExpiration)}` : ""}`
   return [
     `套餐：${snapshot.planLabel || snapshot.planType || "未提供"}`,
     `每周：已用 ${formatPercent(weekly?.usedPercent)} · 剩余 ${formatPercent(weekly?.remainingPercent)} · 重置 ${formatResetDate(weekly?.resetAt)}`,
-    `每月：已用 ${formatPercent(monthly?.usedPercent)} · 剩余 ${formatPercent(monthly?.remainingPercent)} · 重置 ${formatResetDate(monthly?.resetAt)}`,
-    ...(monthly?.usedValue != null && monthly?.limitValue != null ? [`月度额度：${Math.round(monthly.usedValue)} / ${Math.round(monthly.limitValue)} Credits`] : []),
+    `重置次数：${resetText}`,
     `更新时间：${formatFetchedAt(snapshot.fetchedAt)}`,
   ].join("\n")
 }
@@ -53,13 +55,6 @@ function App() {
     setSelectedId(id); setUsageText(summary(getCachedUsage(id))); setWidgetSettingsState(getEffectiveSettings(id)); setStatus(""); setDeleteArmed(false)
   }
   function reloadWidgets() { try { Widget.reloadUserWidgets() } catch { try { Widget.reloadAll() } catch {} } }
-  function updateWidgetLayout(widgetLayout: "detail" | "overview") {
-    if (!selectedId) return
-    const patch = widgetLayout === "detail" && widgetSettings.focusWindow === "auto"
-      ? { widgetLayout, focusWindow: "weekly" as const }
-      : { widgetLayout }
-    const next = setProfileSettings(selectedId, patch); setWidgetSettingsState({ ...next }); reloadWidgets()
-  }
   function updateProfileWidgetSettings(patch: Parameters<typeof setProfileSettings>[1]) {
     if (!selectedId) return
     const next = setProfileSettings(selectedId, patch); setWidgetSettingsState({ ...next }); reloadWidgets()
@@ -140,16 +135,7 @@ function App() {
       <Text font={12} foregroundStyle="secondary">长按主屏幕小组件 → 编辑小组件 → 参数 → 粘贴邮箱。</Text>
     </Section>
 
-    {selected ? <Section header={<Text>小组件设置 · {selected.email || selected.name}</Text>} footer={<Text>布局和显示选项仅应用于当前账号；刷新频率对所有账号生效。</Text>}>
-      <Picker
-        title="组件布局"
-        value={widgetSettings.widgetLayout}
-        onChanged={(value) => updateWidgetLayout(value as "detail" | "overview")}
-        pickerStyle="navigationLink"
-      >
-        <Text tag="overview">双额度概览</Text>
-        <Text tag="detail">单额度详情</Text>
-      </Picker>
+    {selected ? <Section header={<Text>小组件设置 · {selected.email || selected.name}</Text>} footer={<Text>已用/剩余显示仅应用于当前账号；小组件固定展示每周额度，刷新频率对所有账号生效。</Text>}>
       <Picker
         title="用量显示"
         value={widgetSettings.displayMode}
@@ -159,15 +145,6 @@ function App() {
         <Text tag="used">已用</Text>
         <Text tag="remaining">剩余</Text>
       </Picker>
-      {widgetSettings.widgetLayout === "detail" ? <Picker
-        title="显示额度"
-        value={widgetSettings.focusWindow}
-        onChanged={(value) => updateProfileWidgetSettings({ focusWindow: value as "weekly" | "monthly" })}
-        pickerStyle="navigationLink"
-      >
-        <Text tag="weekly">每周额度</Text>
-        <Text tag="monthly">每月额度</Text>
-      </Picker> : null}
       <Picker
         title="刷新频率"
         value={String(widgetSettings.reloadMinutes)}
