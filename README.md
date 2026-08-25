@@ -86,7 +86,7 @@ https://raw.githubusercontent.com/StarYunLee/Scripting/main/Grok-Usage.scripting
 
 提交 Issue 时，请在标题中注明 `[Surge Metrics]`、`[Codex Usage]`、`[Claude Usage]` 或 `[Grok Usage]`。
 
-## 致谢
+## 友链
 - [LINUX DO](https://linux.do/) — 社区讨论与反馈
 
 ## 免责声明
