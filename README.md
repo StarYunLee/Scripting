@@ -4,6 +4,25 @@
 
 ## 项目
 
+### AI Usage
+
+统一查看 Codex、Grok、Claude 与 Antigravity 多账号用量的应用，支持 Small / Medium 主屏幕小组件、按账号布局、固定剩余额度显示，以及快捷指令 / App Intent 刷新。
+
+![AI Usage Small 小组件预览](./AI%20Usage/assets/ai-usage-preview-small.jpeg)
+![AI Usage Medium 小组件预览](./AI%20Usage/assets/ai-usage-preview-medium.jpeg)
+![AI Usage 应用预览](./AI%20Usage/assets/ai-usage-preview-app.jpeg)
+
+- [查看源码与使用说明](./AI%20Usage/)
+- [直接安装 AI-Usage.scripting](https://raw.githubusercontent.com/StarYunLee/Scripting/main/AI-Usage.scripting)
+
+远程导入地址：
+
+```text
+https://raw.githubusercontent.com/StarYunLee/Scripting/main/AI-Usage.scripting
+```
+
+> 新用户请使用 AI Usage。下方 Codex Usage、Claude Usage、Grok Usage 仍可安装，但不再作为推荐入口。
+
 ### Surge Metrics
 
 Surge iOS 运行指标小组件，通过官方 Prometheus Metrics 端点展示累计上下行、内存占用、活跃请求、DNS 缓存、运行时长及网络接口累计流量 Top 3；支持 Medium、Large、明暗模式、WidgetKit 请求刷新及手动刷新。
@@ -84,11 +103,11 @@ https://raw.githubusercontent.com/StarYunLee/Scripting/main/Grok-Usage.scripting
 - 作者与维护者：[StarYunLee](https://github.com/StarYunLee)
 - 问题反馈：[GitHub Issues](https://github.com/StarYunLee/Scripting/issues)
 
-提交 Issue 时，请在标题中注明 `[Surge Metrics]`、`[Codex Usage]`、`[Claude Usage]` 或 `[Grok Usage]`。
+提交 Issue 时，请在标题中注明 `[AI Usage]`、`[Surge Metrics]`、`[Codex Usage]`、`[Claude Usage]` 或 `[Grok Usage]`。
 
 ## 友链
 - [LINUX DO](https://linux.do/) — 社区讨论与反馈
 
 ## 免责声明
 
-本仓库项目不是 Surge、OpenAI、Anthropic、xAI 或 Scripting App 官方产品。相关 HTTP API、OAuth、用量及 Billing 接口可能随服务端更新而变化。使用者应遵守对应软件许可与平台服务条款并自行承担使用风险。
+本仓库项目不是 Surge、OpenAI、Anthropic、xAI、Google 或 Scripting App 官方产品。相关 HTTP API、OAuth、用量及 Billing 接口可能随服务端更新而变化。使用者应遵守对应软件许可与平台服务条款并自行承担使用风险。
