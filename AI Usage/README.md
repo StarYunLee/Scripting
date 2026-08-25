@@ -1,8 +1,12 @@
 # AI Usage
 
-![AI Usage Small 小组件预览](assets/ai-usage-preview-small.jpeg)
-![AI Usage Medium 小组件预览](assets/ai-usage-preview-medium.jpeg)
-![AI Usage 应用预览](assets/ai-usage-preview-app.jpeg)
+<table>
+  <tr>
+    <td align="center" width="33%"><img src="assets/ai-usage-preview-small.jpeg" alt="AI Usage Small 小组件预览" /></td>
+    <td align="center" width="33%"><img src="assets/ai-usage-preview-medium.jpeg" alt="AI Usage Medium 小组件预览" /></td>
+    <td align="center" width="33%"><img src="assets/ai-usage-preview-app.jpeg" alt="AI Usage 应用预览" /></td>
+  </tr>
+</table>
 
 面向 [Scripting App](https://scriptingapp.github.io/) 的非官方多平台用量查看应用。在一个项目里管理 Codex、Grok、Claude 与 Antigravity 的多账号用量、主屏幕小组件和自动化刷新。
 

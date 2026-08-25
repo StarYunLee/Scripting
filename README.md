@@ -8,9 +8,13 @@
 
 统一查看 Codex、Grok、Claude 与 Antigravity 多账号用量的应用，支持 Small / Medium 主屏幕小组件、按账号布局、固定剩余额度显示，以及快捷指令 / App Intent 刷新。
 
-![AI Usage Small 小组件预览](./AI%20Usage/assets/ai-usage-preview-small.jpeg)
-![AI Usage Medium 小组件预览](./AI%20Usage/assets/ai-usage-preview-medium.jpeg)
-![AI Usage 应用预览](./AI%20Usage/assets/ai-usage-preview-app.jpeg)
+<table>
+  <tr>
+    <td align="center" width="33%"><img src="./AI%20Usage/assets/ai-usage-preview-small.jpeg" alt="AI Usage Small 小组件预览" /></td>
+    <td align="center" width="33%"><img src="./AI%20Usage/assets/ai-usage-preview-medium.jpeg" alt="AI Usage Medium 小组件预览" /></td>
+    <td align="center" width="33%"><img src="./AI%20Usage/assets/ai-usage-preview-app.jpeg" alt="AI Usage 应用预览" /></td>
+  </tr>
+</table>
 
 - [查看源码与使用说明](./AI%20Usage/)
 - [直接安装 AI-Usage.scripting](https://raw.githubusercontent.com/StarYunLee/Scripting/main/AI-Usage.scripting)
@@ -107,6 +111,7 @@ https://raw.githubusercontent.com/StarYunLee/Scripting/main/Grok-Usage.scripting
 
 ## 友链
 - [LINUX DO](https://linux.do/) — 社区讨论与反馈
+- [烧饼论坛](https://sb.sb/)
 
 ## 免责声明
 
