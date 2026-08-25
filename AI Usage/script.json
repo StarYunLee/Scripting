@@ -13,7 +13,10 @@
     "en": "AI Usage"
   },
   "description": "Unified Codex, Grok, Claude, and Antigravity usage app with multi-account Home Screen widgets, remaining-quota display, and per-account layouts.",
-  "remoteResource": null,
+  "remoteResource": {
+    "url": "https://raw.githubusercontent.com/StarYunLee/Scripting/main/AI-Usage.scripting",
+    "autoUpdateInterval": 86400
+  },
   "author": {
     "name": "StarYunLee",
     "email": null,
