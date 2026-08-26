@@ -115,7 +115,7 @@ export function copilotRequestHeaders(token?: string | null): Record<string, str
     "User-Agent": `GitHubCopilotChat/${COPILOT_VERSION}`,
     "Editor-Version": "vscode/1.96.0",
     "Editor-Plugin-Version": `copilot-chat/${COPILOT_VERSION}`,
-    "X-GitHub-Api-Version": "2025-04-01",
+    "X-GitHub-Api-Version": "2022-11-28",
   };
   if (token) headers.Authorization = `token ${token}`;
   return headers;
