@@ -33,7 +33,8 @@ function normalizeTier(label: string): string {
     .trim()
     .toLowerCase()
     .replace(/glm\s*coding\s*/g, "")
-    .replace(/[\s_]+/g, "-");
+    .replace(/[\s_]+/g, "-")
+    .replace(/\+/g, "-plus");
 }
 
 export function zaiBadgePalette(label: string): ZaiBadgePalette {
