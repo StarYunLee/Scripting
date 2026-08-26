@@ -79,7 +79,7 @@ export function formatPlanLabel(value: string | null | undefined): string | null
 
 /**
  * 根据 5h 窗口总额度推断档位（国际站常见值）。
- * usage_count 字段实际表示剩余量。
+ * 输入为 current_interval_total_count（次数）；usage_count 字段实际表示剩余量。
  */
 export function inferPlanFromLimit(total: number | null, region: "intl" | "cn"): string | null {
   if (total == null || total <= 0) return null;
@@ -89,9 +89,9 @@ export function inferPlanFromLimit(total: number | null, region: "intl" | "cn"):
     if (total >= 600) return "Plus";
     return null;
   }
-  if (total >= 2000 || total >= 29000) return "Ultra";
-  if (total >= 1000 || total >= 15000) return "Max";
-  if (total >= 300 || total >= 4500) return "Pro";
-  if (total >= 100 || total >= 1500) return "Plus";
+  if (total >= 2000) return "Ultra";
+  if (total >= 1000) return "Max";
+  if (total >= 300) return "Pro";
+  if (total >= 100) return "Plus";
   return null;
 }
