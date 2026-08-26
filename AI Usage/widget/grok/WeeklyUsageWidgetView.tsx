@@ -10,7 +10,7 @@ import {
   ZStack,
 } from "scripting";
 import type { Color, DynamicShapeStyle } from "scripting";
-import { GROK_WIDGET } from "../../copy/labels";
+import { GROK_WIDGET, GROK_WINDOW } from "../../copy/labels";
 import { usageTint } from "../../services/usage-colors";
 import {
   formatPercent,
@@ -20,6 +20,7 @@ import {
 } from "../../providers/grok/format";
 import { PlanBadge } from "./PlanBadge";
 import type {
+  FocusWindow,
   LimitWindow,
   MediumWidgetLayout,
   UsageResult,
@@ -29,6 +30,7 @@ import type {
 type Props = {
   result: UsageResult;
   family: string;
+  focusWindow?: FocusWindow;
 };
 const dynamic = (light: Color, dark: Color): DynamicShapeStyle => ({
   light,
@@ -49,6 +51,7 @@ const C: Record<string, Color | DynamicShapeStyle> = {
 type Model = {
   snapshot: UsageSnapshot | null;
   focus: LimitWindow | null;
+  build: boolean;
   progress: number | null;
   main: string;
   suffix: string;
@@ -60,12 +63,24 @@ type Model = {
   live: boolean;
   detail: string;
 };
-function modelFor(result: UsageResult): Model {
+function modelFor(result: UsageResult, focusWindow?: FocusWindow): Model {
   const snapshot = result.ok ? result.snapshot : result.cache || null;
-  const focus =
+  const weekly =
     snapshot?.weekly ||
     snapshot?.windows.find((window) => window.name === "weekly") ||
     null;
+  let focus = weekly;
+  let build = false;
+  if (focusWindow === "weekly_build") {
+    const buildWindow =
+      snapshot?.weeklyBuild ||
+      snapshot?.windows.find((window) => window.name === "weekly_build") ||
+      null;
+    if (buildWindow) {
+      focus = buildWindow;
+      build = true;
+    }
+  }
   const remaining =
     focus?.remainingPercent ??
     (focus?.usedPercent == null ? null : 100 - focus.usedPercent);
@@ -76,6 +91,7 @@ function modelFor(result: UsageResult): Model {
   return {
     snapshot,
     focus,
+    build,
     progress: remaining,
     main: formatPercent(remaining),
     suffix: "剩余",
@@ -261,12 +277,13 @@ function MetaColumn({
     </VStack>
   );
 }
-function focusTitle(small = false): string {
+function focusTitle(small = false, build = false): string {
+  if (build) return GROK_WINDOW.BUILD;
   return small ? GROK_WIDGET.shortWeekly : GROK_WIDGET.weeklyQuota;
 }
 
-export function WeeklyUsageWidgetView({ result, family }: Props) {
-  const model = modelFor(result);
+export function WeeklyUsageWidgetView({ result, family, focusWindow }: Props) {
+  const model = modelFor(result, focusWindow);
   const small = isSmall(family);
   const pad = small ? 13 : 16;
   const layout: MediumWidgetLayout = {
@@ -543,7 +560,7 @@ export function WeeklyUsageWidgetView({ result, family }: Props) {
             fontWeight="bold"
             foregroundStyle={C.primary}
           >
-            {focusTitle()}
+            {focusTitle(false, model.build)}
           </Text>
           <Spacer />
         </HStack>

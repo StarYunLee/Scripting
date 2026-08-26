@@ -90,7 +90,10 @@ export type MediumWidgetLayout = {
   watermarkBottom: number;
 };
 
+export type FocusWindow = "weekly" | "weekly_build";
+
 export type WidgetSettings = {
+  focusWindow: FocusWindow;
   reloadMinutes: number;
   provider: ProviderBrand;
 };
