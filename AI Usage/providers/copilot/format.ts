@@ -57,12 +57,27 @@ function titleCaseWords(value: string): string {
 }
 
 /** GitHub Copilot 套餐档位 */
-export function formatPlanLabel(value: string | null | undefined): string | null {
+export function formatPlanLabel(
+  value: string | null | undefined,
+  accessTypeSku?: string | null,
+): string | null {
+  // access_type_sku 是区分 Free / Pro 的权威字段：
+  // Free 用户的 copilot_plan 同样是 "individual"，必须先看 sku。
+  const sku = (accessTypeSku || "").trim().toLowerCase();
+  if (sku) {
+    if (sku.includes("free")) return "Free";
+    if (sku.includes("pro_plus") || sku.includes("proplus")) return "Pro+";
+    if (sku.includes("enterprise")) return "Enterprise";
+    if (sku.includes("business")) return "Business";
+    if (sku.includes("pro")) return "Pro"; // copilot_pro、trial_*_subscriber_quota 等
+    if (sku.includes("trial")) return "Pro";
+  }
   if (!value || !value.trim()) return null;
   const normalized = normalizePlanKey(value);
   const labels: { [key: string]: string } = {
     free: "Free",
     individual: "Individual",
+    "individual-pro": "Pro",
     pro: "Pro",
     "pro-plus": "Pro+",
     proplus: "Pro+",

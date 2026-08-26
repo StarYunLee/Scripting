@@ -1,7 +1,9 @@
 import { fetch, Response } from "scripting";
 import {
   getProfileAccessToken,
+  resolveProfile,
   saveProfileCredentials,
+  updateProfileIdentity,
 } from "./accounts";
 
 /** VS Code Copilot OAuth App（公开 client_id，copilot-api 等同源） */
@@ -11,7 +13,7 @@ const GITHUB_HOST = "https://github.com";
 const DEVICE_URL = `${GITHUB_HOST}/login/device/code`;
 const TOKEN_URL = `${GITHUB_HOST}/login/oauth/access_token`;
 const DEVICE_GRANT = "urn:ietf:params:oauth:grant-type:device_code";
-const SCOPES = "read:user";
+const SCOPES = "read:user user:email";
 const PENDING_KEY = "ai_usage_copilot_oauth_pending_v1";
 const PENDING_TTL_MS = 15 * 60_000;
 const DEFAULT_POLL_INTERVAL_MS = 5_000;
@@ -233,7 +235,8 @@ async function fetchIdentity(
     });
     if (!response.ok) return { email: null, accountId: null, name: null };
     const data = await jsonObject(response);
-    const email =
+    // /user 的 email 仅在用户公开邮箱时返回；否则需 /user/emails（user:email scope）
+    let email =
       typeof data.email === "string" && data.email.includes("@") ? data.email : null;
     const accountId =
       typeof data.id === "number"
@@ -247,9 +250,50 @@ async function fetchIdentity(
         : typeof data.name === "string" && data.name.trim()
           ? data.name.trim()
           : null;
+    if (!email) email = await fetchPrimaryEmail(token);
     return { email, accountId, name };
   } catch {
     return { email: null, accountId: null, name: null };
+  }
+}
+
+/** 读取主邮箱（需要 user:email scope；旧 token 无此 scope 时 404，静默忽略）。 */
+async function fetchPrimaryEmail(token: string): Promise<string | null> {
+  try {
+    const response = await fetch(`${GITHUB_API}/user/emails`, {
+      method: "GET",
+      headers: copilotRequestHeaders(token),
+      timeout: 15,
+      debugLabel: "CopilotUserEmails",
+    });
+    if (!response.ok) return null;
+    const list = JSON.parse(await response.text());
+    if (!Array.isArray(list)) return null;
+    type EmailEntry = { email?: unknown; primary?: unknown; verified?: unknown };
+    const entries = (list as EmailEntry[]).filter(
+      (entry) =>
+        typeof entry?.email === "string" && entry.email.includes("@"),
+    );
+    const primary = entries.find(
+      (entry) => entry.primary === true && entry.verified !== false,
+    );
+    const verified = entries.find((entry) => entry.verified === true);
+    const chosen = primary || verified || entries[0];
+    return chosen ? (chosen.email as string) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** 老账号缺邮箱时回填一次（失败静默，不影响用量查询）。 */
+export async function ensureAccountEmail(profileId: string): Promise<void> {
+  const profile = resolveProfile(profileId);
+  if (!profile || profile.email) return;
+  const token = getProfileAccessToken(profile.id);
+  if (!token) return;
+  const identity = await fetchIdentity(token);
+  if (identity.email || identity.accountId || identity.name) {
+    updateProfileIdentity(profile.id, identity);
   }
 }
 
@@ -289,4 +333,10 @@ export function getPendingUserCode(): string | null {
   const pending = readPending();
   if (!pending || Date.now() - pending.createdAt > PENDING_TTL_MS) return null;
   return pending.userCode;
+}
+
+export function getPendingVerificationUri(): string | null {
+  const pending = readPending();
+  if (!pending || Date.now() - pending.createdAt > PENDING_TTL_MS) return null;
+  return pending.verificationUri;
 }
