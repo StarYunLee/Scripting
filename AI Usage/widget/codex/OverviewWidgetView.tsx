@@ -474,7 +474,7 @@ export function OverviewWidgetView({ result, family }: Props) {
           title={PERIOD.WEEKLY.widget}
           window={model.weekly}
           width={contentWidth}
-          top={99}
+          top={94}
         />
         <HStack
           alignment="center"
@@ -483,7 +483,7 @@ export function OverviewWidgetView({ result, family }: Props) {
             maxHeight: "infinity",
             alignment: "bottomLeading",
           }}
-          padding={{ horizontal: 12, bottom: 2 }}
+          padding={{ horizontal: 12, bottom: 7 }}
         >
           <Text
             fontDesign="default"
