@@ -53,6 +53,8 @@ export const PROVIDERS: Array<{
   connectTitle: string;
   subtitle: string;
   accent: Color;
+  /** accent 为深色时，连接按钮改用 label 以保证深色背景下可见 */
+  accentIsDark?: boolean;
   pasteHint: string;
   pastePlaceholder: string;
   capabilities: {
@@ -76,6 +78,7 @@ export const PROVIDERS: Array<{
     connectTitle: "连接 xAI 账户",
     subtitle: "连接 xAI 账户，查看每周用量与重置次数。",
     accent: "#111111",
+    accentIsDark: true,
     pasteHint:
       "授权后复制 127.0.0.1 回调地址；如果页面直接显示一次性代码，也可以只复制代码。",
     pastePlaceholder: "127.0.0.1:56122/callback?code=… 或一次性代码",
@@ -108,6 +111,7 @@ export const PROVIDERS: Array<{
     connectTitle: "连接 Cursor 账户",
     subtitle: "连接 Cursor 账户，查看 Auto / 总计 / 第三方 API / Grok Bot 用量。",
     accent: "#111827",
+    accentIsDark: true,
     pasteHint:
       "在浏览器完成 Cursor 登录后返回应用，无需粘贴内容，直接点击“提交并完成授权”。",
     pastePlaceholder: "无需填写，完成浏览器登录后提交",

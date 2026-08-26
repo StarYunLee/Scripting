@@ -20,7 +20,7 @@ async function refreshCardForWidget(card: UsageCard): Promise<UsageCard> {
 
   const outcome = await refreshAccount(
     { provider: card.provider, profileId: card.accountId },
-    { force: false, source: "app" },
+    { force: false, source: "widget" },
   );
   const account = getProvider(card.provider)
     .list()

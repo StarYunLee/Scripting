@@ -1,30 +1,35 @@
 {
-  "icon": "chart.bar.doc.horizontal.fill",
-  "name": "AI Usage",
-  "color": "rgba(28, 28, 30, 1)",
-  "entry": "index.tsx",
-  "permissions": null,
-  "runInApp": true,
-  "contributors": [],
-  "version": "1.8.0",
-  "intentInputTypes": [],
-  "localizedNames": {
-    "zh": "AI Usage",
-    "en": "AI Usage"
+  "remoteResource" : {
+    "url" : "https:\/\/github.com\/gamesme\/scripting\/raw\/refs\/heads\/main\/AI-Usage.scripting",
+    "autoUpdateInterval" : 600,
+    "hash" : "c3eaa86439ed1233cab5bd9f5958eba0"
   },
-  "description": "Unified Codex, Grok, Claude, Antigravity, Cursor, Kimi Code, GitHub Copilot, Z.ai, and MiniMax usage app with Cursor Grok Bot weekly quota, multi-account Home Screen widgets, and remaining-quota display.",
-  "remoteResource": {
-    "url": "https://raw.githubusercontent.com/StarYunLee/Scripting/main/AI-Usage.scripting",
-    "autoUpdateInterval": 86400
+  "permissions" : null,
+  "icon" : "chart.bar.doc.horizontal.fill",
+  "localizedNames" : {
+    "zh" : "AI Usage",
+    "en" : "AI Usage"
   },
-  "author": {
-    "name": "StarYunLee",
-    "email": null,
-    "homepage": "https://github.com/StarYunLee"
+  "runInApp" : true,
+  "intentInputTypes" : [
+
+  ],
+  "author" : {
+    "name" : "StarYunLee",
+    "homepage" : "https:\/\/github.com\/StarYunLee",
+    "email" : null
   },
-  "localizedDescriptions": {
-    "zh": "整合 Codex / Grok / Claude / Antigravity / Cursor / Kimi Code / GitHub Copilot / Z.ai（智谱）/ MiniMax 用量的应用。支持各平台 Coding Plan 订阅额度、多账号与主屏幕小组件。",
-    "en": "Unified Codex, Grok, Claude, Antigravity, Cursor, Kimi Code, GitHub Copilot, Z.ai, and MiniMax usage app with Cursor Grok Bot weekly quota, multi-account Home Screen widgets, and remaining-quota display."
+  "localizedDescriptions" : {
+    "zh" : "整合 Codex \/ Grok \/ Claude \/ Antigravity \/ Cursor \/ Kimi Code \/ GitHub Copilot \/ Z.ai（智谱）\/ MiniMax 用量的应用。支持各平台 Coding Plan 订阅额度、多账号与主屏幕小组件。",
+    "en" : "Unified Codex, Grok, Claude, Antigravity, Cursor, Kimi Code, GitHub Copilot, Z.ai, and MiniMax usage app with Cursor Grok Bot weekly quota, multi-account Home Screen widgets, and remaining-quota display."
   },
-  "iconImage": null
+  "color" : "rgba(28, 28, 30, 1)",
+  "version" : "1.8.0",
+  "contributors" : [
+
+  ],
+  "name" : "AI Usage",
+  "entry" : "index.tsx",
+  "iconImage" : null,
+  "description" : "Unified Codex, Grok, Claude, Antigravity, Cursor, Kimi Code, GitHub Copilot, Z.ai, and MiniMax usage app with Cursor Grok Bot weekly quota, multi-account Home Screen widgets, and remaining-quota display."
 }

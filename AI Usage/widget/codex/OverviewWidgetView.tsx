@@ -1,6 +1,6 @@
 import { HStack, Image, Script, Spacer, Text, Widget, ZStack } from "scripting";
 import type { Color, DynamicShapeStyle } from "scripting";
-import { PERIOD } from "../../copy/labels";
+import { CODEX_WIDGET, PERIOD } from "../../copy/labels";
 import { usageTint } from "../../services/usage-colors";
 import {
   formatPercent,
@@ -465,7 +465,7 @@ export function OverviewWidgetView({ result, family }: Props) {
           </Text>
         </HStack>
         <SmallWindow
-          title="5H"
+          title={PERIOD.FIVE_HOUR.widget}
           window={model.fiveHour}
           width={contentWidth}
           top={43}
@@ -531,13 +531,13 @@ export function OverviewWidgetView({ result, family }: Props) {
         </Text>
       </HStack>
       <MediumWindow
-        title="5 小时额度"
+        title={CODEX_WIDGET.fiveHourQuota}
         window={model.fiveHour}
         width={contentWidth}
         top={38}
       />
       <MediumWindow
-        title="每周额度"
+        title={CODEX_WIDGET.weeklyQuota}
         window={model.weekly}
         width={contentWidth}
         top={96}

@@ -2,7 +2,6 @@ import { Widget } from "scripting";
 import { formatPercent } from "../../providers/codex/format";
 import {
   widgetProviderShortName,
-  widgetQuotaTitle,
   widgetWindowLabel,
 } from "../../copy/labels";
 import type { ProviderId, UsageCard } from "../../models";
@@ -15,8 +14,6 @@ export function providerShortName(provider: ProviderId): string {
 export function shortWindowLabel(label: string): string {
   return widgetWindowLabel(label);
 }
-
-export { widgetQuotaTitle };
 
 export type WidgetLayoutSize = "small" | "medium" | "large";
 
@@ -126,7 +123,7 @@ export function hasPrivacyDetails(privacy: WidgetPrivacyPrefs): boolean {
 /** Small 去掉标题后的可见条数。 */
 export function smallVisibleLimit(privacy: WidgetPrivacyPrefs): number {
   if (hasPrivacyDetails(privacy)) return 5;
-  if (privacy.showPlanBadge) return 5;
+  if (privacy.showPlanBadge) return 4;
   return 6;
 }
 

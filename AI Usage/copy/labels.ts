@@ -111,9 +111,21 @@ export const CLAUDE_WIDGET = {
   fableWeekly: "Fable 每周",
   dualFiveHourWeekly: "5 小时 + 每周",
   dualWeeklyFable: "每周 + Fable 每周",
-  shortFiveHour: "5H",
+  shortFiveHour: "5h",
   shortWeekly: "每周",
   shortFableWeekly: "Fable 每周",
+};
+
+/** Codex 单账号小组件专用文案 */
+export const CODEX_WIDGET = {
+  fiveHourQuota: "5 小时额度",
+  weeklyQuota: "每周额度",
+};
+
+/** Grok 单账号小组件专用文案 */
+export const GROK_WIDGET = {
+  weeklyQuota: "每周额度",
+  shortWeekly: "每周",
 };
 
 /** 总用量小组件固定文案 */

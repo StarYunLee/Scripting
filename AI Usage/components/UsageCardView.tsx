@@ -44,7 +44,6 @@ export function UsageCardView(props: {
         glass: UIGlass.regular().interactive(true),
         shape: { type: "rect", cornerRadius: CARD_RADIUS, style: "continuous" },
       }}
-      shadow={{ color: "rgba(72,88,120,0.16)", radius: 12, y: 5 }}
       listRowBackground={<></>}
       listRowSeparator="hidden"
       listRowInsets={{ top: 8, bottom: 8, leading: 16, trailing: 16 }}
@@ -52,7 +51,7 @@ export function UsageCardView(props: {
     >
       <HStack alignment="top">
         <VStack alignment="leading" spacing={8}>
-          <Text font={17} fontWeight="semibold">
+          <Text font="body" fontWeight="semibold">
             {props.card.title}
           </Text>
           <HStack spacing={6}>
@@ -67,11 +66,12 @@ export function UsageCardView(props: {
           title={refreshTitle}
           action={props.onRefresh}
           buttonStyle="glass"
+          disabled={props.card.refreshing}
         />
       </HStack>
 
       {props.card.resetCredits ? (
-        <Text font={13} foregroundStyle="secondaryLabel">
+        <Text font="footnote" foregroundStyle="secondaryLabel">
           重置次数 {props.card.resetCredits.available} 次
           {props.card.resetCredits.nearestExpiration
             ? ` · 最近到期 ${formatResetDate(props.card.resetCredits.nearestExpiration)}`
@@ -80,13 +80,13 @@ export function UsageCardView(props: {
       ) : null}
 
       {props.card.errorMessage ? (
-        <Text font={13} foregroundStyle="systemRed">
+        <Text font="footnote" foregroundStyle="systemRed">
           {props.card.errorMessage}
         </Text>
       ) : null}
 
           {props.card.windows.length === 0 ? (
-        <Text font={13} foregroundStyle="secondaryLabel">
+        <Text font="footnote" foregroundStyle="secondaryLabel">
           {props.card.authorized
             ? "暂无用量窗口（或已在总览中隐藏全部条目）"
             : "尚未授权"}
@@ -100,14 +100,19 @@ export function UsageCardView(props: {
           return (
             <VStack key={window.id} alignment="leading" spacing={6}>
               <HStack>
-                <Text font={15}>{normalizeAppWindowLabel(window.label)}</Text>
+                <Text font="subheadline">{normalizeAppWindowLabel(window.label)}</Text>
                 <Spacer />
-                <Text font={15} fontWeight="medium" monospacedDigit>
-                  {percentLabel} {formatPercent(value)}
-                </Text>
+                <HStack spacing={4}>
+                  <Text font="subheadline" foregroundStyle="secondaryLabel">
+                    {percentLabel}
+                  </Text>
+                  <Text font="subheadline" fontWeight="semibold" monospacedDigit>
+                    {formatPercent(value)}
+                  </Text>
+                </HStack>
               </HStack>
-              {value == null ? (
-                <Text font={12} foregroundStyle="secondaryLabel">
+              {value == null || Number.isNaN(value) ? (
+                <Text font="caption" foregroundStyle="secondaryLabel">
                   暂无进度
                 </Text>
               ) : (
@@ -119,7 +124,7 @@ export function UsageCardView(props: {
                   scaleEffect={{ x: 1, y: 1.4 }}
                 />
               )}
-              <Text font={12} foregroundStyle="secondaryLabel">
+              <Text font="caption" foregroundStyle="secondaryLabel">
                 重置 {formatResetDate(window.resetAt)}
               </Text>
             </VStack>
@@ -130,24 +135,24 @@ export function UsageCardView(props: {
       <VStack spacing={6}>
         <Divider />
         <HStack>
-          <Text font={12} foregroundStyle="tertiaryLabel">
+          <Text font="caption" foregroundStyle="tertiaryLabel">
             更新 {formatFetchedAt(props.card.fetchedAt)}
           </Text>
           <Spacer />
           {props.card.source === "live" ? (
-            <Text font={12} foregroundStyle="tertiaryLabel">
+            <Text font="caption" foregroundStyle="tertiaryLabel">
               实时
             </Text>
           ) : props.card.source === "cache" ? (
-            <Text font={12} foregroundStyle="tertiaryLabel">
+            <Text font="caption" foregroundStyle="tertiaryLabel">
               缓存
             </Text>
           ) : props.card.source === "error" ? (
-            <Text font={12} foregroundStyle="systemRed">
+            <Text font="caption" foregroundStyle="systemRed">
               刷新失败
             </Text>
           ) : (
-            <Text font={12} foregroundStyle="tertiaryLabel">
+            <Text font="caption" foregroundStyle="tertiaryLabel">
               暂无数据
             </Text>
           )}

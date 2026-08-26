@@ -52,6 +52,17 @@ function errorText(error: unknown): string {
   return String(error);
 }
 
+const RELOAD_MINUTE_OPTIONS = [5, 10, 15, 30, 60];
+
+/** 把旧版遗留的任意刷新间隔吸附到最近档位，保证 Picker 有选中项 */
+function snapReloadMinutes(value: number): number {
+  let nearest = RELOAD_MINUTE_OPTIONS[0];
+  for (const option of RELOAD_MINUTE_OPTIONS) {
+    if (Math.abs(option - value) < Math.abs(nearest - value)) nearest = option;
+  }
+  return nearest;
+}
+
 type SelectedDestination =
   | {
       kind: "account";
@@ -276,7 +287,7 @@ export function SettingsPage(props: {
       >
         <Section
           listRowBackground={settingsRowBackground}
-          header={<Text foregroundStyle="secondaryLabel">演示</Text>}
+          header={<Text font="footnote" foregroundStyle="secondaryLabel">演示</Text>}
         >
           <SettingsGroup>
             <Toggle
@@ -304,7 +315,7 @@ export function SettingsPage(props: {
               listRowBackground={settingsRowBackground}
               header={
                 meta.id === "codex" ? (
-                  <Text foregroundStyle="secondaryLabel">账号</Text>
+                  <Text font="footnote" foregroundStyle="secondaryLabel">账号</Text>
                 ) : undefined
               }
             >
@@ -354,6 +365,7 @@ export function SettingsPage(props: {
                           <Spacer />
                           <Image
                             systemName="chevron.right"
+                            imageScale="small"
                             foregroundStyle="tertiaryLabel"
                           />
                         </HStack>
@@ -379,7 +391,7 @@ export function SettingsPage(props: {
 
         <Section
           listRowBackground={settingsRowBackground}
-          header={<Text foregroundStyle="secondaryLabel">显示</Text>}
+          header={<Text font="footnote" foregroundStyle="secondaryLabel">显示</Text>}
         >
           <SettingsGroup>
             <Picker
@@ -402,7 +414,7 @@ export function SettingsPage(props: {
             <CardDivider />
             <Picker
               title="刷新间隔"
-              value={String(settings.reloadMinutes)}
+              value={String(snapReloadMinutes(settings.reloadMinutes))}
               onChanged={(value: string) => {
                 setAppReloadMinutes(Number(value));
                 requestWidgetReload();
@@ -423,7 +435,7 @@ export function SettingsPage(props: {
 
         <Section
           listRowBackground={settingsRowBackground}
-          header={<Text foregroundStyle="secondaryLabel">用量总览</Text>}
+          header={<Text font="footnote" foregroundStyle="secondaryLabel">用量总览</Text>}
           footer={
             <Text font="caption" foregroundStyle="secondaryLabel">
               {APP_DASHBOARD_SETTINGS_FOOTER}
@@ -445,6 +457,7 @@ export function SettingsPage(props: {
                 <Spacer />
                 <Image
                   systemName="chevron.right"
+                  imageScale="small"
                   foregroundStyle="tertiaryLabel"
                 />
               </HStack>
@@ -454,7 +467,7 @@ export function SettingsPage(props: {
 
         <Section
           listRowBackground={settingsRowBackground}
-          header={<Text foregroundStyle="secondaryLabel">小组件总览</Text>}
+          header={<Text font="footnote" foregroundStyle="secondaryLabel">小组件总览</Text>}
           footer={
             <Text font="caption" foregroundStyle="secondaryLabel">
               {WIDGET_DASHBOARD_SETTINGS_FOOTER}
@@ -476,6 +489,7 @@ export function SettingsPage(props: {
                 <Spacer />
                 <Image
                   systemName="chevron.right"
+                  imageScale="small"
                   foregroundStyle="tertiaryLabel"
                 />
               </HStack>
@@ -508,7 +522,7 @@ export function SettingsPage(props: {
 
         <Section
           listRowBackground={settingsRowBackground}
-          header={<Text foregroundStyle="secondaryLabel">运行与支持</Text>}
+          header={<Text font="footnote" foregroundStyle="secondaryLabel">运行与支持</Text>}
         >
           <SettingsGroup>
             <Button
@@ -542,6 +556,7 @@ export function SettingsPage(props: {
                 <Spacer />
                 <Image
                   systemName="chevron.right"
+                  imageScale="small"
                   foregroundStyle="tertiaryLabel"
                 />
               </HStack>
@@ -562,6 +577,7 @@ export function SettingsPage(props: {
                 <Text foregroundStyle="secondaryLabel">{CURRENT_VERSION}</Text>
                 <Image
                   systemName="chevron.right"
+                  imageScale="small"
                   foregroundStyle="tertiaryLabel"
                 />
               </HStack>

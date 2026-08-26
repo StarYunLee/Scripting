@@ -301,7 +301,7 @@ function MinRemainingCapsule(props: {
 }) {
   const values = [props.primary, props.secondary]
     .map((window) => window?.remainingPercent)
-    .filter((value) => value != null && !Number.isNaN(value));
+    .flatMap((value) => (value != null && !Number.isNaN(value) ? [value] : []));
   if (!values.length) return null;
   const min = Math.min(...values);
   return (

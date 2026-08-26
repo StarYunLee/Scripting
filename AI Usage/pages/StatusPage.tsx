@@ -94,7 +94,7 @@ export function StatusPage(props: {
   }, [props.demoMode]);
 
   useEffect(() => {
-    const authorized = listAuthorizedCards();
+    const authorized = listAllAuthorizedCards();
     if (!authorized.length || props.demoMode) return;
     let cancelled = false;
     (async () => {
@@ -199,32 +199,37 @@ export function StatusPage(props: {
 
   async function refreshAll() {
     if (busy) return;
-    const targets = cards;
+    const targets = listAllAuthorizedCards();
     if (!targets.length) return;
     setBusy(true);
     if (props.demoMode) {
-      const nextCards = targets.map((card) => refreshDemoCard(card.accountId));
-      setCards(
-        nextCards.map((card) => ({
-          ...card,
-          refreshStatus: "success" as const,
-        })),
-      );
-      writeLog({
-        level: "info",
-        source: "app",
-        category: "refresh",
-        event: "refresh_all.completed",
-        message: `全部刷新完成：成功 ${nextCards.length}，失败 0`,
-      });
-      await Dialog.alert({
-        title: "刷新完成",
-        message: `成功 ${nextCards.length} 个，失败 0 个。`,
-        buttonLabel: "关闭",
-      });
-      for (const card of nextCards) clearCardRefreshState(card.key);
-      requestWidgetReload();
-      setBusy(false);
+      try {
+        const nextCards = targets.map((card) =>
+          refreshDemoCard(card.accountId),
+        );
+        setCards(
+          nextCards.map((card) => ({
+            ...card,
+            refreshStatus: "success" as const,
+          })),
+        );
+        writeLog({
+          level: "info",
+          source: "app",
+          category: "refresh",
+          event: "refresh_all.completed",
+          message: `全部刷新完成：成功 ${nextCards.length}，失败 0`,
+        });
+        await Dialog.alert({
+          title: "刷新完成",
+          message: `成功 ${nextCards.length} 个，失败 0 个。`,
+          buttonLabel: "关闭",
+        });
+        for (const card of nextCards) clearCardRefreshState(card.key);
+        requestWidgetReload();
+      } finally {
+        setBusy(false);
+      }
       return;
     }
     try {
@@ -239,11 +244,16 @@ export function StatusPage(props: {
             setCardRefreshState(`${target.provider}:${target.profileId}`, true);
           },
           onResult: (outcome) => {
+            const key = `${outcome.provider}:${outcome.profileId}`;
             const account = listProviderAccounts(outcome.provider).find(
               (item) => item.id === outcome.profileId,
             );
-            if (!account) return;
-            const key = `${outcome.provider}:${outcome.profileId}`;
+            if (!account) {
+              setCards((current) =>
+                current.filter((item) => item.key !== key),
+              );
+              return;
+            }
             const next = buildCard(outcome.provider, account, {
               errorMessage: outcome.error?.message,
               source: outcome.ok ? outcome.source || "live" : "error",
@@ -433,7 +443,7 @@ export function StatusPage(props: {
           />
         ))}
         <Text
-          font={12}
+          font="caption"
           foregroundStyle="tertiaryLabel"
           listRowBackground={<></>}
           listRowSeparator="hidden"

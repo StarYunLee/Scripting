@@ -203,7 +203,8 @@ export function BillingUsageWidgetView({ result, family }: Props) {
   const small = isSmall(family);
   const pad = small ? 12 : 16;
   const contentWidth = Math.max(90, displayWidth(family) - pad * 2);
-  const rows = model.windows.slice(0, 4);
+  const large = family.toLowerCase().includes("large");
+  const rows = model.windows.slice(0, small || large ? 4 : 2);
   const tight = small && rows.length >= 4;
 
   return (

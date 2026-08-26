@@ -100,7 +100,7 @@ https://raw.githubusercontent.com/StarYunLee/Scripting/main/AI-Usage.scripting
 
 ### MiniMax
 
-- 应用会打开 Token Plan 控制台（`platform.minimax.io`）
+- 应用会打开 MiniMax 控制台 Token Plan 页（`platform.minimax.io`）
 - 复制 Subscription Key 后粘贴到应用并提交；会自动探测国际站（`api.minimax.io`）或国内站（`api.minimaxi.com`）
 
 OAuth 临时状态有效期为 10 分钟。Authorization Code 通常只能交换一次；授权失败或超时后请重新开始。
@@ -209,6 +209,11 @@ provider:profileId
 - 固定展示 5 小时与每周两个额度窗口的剩余百分比
 - 套餐等级对齐官方 Andante / Moderato / Allegretto / Allegro；缺失窗口时显示 `—`
 
+### MiniMax
+
+- 固定展示 5 小时与每周两个额度窗口的剩余百分比
+- 支持 Plus / Pro / Max / Ultra 套餐徽章；缺失窗口时显示 `—`
+
 ### 刷新频率
 
 - 5 分钟
@@ -231,7 +236,7 @@ iOS WidgetKit 可能根据系统调度延后刷新。所选时间是请求的最
 - Kimi Code：设备码 OAuth 与 Coding usages 接口（`/coding/v1/usages`）
 - GitHub Copilot：GitHub 设备码 OAuth 与 Copilot 内部用量接口（`/copilot_internal/user`）
 - Z.ai / 智谱：API Key 认证与 monitor 用量接口（`/api/monitor/usage/quota/limit`，国际站 / 国内站自动探测）
-- MiniMax：Subscription Key 认证与 Coding / Token Plan remains 接口（`/coding_plan/remains`、`/token_plan/remains`，国际站 / 国内站自动探测）
+- MiniMax：Subscription Key 认证与 Coding / Token Plan 余量接口（`/v1/.../coding_plan/remains`、`/v1/token_plan/remains` 等候选路径，国际站 / 国内站自动探测）
 
 服务端更新后，路径、字段或访问策略可能变化。
 
@@ -290,4 +295,4 @@ AI Usage/
 
 ## 免责声明
 
-本项目仅用于查看本人账号的用量信息。请自行评估内部接口变更、账号策略和第三方脚本带来的风险，并遵守 OpenAI、xAI、Anthropic、Google、Cursor、Moonshot / Kimi 与 Scripting App 的服务条款。项目不保证接口永久可用，也不对用量数据延迟、解析差异、限流或服务端策略变化承担责任。
+本项目仅用于查看本人账号的用量信息。请自行评估内部接口变更、账号策略和第三方脚本带来的风险，并遵守 OpenAI、xAI、Anthropic、Google、Cursor、Moonshot / Kimi、MiniMax 与 Scripting App 的服务条款。项目不保证接口永久可用，也不对用量数据延迟、解析差异、限流或服务端策略变化承担责任。
