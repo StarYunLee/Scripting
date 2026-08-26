@@ -3,7 +3,8 @@ import {
   applyDashboardPrefs,
   getDashboardPrefs,
 } from "../services/dashboard-prefs";
-import { isDemoAccountId, isDemoMode, refreshDemoCard } from "../services/demo";
+import { refreshDemoCard } from "../services/demo";
+import { isDemoAccountId, isDemoMode } from "../services/demo-flags";
 import { refreshAccount } from "../services/refresh";
 import { getProvider } from "../providers/registry";
 import type { UsageCard } from "../models";

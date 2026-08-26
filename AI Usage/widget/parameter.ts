@@ -1,5 +1,6 @@
 import { getAccountProvider } from "../providers/account-registry";
-import { isDemoAccountId, listDemoAccounts } from "../services/demo";
+import { listDemoAccounts } from "../services/demo";
+import { isDemoAccountId } from "../services/demo-flags";
 import { PROVIDER_IDS, providerMeta, type ProviderId } from "../models";
 
 export const WIDGET_DASHBOARD_PARAMETER = "dashboard";

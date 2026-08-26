@@ -1,11 +1,7 @@
 import { getProvider } from "../providers/registry";
 import type { ProviderAccount } from "../providers/contracts";
-import {
-  isDemoAccountId,
-  isDemoMode,
-  listDemoCards,
-  refreshDemoCard,
-} from "./demo";
+import { listDemoCards, refreshDemoCard } from "./demo";
+import { isDemoAccountId, isDemoMode } from "./demo-flags";
 import { writeLog } from "./logger";
 import { refreshAccount } from "./refresh";
 import { PROVIDER_IDS, type ProviderId, type UsageCard } from "../models";

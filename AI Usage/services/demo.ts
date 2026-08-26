@@ -44,8 +44,6 @@ import type {
   UsageResult as MinimaxUsageResult,
 } from "../providers/minimax/types";
 
-const DEMO_KEY = "ai_usage_demo_mode_v1";
-
 type DemoAccount = {
   id: string;
   provider: UsageCard["provider"];
@@ -61,7 +59,12 @@ type DemoAccount = {
   resetCredits: { available: number; nearestOffsetMs: number } | null;
 };
 
-const DEMO_ACCOUNTS: DemoAccount[] = [
+let demoAccountsCache: DemoAccount[] | null = null;
+
+/** 演示账号数据按需构造：非演示模式下这千余行字面量永远不求值。 */
+function getDemoAccounts(): DemoAccount[] {
+  if (demoAccountsCache) return demoAccountsCache;
+  demoAccountsCache = [
   {
     id: "demo_codex_plus",
     provider: "codex",
@@ -1119,7 +1122,9 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
     ],
     resetCredits: null,
   },
-];
+  ];
+  return demoAccountsCache;
+}
 
 function futureIso(offsetMs: number): string {
   return new Date(Date.now() + offsetMs).toISOString();
@@ -1146,7 +1151,7 @@ export type DemoAccountView = {
 export function listDemoAccounts(
   provider?: UsageCard["provider"],
 ): DemoAccountView[] {
-  return DEMO_ACCOUNTS.filter(
+  return getDemoAccounts().filter(
     (account) => !provider || account.provider === provider,
   ).map((account) => ({
     id: account.id,
@@ -1206,7 +1211,7 @@ export function getDemoWidgetResult(
   | ZaiUsageResult
   | MinimaxUsageResult
   | null {
-  const account = DEMO_ACCOUNTS.find(
+  const account = getDemoAccounts().find(
     (item) => item.provider === provider && item.id === accountId,
   );
   if (!account) return null;
@@ -1444,33 +1449,14 @@ export function getDemoWidgetResult(
 }
 
 export function demoAccountCount(): number {
-  return DEMO_ACCOUNTS.length;
+  return getDemoAccounts().length;
 }
 
-export function isDemoMode(): boolean {
-  try {
-    const value = Storage.get<boolean>(DEMO_KEY);
-    return value == null ? true : value === true;
-  } catch {
-    return true;
-  }
-}
 
-export function setDemoMode(enabled: boolean): boolean {
-  try {
-    Storage.set(DEMO_KEY, enabled);
-  } catch {
-    /* ignore */
-  }
-  return enabled;
-}
 
-export function isDemoAccountId(accountId?: string | null): boolean {
-  return Boolean(accountId && accountId.startsWith("demo_"));
-}
 
 export function listDemoCards(): UsageCard[] {
-  return DEMO_ACCOUNTS.map((account) => ({
+  return getDemoAccounts().map((account) => ({
     key: `${account.provider}:${account.id}`,
     provider: account.provider,
     accountId: account.id,

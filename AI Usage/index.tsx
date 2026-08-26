@@ -1,7 +1,7 @@
 import { Navigation, Script, Tab, TabView, useState } from "scripting";
 import { SettingsPage } from "./pages/SettingsPage";
 import { StatusPage } from "./pages/StatusPage";
-import { isDemoMode, setDemoMode } from "./services/demo";
+import { isDemoMode, setDemoMode } from "./services/demo-flags";
 import { ensureAllMigrations } from "./services/hub";
 import {
   getAppDisplaySettings,

@@ -79,7 +79,8 @@ import type {
   UsageResult as MinimaxUsageResult,
   WidgetSettings as MinimaxWidgetSettings,
 } from "../providers/minimax/types";
-import { getDemoWidgetResult, isDemoAccountId } from "../services/demo";
+import { getDemoWidgetResult } from "../services/demo";
+import { isDemoAccountId } from "../services/demo-flags";
 import { writeLog } from "../services/logger";
 import type { ProviderId } from "../models";
 
