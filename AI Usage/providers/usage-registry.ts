@@ -4,6 +4,7 @@ import { fetchUsage as fetchGrokUsage } from "./grok/api";
 import { fetchUsage as fetchClaudeUsage } from "./claude/api";
 import { fetchUsage as fetchAntigravityUsage } from "./antigravity/api";
 import { fetchUsage as fetchCursorUsage } from "./cursor/api";
+import { fetchUsage as fetchKimiUsage } from "./kimi/api";
 import type { ProviderId } from "../models";
 import type { UsageProvider } from "./contracts";
 
@@ -27,6 +28,10 @@ export const USAGE_PROVIDERS = {
   cursor: {
     ...ACCOUNT_PROVIDERS.cursor,
     fetch: fetchCursorUsage,
+  },
+  kimi: {
+    ...ACCOUNT_PROVIDERS.kimi,
+    fetch: fetchKimiUsage,
   },
 } satisfies Record<ProviderId, UsageProvider>;
 

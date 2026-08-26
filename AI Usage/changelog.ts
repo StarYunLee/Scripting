@@ -6,6 +6,15 @@ export type ChangelogEntry = {
 
 export const CHANGELOG = [
   {
+    version: "1.3.0",
+    date: "2026-08-26",
+    changes: [
+      "新增 Kimi Code 多账号用量查询，展示 5 小时与每周额度窗口。",
+      "Kimi Code 使用设备码 OAuth：浏览器完成授权后返回应用提交即可，无需粘贴。",
+      "新增 Kimi Code Small / Medium 主屏幕小组件，以及独立 App Intent 刷新。",
+    ],
+  },
+  {
     version: "1.2.2",
     date: "2026-08-26",
     changes: [

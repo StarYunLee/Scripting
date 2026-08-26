@@ -23,6 +23,11 @@ import type {
   LimitWindow as CursorLimitWindow,
   UsageResult as CursorUsageResult,
 } from "../providers/cursor/types";
+import type {
+  LimitWindow as KimiLimitWindow,
+  LimitWindowName as KimiLimitWindowName,
+  UsageResult as KimiUsageResult,
+} from "../providers/kimi/types";
 
 const DEMO_KEY = "ai_usage_demo_mode_v1";
 
@@ -473,6 +478,52 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
     ],
     resetCredits: null,
   },
+  {
+    id: "demo_kimi_pro",
+    provider: "kimi",
+    title: "pro@kimi.demo",
+    planLabel: "Pro",
+    windows: [
+      {
+        id: "five_hour",
+        name: "five_hour",
+        label: "5 小时",
+        usedPercent: 41,
+        resetOffsetMs: 2 * 3_600_000 + 18 * 60_000,
+      },
+      {
+        id: "weekly",
+        name: "weekly",
+        label: "每周",
+        usedPercent: 55,
+        resetOffsetMs: 4 * 86_400_000 + 9 * 3_600_000,
+      },
+    ],
+    resetCredits: null,
+  },
+  {
+    id: "demo_kimi_ultra",
+    provider: "kimi",
+    title: "ultra@kimi.demo",
+    planLabel: "Ultra",
+    windows: [
+      {
+        id: "five_hour",
+        name: "five_hour",
+        label: "5 小时",
+        usedPercent: 22,
+        resetOffsetMs: 3 * 3_600_000 + 40 * 60_000,
+      },
+      {
+        id: "weekly",
+        name: "weekly",
+        label: "每周",
+        usedPercent: 31,
+        resetOffsetMs: 5 * 86_400_000 + 11 * 3_600_000,
+      },
+    ],
+    resetCredits: null,
+  },
 ];
 
 function futureIso(offsetMs: number): string {
@@ -531,6 +582,10 @@ export function getDemoWidgetResult(
   accountId: string,
 ): CursorUsageResult | null;
 export function getDemoWidgetResult(
+  provider: "kimi",
+  accountId: string,
+): KimiUsageResult | null;
+export function getDemoWidgetResult(
   provider: UsageCard["provider"],
   accountId: string,
 ):
@@ -539,6 +594,7 @@ export function getDemoWidgetResult(
   | ClaudeUsageResult
   | AntigravityUsageResult
   | CursorUsageResult
+  | KimiUsageResult
   | null {
   const account = DEMO_ACCOUNTS.find(
     (item) => item.provider === provider && item.id === accountId,
@@ -657,6 +713,27 @@ export function getDemoWidgetResult(
         total: byName("total"),
         api: byName("api"),
         plan: byName("plan"),
+        weekly: byName("weekly"),
+        planType: account.planLabel,
+        planLabel: account.planLabel,
+        fetchedAt,
+        source: "live",
+      },
+    };
+  }
+
+  if (provider === "kimi") {
+    const windows: KimiLimitWindow[] = account.windows.map((window) => ({
+      ...windowBase(window),
+      name: window.name as KimiLimitWindowName,
+    }));
+    const byName = (name: KimiLimitWindowName) =>
+      windows.find((window) => window.name === name) || null;
+    return {
+      ok: true,
+      snapshot: {
+        windows,
+        fiveHour: byName("five_hour"),
         weekly: byName("weekly"),
         planType: account.planLabel,
         planLabel: account.planLabel,

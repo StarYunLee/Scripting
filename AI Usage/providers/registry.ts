@@ -4,6 +4,7 @@ import * as GrokAccounts from "./grok/accounts";
 import * as ClaudeAccounts from "./claude/accounts";
 import * as AntigravityAccounts from "./antigravity/accounts";
 import * as CursorAccounts from "./cursor/accounts";
+import * as KimiAccounts from "./kimi/accounts";
 import {
   fetchUsage as fetchCodexUsage,
   getCachedUsage as getCodexCache,
@@ -74,6 +75,20 @@ import {
 } from "./cursor/oauth";
 import { normalizeUsageSnapshot as normalizeCursorUsage } from "./cursor/normalize";
 import { clearProfileSettings as clearCursorSettings } from "./cursor/credentials";
+import {
+  fetchUsage as fetchKimiUsage,
+  getCachedUsage as getKimiCache,
+  clearUsageCache as clearKimiCache,
+} from "./kimi/api";
+import {
+  startKimiLogin,
+  completeKimiLogin,
+  clearPendingOAuth as clearKimiPending,
+  getPendingOAuthProfileId as getKimiPending,
+  hasPendingOAuth as hasKimiPending,
+} from "./kimi/oauth";
+import { normalizeUsageSnapshot as normalizeKimiUsage } from "./kimi/normalize";
+import { clearProfileSettings as clearKimiSettings } from "./kimi/credentials";
 import type { ProviderId } from "../models";
 import type { ProviderCore } from "./contracts";
 
@@ -187,6 +202,28 @@ export const PROVIDER_REGISTRY = {
       clearCache: clearCursorCache,
     },
     clearSettings: clearCursorSettings,
+  },
+  kimi: {
+    ...ACCOUNT_PROVIDERS.kimi,
+    ensure: KimiAccounts.ensureAccountMigration,
+    create: KimiAccounts.createAccount,
+    remove: KimiAccounts.deleteAccount,
+    auth: {
+      start: startKimiLogin,
+      complete: completeKimiLogin,
+      clearPending: clearKimiPending,
+      pendingId: getKimiPending,
+      hasPending: hasKimiPending,
+    },
+    usage: {
+      fetch: fetchKimiUsage,
+      cache: (profileId: string) => {
+        const snapshot = getKimiCache(profileId);
+        return snapshot ? normalizeKimiUsage(snapshot) : null;
+      },
+      clearCache: clearKimiCache,
+    },
+    clearSettings: clearKimiSettings,
   },
 } satisfies Record<ProviderId, ProviderCore>;
 

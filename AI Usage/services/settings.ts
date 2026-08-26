@@ -18,6 +18,10 @@ import {
   getSettings as getCursorSettings,
   setReloadMinutes as setCursorReloadMinutes,
 } from "../providers/cursor/credentials";
+import {
+  getSettings as getKimiSettings,
+  setReloadMinutes as setKimiReloadMinutes,
+} from "../providers/kimi/credentials";
 
 const DISPLAY_KEY = "ai_usage_display_settings_v1";
 
@@ -78,6 +82,7 @@ function migrateLegacyWidgetSettings(): void {
   getClaudeSettings();
   getAntigravitySettings();
   getCursorSettings();
+  getKimiSettings();
 }
 
 export function getAppDisplaySettings(): AppDisplaySettings {
@@ -90,7 +95,8 @@ export function getAppDisplaySettings(): AppDisplaySettings {
         getGrokSettings().reloadMinutes ||
         getClaudeSettings().reloadMinutes ||
         getAntigravitySettings().reloadMinutes ||
-        getCursorSettings().reloadMinutes;
+        getCursorSettings().reloadMinutes ||
+        getKimiSettings().reloadMinutes;
       return { ...DEFAULT_SETTINGS, reloadMinutes: clampMinutes(fallback) };
     }
     return {
@@ -117,6 +123,7 @@ export function setAppReloadMinutes(reloadMinutes: number): AppDisplaySettings {
   setClaudeReloadMinutes(next.reloadMinutes);
   setAntigravityReloadMinutes(next.reloadMinutes);
   setCursorReloadMinutes(next.reloadMinutes);
+  setKimiReloadMinutes(next.reloadMinutes);
   return next;
 }
 

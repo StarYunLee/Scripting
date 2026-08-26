@@ -110,6 +110,33 @@ function palette(provider: ProviderId, label: string): BadgePalette {
     };
   }
 
+  if (provider === "kimi") {
+    const level = normalized.replace(/^level_/, "");
+    if (level === "ultra" || level === "advanced")
+      return {
+        text: level.toUpperCase(),
+        background: linear(["#0F172A", "#6366F1"], ["#1E293B", "#818CF8"]),
+        foreground: "#EEF2FF",
+      };
+    if (level === "pro" || level === "intermediate")
+      return {
+        text: level === "intermediate" ? "INTERMEDIATE" : "PRO",
+        background: linear(["#312E81", "#4F46E5"], ["#4338CA", "#6366F1"]),
+        foreground: "#FFFFFF",
+      };
+    if (level === "basic")
+      return {
+        text: "BASIC",
+        background: linear(["#1E3A8A", "#3B82F6"], ["#1D4ED8", "#60A5FA"]),
+        foreground: "#EFF6FF",
+      };
+    return {
+      text: label.trim().toUpperCase() || "KIMI",
+      background: linear(["#111827", "#374151"], ["#1F2937", "#4B5563"]),
+      foreground: "#F9FAFB",
+    };
+  }
+
   if (provider === "claude") {
     if (normalized === "max-20x") {
       return {
@@ -225,7 +252,9 @@ export function PlanBadge(props: {
           ? "CLAUDE"
           : props.provider === "cursor"
             ? "CURSOR"
-            : "ANTIGRAVITY";
+            : props.provider === "kimi"
+              ? "KIMI"
+              : "ANTIGRAVITY";
   const planText = rawPlanText === providerText ? "" : rawPlanText;
   return (
     <HStack

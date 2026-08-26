@@ -79,7 +79,10 @@ export function StatusPage(props: {
       provider: pending.provider,
       profileId: pending.profileId,
       authorizationInput: "",
-      status: "存在未完成的授权，请粘贴回调或授权码",
+      status:
+        pending.provider === "cursor" || pending.provider === "kimi"
+          ? "存在未完成的授权，请返回应用并点击提交（无需粘贴）"
+          : "存在未完成的授权，请粘贴回调或授权码",
     });
   }, [props.demoMode]);
 
@@ -119,10 +122,12 @@ export function StatusPage(props: {
         profileId: started.profileId,
         authorizationInput: "",
         status:
-          target === "cursor"
+          target === "cursor" || target === "kimi"
             ? mode === "present"
               ? "关闭授权页后，返回应用并点击提交（无需粘贴）"
-              : "已在系统 Safari 打开 Cursor 登录页，完成后返回并点击提交"
+              : target === "kimi"
+                ? "已在系统 Safari 打开 Kimi Code 授权页，完成后返回并点击提交"
+                : "已在系统 Safari 打开 Cursor 登录页，完成后返回并点击提交"
             : mode === "present"
               ? "关闭授权页后，把回调地址或授权码粘贴到下方"
               : "已在系统 Safari 打开授权页，完成后把回调地址或授权码粘贴到下方",

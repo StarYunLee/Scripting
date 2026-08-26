@@ -8,15 +8,15 @@
   </tr>
 </table>
 
-面向 [Scripting App](https://scriptingapp.github.io/) 的非官方多平台用量查看应用。在一个项目里管理 Codex、Grok、Claude、Antigravity 与 Cursor 的多账号用量、主屏幕小组件和自动化刷新。
+面向 [Scripting App](https://scriptingapp.github.io/) 的非官方多平台用量查看应用。在一个项目里管理 Codex、Grok、Claude、Antigravity、Cursor 与 Kimi Code 的多账号用量、主屏幕小组件和自动化刷新。
 
-当前版本：`1.2.2`
+当前版本：`1.3.0`
 
-> 本项目不是 OpenAI、xAI、Anthropic、Google、Cursor 或 Scripting App 官方产品，与上述平台无隶属或合作关系。
+> 本项目不是 OpenAI、xAI、Anthropic、Google、Cursor、Moonshot / Kimi 或 Scripting App 官方产品，与上述平台无隶属或合作关系。
 
 ## 功能
 
-- 统一管理 Codex、Grok、Claude、Antigravity、Cursor 多个账号
+- 统一管理 Codex、Grok、Claude、Antigravity、Cursor、Kimi Code 多个账号
 - Access Token、Refresh Token 和相关身份凭据保存在本机 Keychain
 - Token 到期前自动刷新
 - 主屏幕小组件支持 Small、Medium，并按账号独立保存布局
@@ -78,6 +78,11 @@ https://raw.githubusercontent.com/StarYunLee/Scripting/main/AI-Usage.scripting
 - 应用会打开 `cursor.com/loginDeepControl` 授权页
 - 在浏览器完成 Cursor 登录后返回应用，无需粘贴内容，直接点击“提交并完成授权”
 
+### Kimi Code
+
+- 应用会打开 Kimi 设备授权页（`auth.kimi.com`）
+- 在浏览器完成授权后返回应用，无需粘贴内容，直接点击“提交并完成授权”
+
 OAuth 临时状态有效期为 10 分钟。Authorization Code 通常只能交换一次；授权失败或超时后请重新开始。
 
 > 回调 URL 和一次性授权码属于短期敏感凭据。不要截图、公开或发送给他人。
@@ -114,6 +119,8 @@ provider:profileId
 
 - Codex / Claude / Antigravity：可按账号选择单额度详情或双额度概览
 - Grok：固定展示每周额度
+- Cursor：固定展示 Auto / 所有 / 第三方模型
+- Kimi Code：固定展示 5 小时与每周额度
 - 单额度详情同时列出已用和剩余百分比，主数字与进度条仍表示剩余
 
 ### Medium
@@ -151,6 +158,11 @@ provider:profileId
 - 固定展示 Auto、所有、第三方模型三个额度窗口的剩余百分比
 - 三个窗口共享计费周期重置时间；缺失字段时跳过对应窗口
 
+### Kimi Code
+
+- 固定展示 5 小时与每周两个额度窗口的剩余百分比
+- 套餐等级来自会员信息；缺失窗口时显示 `—`
+
 ### 刷新频率
 
 - 5 分钟
@@ -170,6 +182,7 @@ iOS WidgetKit 可能根据系统调度延后刷新。所选时间是请求的最
 - Claude：Anthropic OAuth 与 Claude Code 用量接口
 - Antigravity：Google OAuth 与 Antigravity / Code Assist 用量接口
 - Cursor：Cursor PKCE 登录与 Dashboard 用量接口（`GetCurrentPeriodUsage`，Enterprise 回退 `/auth/usage`）
+- Kimi Code：设备码 OAuth 与 Coding usages 接口（`/coding/v1/usages`）
 
 服务端更新后，路径、字段或访问策略可能变化。
 
@@ -226,4 +239,4 @@ AI Usage/
 
 ## 免责声明
 
-本项目仅用于查看本人账号的用量信息。请自行评估内部接口变更、账号策略和第三方脚本带来的风险，并遵守 OpenAI、xAI、Anthropic、Google、Cursor 与 Scripting App 的服务条款。项目不保证接口永久可用，也不对用量数据延迟、解析差异、限流或服务端策略变化承担责任。
+本项目仅用于查看本人账号的用量信息。请自行评估内部接口变更、账号策略和第三方脚本带来的风险，并遵守 OpenAI、xAI、Anthropic、Google、Cursor、Moonshot / Kimi 与 Scripting App 的服务条款。项目不保证接口永久可用，也不对用量数据延迟、解析差异、限流或服务端策略变化承担责任。

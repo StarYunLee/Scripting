@@ -43,6 +43,15 @@ import type {
   UsageResult as CursorUsageResult,
   WidgetSettings as CursorWidgetSettings,
 } from "../providers/cursor/types";
+import {
+  fetchUsage as fetchKimiUsage,
+  getCachedUsage as getKimiCache,
+} from "../providers/kimi/api";
+import { getEffectiveSettings as getKimiSettings } from "../providers/kimi/credentials";
+import type {
+  UsageResult as KimiUsageResult,
+  WidgetSettings as KimiWidgetSettings,
+} from "../providers/kimi/types";
 import { getDemoWidgetResult, isDemoAccountId } from "../services/demo";
 import { writeLog } from "../services/logger";
 import type { ProviderId } from "../models";
@@ -72,6 +81,11 @@ export type LoadedWidgetUsage =
       provider: "cursor";
       result: CursorUsageResult;
       settings: CursorWidgetSettings;
+    }
+  | {
+      provider: "kimi";
+      result: KimiUsageResult;
+      settings: KimiWidgetSettings;
     };
 
 type LoadedCodexWidget = Extract<LoadedWidgetUsage, { provider: "codex" }>;
@@ -82,6 +96,7 @@ type LoadedAntigravityWidget = Extract<
   { provider: "antigravity" }
 >;
 type LoadedCursorWidget = Extract<LoadedWidgetUsage, { provider: "cursor" }>;
+type LoadedKimiWidget = Extract<LoadedWidgetUsage, { provider: "kimi" }>;
 
 function logLoadFailure(
   provider: ProviderId,
@@ -220,6 +235,26 @@ async function loadCursor(profileId: string): Promise<LoadedCursorWidget> {
     settings: getCursorSettings(profileId),
   };
 }
+
+async function loadKimi(profileId: string): Promise<LoadedKimiWidget> {
+  const result = await loadProviderResult<KimiUsageResult>({
+    provider: "kimi",
+    profileId,
+    demo: () => getDemoWidgetResult("kimi", profileId)!,
+    fetch: () => fetchKimiUsage({ force: false, profileId }),
+    fallback: (error) => ({
+      ok: false,
+      error: unknownError(error),
+      cache: getKimiCache(profileId),
+    }),
+  });
+  return {
+    provider: "kimi",
+    result,
+    settings: getKimiSettings(profileId),
+  };
+}
+
 export function loadWidgetUsage(
   provider: "codex",
   profileId: string,
@@ -241,6 +276,10 @@ export function loadWidgetUsage(
   profileId: string,
 ): Promise<LoadedCursorWidget>;
 export function loadWidgetUsage(
+  provider: "kimi",
+  profileId: string,
+): Promise<LoadedKimiWidget>;
+export function loadWidgetUsage(
   provider: ProviderId,
   profileId: string,
 ): Promise<LoadedWidgetUsage>;
@@ -252,5 +291,6 @@ export function loadWidgetUsage(
   if (provider === "grok") return loadGrok(profileId);
   if (provider === "claude") return loadClaude(profileId);
   if (provider === "cursor") return loadCursor(profileId);
+  if (provider === "kimi") return loadKimi(profileId);
   return loadAntigravity(profileId);
 }

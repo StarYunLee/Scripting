@@ -6,6 +6,7 @@ import { UsageWidgetView as GrokUsageWidgetView } from "./widget/grok/UsageWidge
 import { UsageWidgetView as ClaudeUsageWidgetView } from "./widget/claude/UsageWidgetView";
 import { UsageWidgetView as AntigravityUsageWidgetView } from "./widget/antigravity/UsageWidgetView";
 import { UsageWidgetView as CursorUsageWidgetView } from "./widget/cursor/UsageWidgetView";
+import { UsageWidgetView as KimiUsageWidgetView } from "./widget/kimi/UsageWidgetView";
 import { getAppDisplaySettings } from "./services/settings";
 import { writeLog } from "./services/logger";
 
@@ -96,6 +97,14 @@ async function run() {
   if (loaded.provider === "cursor") {
     Widget.present(
       <CursorUsageWidgetView result={loaded.result} family={family} />,
+      { reloadPolicy },
+    );
+    return;
+  }
+
+  if (loaded.provider === "kimi") {
+    Widget.present(
+      <KimiUsageWidgetView result={loaded.result} family={family} />,
       { reloadPolicy },
     );
     return;

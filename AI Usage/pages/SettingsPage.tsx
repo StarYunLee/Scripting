@@ -126,10 +126,12 @@ export function SettingsPage(props: {
         profileId: started.profileId,
         authorizationInput: "",
         status:
-          provider === "cursor"
+          provider === "cursor" || provider === "kimi"
             ? mode === "present"
               ? "关闭授权页后，返回应用并点击提交（无需粘贴）"
-              : "已在系统 Safari 打开 Cursor 登录页，完成后返回并点击提交"
+              : provider === "kimi"
+                ? "已在系统 Safari 打开 Kimi Code 授权页，完成后返回并点击提交"
+                : "已在系统 Safari 打开 Cursor 登录页，完成后返回并点击提交"
             : mode === "present"
               ? "关闭授权页后，把回调地址或授权码粘贴到下方"
               : "已在系统 Safari 打开授权页，完成后把回调地址或授权码粘贴到下方",
