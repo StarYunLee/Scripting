@@ -6,6 +6,19 @@ export type ChangelogEntry = {
 
 export const CHANGELOG = [
   {
+    version: "1.8.4",
+    date: "2026-08-27",
+    changes: [
+      "修复安装包目录结构错误（多套一层文件夹）导致 App 无法识别、脚本无法打开的问题。",
+      "修复「用量总览」里隐藏的账号/额度行在刷新后重新出现。",
+      "修复 GitHub Copilot 账号邮箱永远不显示：API 版本号笔误导致 GitHub 接口直接拒绝请求。",
+      "修复 Cursor 授权等待可能超过 10 分钟仍不提示过期。",
+      "修复 Z.ai Pro+ 套餐被降级显示为 Pro。",
+      "修复 MiniMax 周额度重置时间误显示为 5 小时窗口倒计时、套餐档位一律推断为 Ultra 的问题。",
+      "补回 v1.1.2 版本更新日志。",
+    ],
+  },
+  {
     version: "1.8.3",
     date: "2026-08-26",
     changes: [
