@@ -1,4 +1,5 @@
-import { HStack, Text } from "scripting";
+import {
+  EmptyView, HStack, Text } from "scripting";
 import type { Color, DynamicShapeStyle } from "scripting";
 import { ProviderLogo } from "../../components/ProviderLogo";
 
@@ -88,7 +89,7 @@ export function PlanBadge({
         >
           {p.text}
         </Text>
-      ) : null}
+      ) : <EmptyView />}
     </HStack>
   );
 }

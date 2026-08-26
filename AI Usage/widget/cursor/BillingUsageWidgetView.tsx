@@ -1,4 +1,5 @@
 import {
+  EmptyView,
   HStack,
   Image,
   Script,
@@ -151,7 +152,7 @@ function Progress({
           background={usageTint(usedPercent, remainingPercent)}
           clipShape={{ type: "capsule", style: "continuous" }}
         />
-      ) : null}
+      ) : <EmptyView />}
     </ZStack>
   );
 }
@@ -239,8 +240,8 @@ export function BillingUsageWidgetView({ result, family }: Props) {
             lineLimit={1}
           >
             {small
-              ? formatSmallDate(model.resetAt)
-              : `重置 ${formatResetDate(model.resetAt)}`}
+              ? formatSmallDate(model.snapshot?.fetchedAt)
+              : `更新 ${model.fetched}`}
           </Text>
         </HStack>
 
@@ -262,20 +263,20 @@ export function BillingUsageWidgetView({ result, family }: Props) {
         {!small ? (
           <HStack frame={{ width: contentWidth }}>
             <Text font={10} foregroundStyle={C.secondary}>
-              更新 {model.fetched}
+              重置 {formatResetDate(model.resetAt)}
             </Text>
             <Spacer />
             {!model.live && model.detail ? (
               <Text font={9} foregroundStyle={C.warn} lineLimit={1}>
                 {model.detail}
               </Text>
-            ) : null}
+            ) : <EmptyView />}
           </HStack>
         ) : !model.live && model.detail ? (
           <Text font={7} foregroundStyle={C.warn} lineLimit={1}>
             {model.detail}
           </Text>
-        ) : null}
+        ) : <EmptyView />}
       </VStack>
     </ZStack>
   );

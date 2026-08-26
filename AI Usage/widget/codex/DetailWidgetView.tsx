@@ -1,4 +1,5 @@
 import {
+  EmptyView,
   HStack,
   Image,
   Script,
@@ -9,7 +10,6 @@ import {
   ZStack,
 } from "scripting";
 import type { Color, DynamicShapeStyle } from "scripting";
-import { PERIOD } from "../../copy/labels";
 import { MEDIUM_LAYOUT } from "../../providers/codex/credentials";
 import { usageTint } from "../../services/usage-colors";
 import { pickFocusWindow } from "../../providers/codex/api";
@@ -146,7 +146,7 @@ function Progress({
           background={usageTint(usedPercent, remainingPercent)}
           clipShape={{ type: "capsule", style: "continuous" }}
         />
-      ) : null}
+      ) : <EmptyView />}
     </ZStack>
   );
 }
@@ -308,21 +308,19 @@ export function DetailWidgetView({ result, family, focusWindow }: Props) {
             }}
             padding={{ leading: 12, trailing: 12, top: 19 }}
           >
+            <PlanBadge label={model.planLabel} small />
+            <Spacer minLength={0} />
             <Text
               fontDesign="default"
               fontWidth="standard"
-              font={16}
-              fontWeight="bold"
-              foregroundStyle={C.primary}
+              font={8}
+              fontWeight="medium"
+              foregroundStyle={C.secondary}
+              lineLimit={1}
+              minScaleFactor={0.75}
             >
-              {focusWindow === "five_hour"
-                ? PERIOD.FIVE_HOUR.widget.toUpperCase()
-                : focusWindow === "monthly"
-                  ? PERIOD.MONTHLY.widget
-                  : PERIOD.WEEKLY.widget}
+              {model.fetched}
             </Text>
-            <Spacer />
-            <PlanBadge label={model.planLabel} small />
           </HStack>
 
           <HStack
@@ -442,7 +440,7 @@ export function DetailWidgetView({ result, family, focusWindow }: Props) {
                 {model.detail}
               </Text>
             </HStack>
-          ) : null}
+          ) : <EmptyView />}
         </ZStack>
       </ZStack>
     );
@@ -641,7 +639,7 @@ export function DetailWidgetView({ result, family, focusWindow }: Props) {
               {model.detail}
             </Text>
           </HStack>
-        ) : null}
+        ) : <EmptyView />}
       </ZStack>
     </ZStack>
   );

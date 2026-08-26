@@ -1,4 +1,5 @@
 import {
+  EmptyView,
   HStack,
   Image,
   Script,
@@ -127,7 +128,7 @@ function Progress(props: {
           background={usageTint(props.usedPercent, props.remainingPercent)}
           clipShape={{ type: "capsule", style: "continuous" }}
         />
-      ) : null}
+      ) : <EmptyView />}
     </ZStack>
   );
 }
@@ -299,7 +300,7 @@ function MinRemainingCapsule(props: {
   const values = [props.primary, props.secondary]
     .map((window) => window?.remainingPercent)
     .flatMap((value) => (value != null && !Number.isNaN(value) ? [value] : []));
-  if (!values.length) return null;
+  if (!values.length) return <EmptyView />;
   const min = Math.min(...values);
   return (
     <HStack
@@ -381,7 +382,7 @@ export function UsageWidgetView({ result, family }: Props) {
               {model.detail}
             </Text>
           </HStack>
-        ) : null}
+        ) : <EmptyView />}
       </ZStack>
     );
   }
@@ -447,7 +448,7 @@ export function UsageWidgetView({ result, family }: Props) {
             {model.detail}
           </Text>
         </HStack>
-      ) : null}
+      ) : <EmptyView />}
     </ZStack>
   );
 }

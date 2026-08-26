@@ -1,4 +1,5 @@
 import {
+  EmptyView,
   HStack,
   Image,
   Script,
@@ -137,7 +138,7 @@ function Progress({
           background={usageTint(usedPercent, remainingPercent)}
           clipShape={{ type: "capsule", style: "continuous" }}
         />
-      ) : null}
+      ) : <EmptyView />}
     </ZStack>
   );
 }
@@ -594,15 +595,19 @@ function SingleWindowView({
           }}
           padding={{ leading: 12, trailing: 12, top: 19 }}
         >
-          <Text font={16} fontWeight="bold" foregroundStyle={C.primary}>
-            {focusWindow === "five_hour"
-              ? CLAUDE_WIDGET.shortFiveHour
-              : focusWindow === "weekly_fable"
-                ? "Fable"
-                : CLAUDE_WIDGET.shortWeekly}
-          </Text>
-          <Spacer />
           <PlanBadge label={model.planLabel} small />
+          <Spacer minLength={0} />
+          <Text
+            fontDesign="default"
+            fontWidth="standard"
+            font={8}
+            fontWeight="medium"
+            foregroundStyle={C.secondary}
+            lineLimit={1}
+            minScaleFactor={0.75}
+          >
+            {model.fetched}
+          </Text>
         </HStack>
         <HStack
           frame={{
@@ -682,7 +687,7 @@ function SingleWindowView({
               {model.detail}
             </Text>
           </HStack>
-        ) : null}
+        ) : <EmptyView />}
       </ZStack>
     );
 
@@ -818,7 +823,7 @@ function SingleWindowView({
             {model.detail}
           </Text>
         </HStack>
-      ) : null}
+      ) : <EmptyView />}
     </ZStack>
   );
 }
@@ -926,7 +931,7 @@ export function UsageWidgetView({
               {model.detail}
             </Text>
           </HStack>
-        ) : null}
+        ) : <EmptyView />}
       </ZStack>
     );
   }
@@ -992,7 +997,7 @@ export function UsageWidgetView({
             {model.detail}
           </Text>
         </HStack>
-      ) : null}
+      ) : <EmptyView />}
     </ZStack>
   );
 }

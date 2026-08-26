@@ -1,4 +1,5 @@
-import { HStack, Text } from "scripting";
+import {
+  EmptyView, HStack, Text } from "scripting";
 import { ProviderLogo } from "../../components/ProviderLogo";
 import { zaiBadgePalette } from "../../providers/zai/theme";
 
@@ -33,7 +34,7 @@ export function PlanBadge({
         >
           {p.text}
         </Text>
-      ) : null}
+      ) : <EmptyView />}
     </HStack>
   );
 }

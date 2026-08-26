@@ -1,4 +1,4 @@
-import { HStack, Image, Script, Spacer, Text, Widget, ZStack } from "scripting";
+import { EmptyView, HStack, Image, Script, Spacer, Text, Widget, ZStack } from "scripting";
 import type { Color, DynamicShapeStyle } from "scripting";
 import { CODEX_WIDGET, PERIOD } from "../../copy/labels";
 import { usageTint } from "../../services/usage-colors";
@@ -126,7 +126,7 @@ function Progress({
           background={usageTint(usedPercent, remainingPercent)}
           clipShape={{ type: "capsule", style: "continuous" }}
         />
-      ) : null}
+      ) : <EmptyView />}
     </ZStack>
   );
 }
@@ -325,7 +325,7 @@ function MediumReset({
             {resetExpiration || "—"}
           </Text>
         </>
-      ) : null}
+      ) : <EmptyView />}
     </HStack>
   );
 }
@@ -476,20 +476,37 @@ export function OverviewWidgetView({ result, family }: Props) {
           width={contentWidth}
           top={99}
         />
-        {!model.live && model.detail ? (
-          <HStack
-            frame={{
-              maxWidth: "infinity",
-              maxHeight: "infinity",
-              alignment: "bottomLeading",
-            }}
-            padding={{ horizontal: 12, bottom: 2 }}
+        <HStack
+          alignment="center"
+          frame={{
+            maxWidth: "infinity",
+            maxHeight: "infinity",
+            alignment: "bottomLeading",
+          }}
+          padding={{ horizontal: 12, bottom: 2 }}
+        >
+          <Text
+            fontDesign="default"
+            fontWidth="standard"
+            font={8}
+            fontWeight="medium"
+            foregroundStyle={C.secondary}
+            lineLimit={1}
+            minScaleFactor={0.7}
           >
-            <Text font={7} foregroundStyle={C.warn} lineLimit={1}>
-              {model.detail}
-            </Text>
-          </HStack>
-        ) : null}
+            {`${model.resetLabel} · ${model.resetExpiration}到期`}
+          </Text>
+          {!model.live && model.detail ? (
+            <>
+              <Spacer minLength={0} />
+              <Text font={7} foregroundStyle={C.warn} lineLimit={1}>
+                {model.detail}
+              </Text>
+            </>
+          ) : (
+            <EmptyView />
+          )}
+        </HStack>
       </ZStack>
     );
   }
@@ -557,7 +574,7 @@ export function OverviewWidgetView({ result, family }: Props) {
             {model.detail}
           </Text>
         </HStack>
-      ) : null}
+      ) : <EmptyView />}
     </ZStack>
   );
 }

@@ -1,4 +1,4 @@
-import { HStack, Text } from "scripting";
+import { EmptyView, HStack, Text } from "scripting";
 import { ProviderLogo } from "../../components/ProviderLogo";
 import { kimiBadgePalette } from "../../providers/kimi/theme";
 
@@ -14,13 +14,13 @@ export function PlanBadge({
   return (
     <HStack
       spacing={small ? 5 : 6}
-      padding={{ horizontal: small ? 8 : 10, vertical: small ? 3 : 4 }}
+      padding={{ horizontal: small ? 5 : 10, vertical: small ? 3 : 4 }}
       background={p.background}
       clipShape={{ type: "capsule", style: "continuous" }}
     >
       <ProviderLogo
         provider="kimi"
-        size={small ? 10 : 11}
+        size={small ? 9 : 11}
         tint={p.logoTint ?? p.foreground}
       />
       {showTier ? (
@@ -33,7 +33,9 @@ export function PlanBadge({
         >
           {p.text}
         </Text>
-      ) : null}
+      ) : (
+        <EmptyView />
+      )}
     </HStack>
   );
 }

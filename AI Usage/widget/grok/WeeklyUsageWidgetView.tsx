@@ -1,4 +1,5 @@
 import {
+  EmptyView,
   HStack,
   Image,
   Script,
@@ -144,7 +145,7 @@ function Progress({
           background={usageTint(usedPercent, remainingPercent)}
           clipShape={{ type: "capsule", style: "continuous" }}
         />
-      ) : null}
+      ) : <EmptyView />}
     </ZStack>
   );
 }
@@ -327,17 +328,19 @@ export function WeeklyUsageWidgetView({ result, family }: Props) {
             }}
             padding={{ leading: 12, trailing: 12, top: 19 }}
           >
+            <PlanBadge label={model.planLabel} small />
+            <Spacer minLength={0} />
             <Text
               fontDesign="default"
               fontWidth="standard"
-              font={16}
-              fontWeight="bold"
-              foregroundStyle={C.primary}
+              font={8}
+              fontWeight="medium"
+              foregroundStyle={C.secondary}
+              lineLimit={1}
+              minScaleFactor={0.75}
             >
-              {focusTitle(true)}
+              {model.fetched}
             </Text>
-            <Spacer />
-            <PlanBadge label={model.planLabel} small />
           </HStack>
 
           <HStack
@@ -457,7 +460,7 @@ export function WeeklyUsageWidgetView({ result, family }: Props) {
                 {model.detail}
               </Text>
             </HStack>
-          ) : null}
+          ) : <EmptyView />}
         </ZStack>
       </ZStack>
     );
@@ -656,7 +659,7 @@ export function WeeklyUsageWidgetView({ result, family }: Props) {
               {model.detail}
             </Text>
           </HStack>
-        ) : null}
+        ) : <EmptyView />}
       </ZStack>
     </ZStack>
   );
