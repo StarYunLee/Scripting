@@ -87,7 +87,9 @@ export function StatusPage(props: {
           ? "存在未完成的授权，请返回应用并点击提交（无需粘贴）"
           : pending.provider === "zai"
             ? "存在未完成的授权，请粘贴 API Key 后提交"
-            : "存在未完成的授权，请粘贴回调或授权码",
+            : pending.provider === "minimax"
+              ? "存在未完成的授权，请粘贴 Subscription Key 后提交"
+              : "存在未完成的授权，请粘贴回调或授权码",
     });
   }, [props.demoMode]);
 

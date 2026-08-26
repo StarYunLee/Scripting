@@ -6,6 +6,14 @@ export type ChangelogEntry = {
 
 export const CHANGELOG = [
   {
+    version: "1.8.0",
+    date: "2026-08-26",
+    changes: [
+      "新增 MiniMax Coding / Token Plan 用量支持：粘贴 Subscription Key，自动识别国际站（api.minimax.io）或国内站（api.minimaxi.com）。",
+      "展示 5 小时与每周额度，支持 Plus / Pro / Max / Ultra 套餐徽章与主屏幕小组件。",
+    ],
+  },
+  {
     version: "1.7.0",
     date: "2026-08-26",
     changes: [

@@ -38,6 +38,11 @@ import type {
   LimitWindowName as ZaiLimitWindowName,
   UsageResult as ZaiUsageResult,
 } from "../providers/zai/types";
+import type {
+  LimitWindow as MinimaxLimitWindow,
+  LimitWindowName as MinimaxLimitWindowName,
+  UsageResult as MinimaxUsageResult,
+} from "../providers/minimax/types";
 
 const DEMO_KEY = "ai_usage_demo_mode_v1";
 
@@ -633,6 +638,52 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
     ],
     resetCredits: null,
   },
+  {
+    id: "demo_minimax_pro",
+    provider: "minimax",
+    title: "pro@minimax.demo",
+    planLabel: "Pro",
+    windows: [
+      {
+        id: "five_hour",
+        name: "five_hour",
+        label: "5 小时",
+        usedPercent: 35,
+        resetOffsetMs: 3 * 3_600_000 + 20 * 60_000,
+      },
+      {
+        id: "weekly",
+        name: "weekly",
+        label: "每周",
+        usedPercent: 48,
+        resetOffsetMs: 4 * 86_400_000 + 6 * 3_600_000,
+      },
+    ],
+    resetCredits: null,
+  },
+  {
+    id: "demo_minimax_max",
+    provider: "minimax",
+    title: "max@minimax.demo",
+    planLabel: "Max",
+    windows: [
+      {
+        id: "five_hour",
+        name: "five_hour",
+        label: "5 小时",
+        usedPercent: 18,
+        resetOffsetMs: 4 * 3_600_000 + 5 * 60_000,
+      },
+      {
+        id: "weekly",
+        name: "weekly",
+        label: "每周",
+        usedPercent: 27,
+        resetOffsetMs: 6 * 86_400_000 + 3 * 3_600_000,
+      },
+    ],
+    resetCredits: null,
+  },
 ];
 
 function futureIso(offsetMs: number): string {
@@ -703,6 +754,10 @@ export function getDemoWidgetResult(
   accountId: string,
 ): ZaiUsageResult | null;
 export function getDemoWidgetResult(
+  provider: "minimax",
+  accountId: string,
+): MinimaxUsageResult | null;
+export function getDemoWidgetResult(
   provider: UsageCard["provider"],
   accountId: string,
 ):
@@ -714,6 +769,7 @@ export function getDemoWidgetResult(
   | KimiUsageResult
   | CopilotUsageResult
   | ZaiUsageResult
+  | MinimaxUsageResult
   | null {
   const account = DEMO_ACCOUNTS.find(
     (item) => item.provider === provider && item.id === accountId,
@@ -900,6 +956,28 @@ export function getDemoWidgetResult(
         fiveHour: byName("five_hour"),
         weekly: byName("weekly"),
         monthly: byName("monthly"),
+        planType: account.planLabel,
+        planLabel: account.planLabel,
+        region: "intl",
+        fetchedAt,
+        source: "live",
+      },
+    };
+  }
+
+  if (provider === "minimax") {
+    const windows: MinimaxLimitWindow[] = account.windows.map((window) => ({
+      ...windowBase(window),
+      name: window.name as MinimaxLimitWindowName,
+    }));
+    const byName = (name: MinimaxLimitWindowName) =>
+      windows.find((window) => window.name === name) || null;
+    return {
+      ok: true,
+      snapshot: {
+        windows,
+        fiveHour: byName("five_hour"),
+        weekly: byName("weekly"),
         planType: account.planLabel,
         planLabel: account.planLabel,
         region: "intl",

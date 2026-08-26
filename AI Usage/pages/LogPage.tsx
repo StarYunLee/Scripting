@@ -37,7 +37,9 @@ const providerName = (provider?: ProviderId) =>
               ? "Copilot"
               : provider === "zai"
                 ? "Z.ai"
-                : "系统";
+                : provider === "minimax"
+                  ? "MiniMax"
+                  : "系统";
 
 function recordTime(value: string): string {
   const date = new Date(value);

@@ -11,6 +11,7 @@ import { UsageWidgetView as CursorUsageWidgetView } from "./widget/cursor/UsageW
 import { UsageWidgetView as KimiUsageWidgetView } from "./widget/kimi/UsageWidgetView";
 import { UsageWidgetView as CopilotUsageWidgetView } from "./widget/copilot/UsageWidgetView";
 import { UsageWidgetView as ZaiUsageWidgetView } from "./widget/zai/UsageWidgetView";
+import { UsageWidgetView as MinimaxUsageWidgetView } from "./widget/minimax/UsageWidgetView";
 import { getAppDisplaySettings } from "./services/settings";
 import { getWidgetPrivacyPrefs } from "./services/dashboard-prefs";
 import { writeLog } from "./services/logger";
@@ -141,6 +142,14 @@ async function run() {
   if (loaded.provider === "zai") {
     Widget.present(
       <ZaiUsageWidgetView result={loaded.result} family={family} />,
+      { reloadPolicy },
+    );
+    return;
+  }
+
+  if (loaded.provider === "minimax") {
+    Widget.present(
+      <MinimaxUsageWidgetView result={loaded.result} family={family} />,
       { reloadPolicy },
     );
     return;

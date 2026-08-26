@@ -5,6 +5,7 @@ import { ProviderLogo } from "./ProviderLogo";
 import { kimiBadgePalette } from "../providers/kimi/theme";
 import { copilotBadgePalette } from "../providers/copilot/theme";
 import { zaiBadgePalette } from "../providers/zai/theme";
+import { minimaxBadgePalette } from "../providers/minimax/theme";
 
 const linear = (light: Color[], dark: Color[] = light): DynamicShapeStyle => ({
   light: {
@@ -133,6 +134,15 @@ function palette(provider: ProviderId, label: string): BadgePalette {
 
   if (provider === "zai") {
     const p = zaiBadgePalette(label);
+    return {
+      text: p.text,
+      background: p.background,
+      foreground: p.foreground,
+    };
+  }
+
+  if (provider === "minimax") {
+    const p = minimaxBadgePalette(label);
     return {
       text: p.text,
       background: p.background,
@@ -278,7 +288,9 @@ export function PlanBadge(props: {
                 ? "COPILOT"
                 : props.provider === "zai"
                   ? "Z.AI"
-                  : "ANTIGRAVITY";
+                  : props.provider === "minimax"
+                    ? "MINIMAX"
+                    : "ANTIGRAVITY";
   const planText = rawPlanText === providerText ? "" : rawPlanText;
   return (
     <HStack

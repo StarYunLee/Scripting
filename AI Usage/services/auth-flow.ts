@@ -37,6 +37,11 @@ function pasteStatus(
       return "关闭控制台后，把 API Key 粘贴到下方并提交";
     return "已打开 API Key 控制台，复制 Key 后粘贴到下方并提交";
   }
+  if (provider === "minimax") {
+    if (mode === "present")
+      return "关闭控制台后，把 Subscription Key 粘贴到下方并提交";
+    return "已打开 MiniMax 控制台，复制 Subscription Key 后粘贴到下方并提交";
+  }
   if (provider === "codex" && mode === "present") {
     return "未能自动捕获回调时，请粘贴地址栏中的 localhost:1455/auth/callback?...";
   }

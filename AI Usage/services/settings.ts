@@ -30,6 +30,10 @@ import {
   getSettings as getZaiSettings,
   setReloadMinutes as setZaiReloadMinutes,
 } from "../providers/zai/credentials";
+import {
+  getSettings as getMinimaxSettings,
+  setReloadMinutes as setMinimaxReloadMinutes,
+} from "../providers/minimax/credentials";
 
 const DISPLAY_KEY = "ai_usage_display_settings_v1";
 
@@ -93,6 +97,7 @@ function migrateLegacyWidgetSettings(): void {
   getKimiSettings();
   getCopilotSettings();
   getZaiSettings();
+  getMinimaxSettings();
 }
 
 export function getAppDisplaySettings(): AppDisplaySettings {
@@ -108,7 +113,8 @@ export function getAppDisplaySettings(): AppDisplaySettings {
         getCursorSettings().reloadMinutes ||
         getKimiSettings().reloadMinutes ||
         getCopilotSettings().reloadMinutes ||
-        getZaiSettings().reloadMinutes;
+        getZaiSettings().reloadMinutes ||
+        getMinimaxSettings().reloadMinutes;
       return { ...DEFAULT_SETTINGS, reloadMinutes: clampMinutes(fallback) };
     }
     return {
@@ -138,6 +144,7 @@ export function setAppReloadMinutes(reloadMinutes: number): AppDisplaySettings {
   setKimiReloadMinutes(next.reloadMinutes);
   setCopilotReloadMinutes(next.reloadMinutes);
   setZaiReloadMinutes(next.reloadMinutes);
+  setMinimaxReloadMinutes(next.reloadMinutes);
   return next;
 }
 

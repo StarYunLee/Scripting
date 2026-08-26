@@ -70,6 +70,15 @@ import type {
   UsageResult as ZaiUsageResult,
   WidgetSettings as ZaiWidgetSettings,
 } from "../providers/zai/types";
+import {
+  fetchUsage as fetchMinimaxUsage,
+  getCachedUsage as getMinimaxCache,
+} from "../providers/minimax/api";
+import { getEffectiveSettings as getMinimaxSettings } from "../providers/minimax/credentials";
+import type {
+  UsageResult as MinimaxUsageResult,
+  WidgetSettings as MinimaxWidgetSettings,
+} from "../providers/minimax/types";
 import { getDemoWidgetResult, isDemoAccountId } from "../services/demo";
 import { writeLog } from "../services/logger";
 import type { ProviderId } from "../models";
@@ -114,6 +123,11 @@ export type LoadedWidgetUsage =
       provider: "zai";
       result: ZaiUsageResult;
       settings: ZaiWidgetSettings;
+    }
+  | {
+      provider: "minimax";
+      result: MinimaxUsageResult;
+      settings: MinimaxWidgetSettings;
     };
 
 type LoadedCodexWidget = Extract<LoadedWidgetUsage, { provider: "codex" }>;
@@ -127,6 +141,7 @@ type LoadedCursorWidget = Extract<LoadedWidgetUsage, { provider: "cursor" }>;
 type LoadedKimiWidget = Extract<LoadedWidgetUsage, { provider: "kimi" }>;
 type LoadedCopilotWidget = Extract<LoadedWidgetUsage, { provider: "copilot" }>;
 type LoadedZaiWidget = Extract<LoadedWidgetUsage, { provider: "zai" }>;
+type LoadedMinimaxWidget = Extract<LoadedWidgetUsage, { provider: "minimax" }>;
 
 function logLoadFailure(
   provider: ProviderId,
@@ -323,6 +338,25 @@ async function loadZai(profileId: string): Promise<LoadedZaiWidget> {
   };
 }
 
+async function loadMinimax(profileId: string): Promise<LoadedMinimaxWidget> {
+  const result = await loadProviderResult<MinimaxUsageResult>({
+    provider: "minimax",
+    profileId,
+    demo: () => getDemoWidgetResult("minimax", profileId)!,
+    fetch: () => fetchMinimaxUsage({ force: false, profileId }),
+    fallback: (error) => ({
+      ok: false,
+      error: unknownError(error),
+      cache: getMinimaxCache(profileId),
+    }),
+  });
+  return {
+    provider: "minimax",
+    result,
+    settings: getMinimaxSettings(profileId),
+  };
+}
+
 export function loadWidgetUsage(
   provider: "codex",
   profileId: string,
@@ -356,6 +390,10 @@ export function loadWidgetUsage(
   profileId: string,
 ): Promise<LoadedZaiWidget>;
 export function loadWidgetUsage(
+  provider: "minimax",
+  profileId: string,
+): Promise<LoadedMinimaxWidget>;
+export function loadWidgetUsage(
   provider: ProviderId,
   profileId: string,
 ): Promise<LoadedWidgetUsage>;
@@ -370,5 +408,6 @@ export function loadWidgetUsage(
   if (provider === "kimi") return loadKimi(profileId);
   if (provider === "copilot") return loadCopilot(profileId);
   if (provider === "zai") return loadZai(profileId);
+  if (provider === "minimax") return loadMinimax(profileId);
   return loadAntigravity(profileId);
 }

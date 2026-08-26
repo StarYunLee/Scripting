@@ -7,6 +7,7 @@ import * as CursorAccounts from "./cursor/accounts";
 import * as KimiAccounts from "./kimi/accounts";
 import * as CopilotAccounts from "./copilot/accounts";
 import * as ZaiAccounts from "./zai/accounts";
+import * as MinimaxAccounts from "./minimax/accounts";
 import {
   fetchUsage as fetchCodexUsage,
   getCachedUsage as getCodexCache,
@@ -119,6 +120,20 @@ import {
 } from "./zai/oauth";
 import { normalizeUsageSnapshot as normalizeZaiUsage } from "./zai/normalize";
 import { clearProfileSettings as clearZaiSettings } from "./zai/credentials";
+import {
+  fetchUsage as fetchMinimaxUsage,
+  getCachedUsage as getMinimaxCache,
+  clearUsageCache as clearMinimaxCache,
+} from "./minimax/api";
+import {
+  startMinimaxLogin,
+  completeMinimaxLogin,
+  clearPendingOAuth as clearMinimaxPending,
+  getPendingOAuthProfileId as getMinimaxPending,
+  hasPendingOAuth as hasMinimaxPending,
+} from "./minimax/oauth";
+import { normalizeUsageSnapshot as normalizeMinimaxUsage } from "./minimax/normalize";
+import { clearProfileSettings as clearMinimaxSettings } from "./minimax/credentials";
 import type { ProviderId } from "../models";
 import type { ProviderCore } from "./contracts";
 
@@ -298,6 +313,28 @@ export const PROVIDER_REGISTRY = {
       clearCache: clearZaiCache,
     },
     clearSettings: clearZaiSettings,
+  },
+  minimax: {
+    ...ACCOUNT_PROVIDERS.minimax,
+    ensure: MinimaxAccounts.ensureAccountMigration,
+    create: MinimaxAccounts.createAccount,
+    remove: MinimaxAccounts.deleteAccount,
+    auth: {
+      start: startMinimaxLogin,
+      complete: completeMinimaxLogin,
+      clearPending: clearMinimaxPending,
+      pendingId: getMinimaxPending,
+      hasPending: hasMinimaxPending,
+    },
+    usage: {
+      fetch: fetchMinimaxUsage,
+      cache: (profileId: string) => {
+        const snapshot = getMinimaxCache(profileId);
+        return snapshot ? normalizeMinimaxUsage(snapshot) : null;
+      },
+      clearCache: clearMinimaxCache,
+    },
+    clearSettings: clearMinimaxSettings,
   },
 } satisfies Record<ProviderId, ProviderCore>;
 
