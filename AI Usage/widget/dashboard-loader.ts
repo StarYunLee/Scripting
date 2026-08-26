@@ -5,7 +5,7 @@ import {
 } from "../services/dashboard-prefs";
 import { refreshDemoCard } from "../services/demo";
 import { isDemoAccountId, isDemoMode } from "../services/demo-flags";
-import { refreshAccount } from "../services/refresh";
+import { inBatches, refreshAccount } from "../services/refresh";
 import { getProviderUsage as getProvider } from "../providers/registry-usage";
 import type { UsageCard } from "../models";
 
@@ -51,18 +51,18 @@ export async function loadDashboardWidgetUsage(): Promise<DashboardWidgetData> {
   const prefs = getDashboardPrefs("widget");
   const selected = applyDashboardPrefs(listAllAuthorizedCards(), prefs);
   let hasErrors = false;
-  const cards: UsageCard[] = [];
 
-  for (const card of selected) {
+  // 小组件有 30MB 内存上限，并发批取 2：同时持有的响应体最少
+  const cards = await inBatches(selected, 2, async (card) => {
     try {
       const next = await refreshCardForWidget(card);
       if (next.errorMessage) hasErrors = true;
-      cards.push(next);
+      return next;
     } catch {
       hasErrors = true;
-      cards.push(card);
+      return card;
     }
-  }
+  });
 
   return {
     cards: applyDashboardPrefs(cards, prefs),

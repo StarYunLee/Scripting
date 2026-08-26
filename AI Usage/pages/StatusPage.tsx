@@ -23,7 +23,7 @@ import { UsageCardView } from "../components/UsageCardView";
 import { type AuthSheet, type ProviderId, type UsageCard } from "../models";
 import { launchProviderAuthorization } from "../services/auth-flow";
 import { applyDashboardPrefs } from "../services/dashboard-prefs";
-import { refreshAccounts } from "../services/refresh";
+import { inBatches, refreshAccounts } from "../services/refresh";
 import { requestWidgetReload } from "../services/widgets";
 import {
   getAppDisplaySettings,
@@ -117,12 +117,13 @@ export function StatusPage(props: {
     const reloadMs = getAppDisplaySettings().reloadMinutes * 60_000;
     let cancelled = false;
     (async () => {
-      for (const card of authorized) {
+      const stale = authorized.filter((card) => {
+        if (!card.fetchedAt) return true;
+        const age = Date.now() - new Date(card.fetchedAt).getTime();
+        return !Number.isFinite(age) || age >= reloadMs;
+      });
+      await inBatches(stale, 3, async (card) => {
         if (cancelled) return;
-        if (card.fetchedAt) {
-          const age = Date.now() - new Date(card.fetchedAt).getTime();
-          if (Number.isFinite(age) && age < reloadMs) continue;
-        }
         try {
           const next = await refreshCard(card.provider, card.accountId, false);
           if (!cancelled) {
@@ -133,7 +134,7 @@ export function StatusPage(props: {
         } catch {
           /* keep cache card */
         }
-      }
+      });
     })();
     return () => {
       cancelled = true;

@@ -120,18 +120,44 @@ export type RefreshBatchCallbacks = {
   onResult?: (outcome: RefreshOutcome) => void | Promise<void>;
 };
 
+/** 有界并发：每批 size 个并行，批间串行。fn 内部自行捕获异常时结果逐个返回。 */
+export async function inBatches<T, R>(
+  items: T[],
+  size: number,
+  fn: (item: T) => Promise<R>,
+): Promise<R[]> {
+  const out: R[] = [];
+  for (let i = 0; i < items.length; i += size) {
+    const batch = items.slice(i, i + size);
+    out.push(...(await Promise.all(batch.map(fn))));
+  }
+  return out;
+}
+
+/** 应用侧刷新并发上限；小组件（30MB 内存上限）用更小的批。 */
+const REFRESH_BATCH_SIZE = 3;
+
 export async function refreshAccounts(
   targets: RefreshTarget[],
   options: RefreshOptions,
   callbacks: RefreshBatchCallbacks = {},
 ): Promise<RefreshSummary> {
-  const outcomes: RefreshOutcome[] = [];
-  for (const target of targets) {
-    await callbacks.onStart?.(target);
-    const outcome = await refreshAccount(target, options);
-    outcomes.push(outcome);
-    await callbacks.onResult?.(outcome);
-  }
+  // refreshAccount 内部已捕获所有异常并返回 outcome，不会 reject；
+  // 这里再兜一层回调异常，保证一个账号失败不影响整批。
+  const outcomes = await inBatches(targets, REFRESH_BATCH_SIZE, async (target) => {
+    try {
+      await callbacks.onStart?.(target);
+      const outcome = await refreshAccount(target, options);
+      await callbacks.onResult?.(outcome);
+      return outcome;
+    } catch {
+      return {
+        ...target,
+        ok: false,
+        error: { message: "刷新发生异常", code: "callback_exception" },
+      } as RefreshOutcome;
+    }
+  });
   return {
     total: outcomes.length,
     succeeded: outcomes.filter((item) => item.ok).length,
