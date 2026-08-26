@@ -118,10 +118,7 @@ function parseRemains(payload: Record<string, unknown>): {
   const weeklyRemainPct = toNumber(row.current_weekly_remaining_percent);
 
   const intervalReset = resetFromRow(row.end_time, row.remains_time);
-  const weeklyReset = resetFromRow(
-    row.weekly_end_time,
-    row.weekly_remains_time ?? row.remains_time,
-  );
+  const weeklyReset = resetFromRow(row.weekly_end_time, row.weekly_remains_time);
 
   let fiveHour: LimitWindow | null = null;
   let weekly: LimitWindow | null = null;
