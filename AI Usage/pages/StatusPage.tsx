@@ -351,11 +351,19 @@ export function StatusPage(props: {
             <AccountDetailPage
               key={`${openedCard.provider}:${openedCard.accountId}:${openedCard.key}`}
               provider={openedCard.provider}
-              account={{
-                id: openedCard.accountId,
-                name: openedCard.title,
-                email: openedCard.title.includes("@") ? openedCard.title : null,
-              }}
+              account={(() => {
+                const profile = listProviderAccounts(openedCard.provider).find(
+                  (item) => item.id === openedCard.accountId,
+                );
+                const email =
+                  profile?.email ||
+                  (openedCard.title.includes("@") ? openedCard.title : null);
+                return {
+                  id: openedCard.accountId,
+                  name: email || profile?.name || openedCard.title,
+                  email,
+                };
+              })()}
               demo={props.demoMode}
               backgroundTheme={props.backgroundTheme}
               onReauthorize={() =>

@@ -6,6 +6,13 @@ export type ChangelogEntry = {
 
 export const CHANGELOG = [
   {
+    version: "1.3.2",
+    date: "2026-08-26",
+    changes: [
+      "修复 Cursor 账号详情仍显示「账号 1」的问题：登录与刷新时从 JWT / Stripe profile 回填邮箱作为展示名。",
+    ],
+  },
+  {
     version: "1.3.1",
     date: "2026-08-26",
     changes: [

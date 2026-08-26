@@ -120,22 +120,82 @@ function tokenExpiry(token: string): number {
   return Date.now() + FALLBACK_TTL_MS;
 }
 
-function fetchIdentity(token: string): {
-  email: string | null;
-  accountId: string | null;
-} {
-  const payload = decodeJwtPayload(token);
-  const email =
-    typeof payload?.email === "string" && payload.email.includes("@")
-      ? payload.email
-      : null;
-  const sub = payload?.sub;
+function emailFromObject(value: Record<string, unknown> | null): string | null {
+  if (!value) return null;
+  for (const key of [
+    "email",
+    "userEmail",
+    "user_email",
+    "preferred_username",
+    "upn",
+    "unique_name",
+  ]) {
+    const candidate = value[key];
+    if (typeof candidate === "string" && candidate.includes("@"))
+      return candidate.trim();
+  }
+  const customer = asObject(value.customer);
+  if (customer) {
+    const nested = emailFromObject(customer);
+    if (nested) return nested;
+  }
+  const user = asObject(value.user);
+  if (user) {
+    const nested = emailFromObject(user);
+    if (nested) return nested;
+  }
+  return null;
+}
+
+function accountIdFromObject(
+  value: Record<string, unknown> | null,
+): string | null {
+  if (!value) return null;
+  for (const key of ["sub", "userId", "user_id", "id", "accountId", "account_id"]) {
+    const candidate = value[key];
+    if (typeof candidate === "string" && candidate.trim())
+      return candidate.trim();
+    if (typeof candidate === "number" && Number.isSafeInteger(candidate))
+      return String(candidate);
+  }
+  return null;
+}
+
+async function fetchEmailFromStripeProfile(
+  token: string,
+): Promise<string | null> {
+  try {
+    const response = await fetch(
+      "https://api2.cursor.sh/auth/full_stripe_profile",
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/json",
+        },
+        timeout: 15,
+        debugLabel: "CursorStripeProfile",
+      },
+    );
+    if (!response.ok) return null;
+    return emailFromObject(await jsonObject(response));
+  } catch {
+    return null;
+  }
+}
+
+async function resolveIdentity(
+  token: string,
+  extra?: Record<string, unknown> | null,
+): Promise<{ email: string | null; accountId: string | null }> {
+  const jwt = decodeJwtPayload(token);
+  let email =
+    emailFromObject(jwt) ||
+    emailFromObject(extra || null) ||
+    null;
+  if (!email) email = await fetchEmailFromStripeProfile(token);
   const accountId =
-    typeof sub === "string"
-      ? sub
-      : typeof sub === "number" && Number.isSafeInteger(sub)
-        ? String(sub)
-        : null;
+    accountIdFromObject(jwt) || accountIdFromObject(extra || null);
   return { email, accountId };
 }
 
@@ -155,7 +215,7 @@ function sleep(ms: number): Promise<void> {
 async function pollForTokens(
   uuid: string,
   verifier: string,
-): Promise<TokenPayload> {
+): Promise<TokenPayload & Record<string, unknown>> {
   let delay = POLL_BASE_DELAY_MS;
   let consecutiveErrors = 0;
 
@@ -172,10 +232,10 @@ async function pollForTokens(
       }
 
       if (response.ok) {
-        const data = (await jsonObject(response)) as TokenPayload;
+        const data = await jsonObject(response);
         if (!data.accessToken || !data.refreshToken)
           throw new Error("Cursor 授权响应缺少 Token");
-        return data;
+        return data as TokenPayload & Record<string, unknown>;
       }
 
       if ([400, 401, 403, 410].includes(response.status))
@@ -243,7 +303,7 @@ export async function completeCursorLogin(_input?: string): Promise<void> {
   }
   try {
     const tokens = await pollForTokens(pending.uuid, pending.verifier);
-    const identity = fetchIdentity(tokens.accessToken!);
+    const identity = await resolveIdentity(tokens.accessToken!, tokens);
     const saved = saveProfileCredentials(pending.profileId, {
       accessToken: tokens.accessToken!,
       refreshToken: tokens.refreshToken,
@@ -257,6 +317,23 @@ export async function completeCursorLogin(_input?: string): Promise<void> {
     clearPending();
     throw error;
   }
+}
+
+/** 在缺少邮箱时回填账号显示名（JWT → 轮询字段 → Stripe profile）。 */
+export async function ensureAccountEmail(
+  profileId: string,
+  token?: string | null,
+): Promise<string | null> {
+  const accessToken = token || getProfileAccessToken(profileId);
+  if (!accessToken) return null;
+  const identity = await resolveIdentity(accessToken);
+  if (!identity.email && !identity.accountId) return null;
+  saveProfileCredentials(profileId, {
+    accessToken,
+    accountId: identity.accountId,
+    email: identity.email,
+  });
+  return identity.email;
 }
 
 export async function refreshOAuthToken(
@@ -280,12 +357,13 @@ export async function refreshOAuthToken(
     timeout: 20,
     debugLabel: "CursorTokenRefresh",
   });
-  const data = (await jsonObject(response)) as TokenPayload;
-  if (!response.ok || !data.accessToken) return current;
-  const identity = fetchIdentity(data.accessToken);
+  const data = await jsonObject(response);
+  if (!response.ok || typeof data.accessToken !== "string") return current;
+  const identity = await resolveIdentity(data.accessToken, data);
   saveProfileCredentials(profileId, {
     accessToken: data.accessToken,
-    refreshToken: data.refreshToken || refreshToken,
+    refreshToken:
+      typeof data.refreshToken === "string" ? data.refreshToken : refreshToken,
     expiresAt: tokenExpiry(data.accessToken),
     accountId: identity.accountId,
     email: identity.email,

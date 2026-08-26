@@ -3,7 +3,7 @@ import {
   getProfileAccessToken,
   resolveProfile,
 } from "./accounts";
-import { refreshOAuthToken } from "./oauth";
+import { refreshOAuthToken, ensureAccountEmail } from "./oauth";
 import { formatPlanLabel } from "./format";
 import type { LimitWindow, UsageResult, UsageSnapshot } from "./types";
 
@@ -445,6 +445,21 @@ export async function fetchUsage(options?: {
     };
 
   const cache = readCache(profile.id);
+
+  // 旧账号可能只有「账号 1」；即使命中用量缓存也先回填邮箱展示名。
+  if (!profile.email || /^账号\s*\d+$/i.test(profile.name)) {
+    const identityToken =
+      getProfileAccessToken(profile.id) ||
+      (await refreshOAuthToken(profile.id, false));
+    if (identityToken) {
+      try {
+        await ensureAccountEmail(profile.id, identityToken);
+      } catch {
+        /* 回填失败不影响用量查询 */
+      }
+    }
+  }
+
   if (!options?.force && recent(cache)) return { ok: true, snapshot: cache! };
 
   let token = await refreshOAuthToken(

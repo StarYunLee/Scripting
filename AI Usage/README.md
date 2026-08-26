@@ -10,7 +10,7 @@
 
 面向 [Scripting App](https://scriptingapp.github.io/) 的非官方多平台用量查看应用。在一个项目里管理 Codex、Grok、Claude、Antigravity、Cursor 与 Kimi Code 的多账号用量、主屏幕小组件和自动化刷新。
 
-当前版本：`1.3.1`
+当前版本：`1.3.2`
 
 > 本项目不是 OpenAI、xAI、Anthropic、Google、Cursor、Moonshot / Kimi 或 Scripting App 官方产品，与上述平台无隶属或合作关系。
 

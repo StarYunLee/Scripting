@@ -45,11 +45,25 @@ function jwtEmail(token: string | null): string | null {
           .join(""),
       ),
     ) as Record<string, unknown>;
-    const value = payload.email;
-    return typeof value === "string" && value.includes("@") ? value : null;
+    for (const key of [
+      "email",
+      "preferred_username",
+      "upn",
+      "unique_name",
+      "userEmail",
+    ]) {
+      const value = payload[key];
+      if (typeof value === "string" && value.includes("@")) return value.trim();
+    }
+    return null;
   } catch {
     return null;
   }
+}
+
+function isPlaceholderName(name: string | null | undefined): boolean {
+  if (!name) return true;
+  return /^账号\s*\d+$/i.test(name.trim());
 }
 
 function makeId(): string {
@@ -80,9 +94,15 @@ export function ensureAccountMigration(): AccountRegistry {
   if (!registry.accounts.length) return registry;
   let changed = false;
   const accounts = registry.accounts.map((account) => {
-    if (account.email) return account;
-    const email = jwtEmail(getSecretRaw(secretKey(account.id, "access_token")));
+    const email =
+      account.email ||
+      jwtEmail(getSecretRaw(secretKey(account.id, "access_token")));
     if (!email) return account;
+    const shouldRename =
+      !account.email ||
+      isPlaceholderName(account.name) ||
+      account.name !== email;
+    if (!shouldRename && account.email === email) return account;
     changed = true;
     return {
       ...account,
@@ -158,7 +178,8 @@ export function updateProfileIdentity(
         ...account,
         accountId: identity.accountId || account.accountId,
         email,
-        name: email || account.name,
+        // 有邮箱时一律用邮箱作为展示名，避免停留在「账号 1」。
+        name: email || (isPlaceholderName(account.name) ? account.id : account.name),
         updatedAt: new Date().toISOString(),
       };
     }),
