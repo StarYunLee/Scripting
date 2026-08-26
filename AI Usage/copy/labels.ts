@@ -205,6 +205,13 @@ export function codexWindowLabel(
   return "限额";
 }
 
+/** GitHub Copilot 额度窗口应用内标签 */
+export const COPILOT_WINDOW = {
+  CREDITS: "AI Credits",
+  CHAT: "Chat",
+  COMPLETIONS: "Completions",
+};
+
 /** Kimi 5 小时窗口标签（支持动态时长） */
 export function kimiFiveHourLabel(seconds: number | null): string {
   if (seconds == null) return PERIOD.FIVE_HOUR.app;

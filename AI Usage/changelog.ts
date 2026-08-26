@@ -6,6 +6,14 @@ export type ChangelogEntry = {
 
 export const CHANGELOG = [
   {
+    version: "1.6.0",
+    date: "2026-08-26",
+    changes: [
+      "新增 GitHub Copilot 用量支持：GitHub 设备码 OAuth + /copilot_internal/user 额度查询。",
+      "展示 AI Credits / Chat / Completions 用量，支持 Pro / Free 等套餐徽章与主屏幕小组件。",
+    ],
+  },
+  {
     version: "1.5.3",
     date: "2026-08-26",
     changes: [

@@ -5,6 +5,7 @@ import { fetchUsage as fetchClaudeUsage } from "./claude/api";
 import { fetchUsage as fetchAntigravityUsage } from "./antigravity/api";
 import { fetchUsage as fetchCursorUsage } from "./cursor/api";
 import { fetchUsage as fetchKimiUsage } from "./kimi/api";
+import { fetchUsage as fetchCopilotUsage } from "./copilot/api";
 import type { ProviderId } from "../models";
 import type { UsageProvider } from "./contracts";
 
@@ -32,6 +33,10 @@ export const USAGE_PROVIDERS = {
   kimi: {
     ...ACCOUNT_PROVIDERS.kimi,
     fetch: fetchKimiUsage,
+  },
+  copilot: {
+    ...ACCOUNT_PROVIDERS.copilot,
+    fetch: fetchCopilotUsage,
   },
 } satisfies Record<ProviderId, UsageProvider>;
 

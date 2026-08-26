@@ -4,6 +4,7 @@ import * as ClaudeAccounts from "./claude/accounts";
 import * as AntigravityAccounts from "./antigravity/accounts";
 import * as CursorAccounts from "./cursor/accounts";
 import * as KimiAccounts from "./kimi/accounts";
+import * as CopilotAccounts from "./copilot/accounts";
 import type { ProviderId } from "../models";
 import type { AccountLookupProvider } from "./contracts";
 
@@ -37,6 +38,11 @@ export const ACCOUNT_PROVIDERS = {
     id: "kimi",
     list: KimiAccounts.listAccounts,
     token: KimiAccounts.getProfileAccessToken,
+  },
+  copilot: {
+    id: "copilot",
+    list: CopilotAccounts.listAccounts,
+    token: CopilotAccounts.getProfileAccessToken,
   },
 } satisfies Record<ProviderId, AccountLookupProvider>;
 

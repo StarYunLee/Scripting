@@ -33,7 +33,9 @@ const providerName = (provider?: ProviderId) =>
             ? "Cursor"
             : provider === "kimi"
               ? "Kimi Code"
-              : "系统";
+              : provider === "copilot"
+                ? "Copilot"
+                : "系统";
 
 function recordTime(value: string): string {
   const date = new Date(value);

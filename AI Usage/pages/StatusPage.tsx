@@ -81,7 +81,9 @@ export function StatusPage(props: {
       profileId: pending.profileId,
       authorizationInput: "",
       status:
-        pending.provider === "cursor" || pending.provider === "kimi"
+        pending.provider === "cursor" ||
+        pending.provider === "kimi" ||
+        pending.provider === "copilot"
           ? "存在未完成的授权，请返回应用并点击提交（无需粘贴）"
           : "存在未完成的授权，请粘贴回调或授权码",
     });

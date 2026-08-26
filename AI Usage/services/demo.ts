@@ -28,6 +28,11 @@ import type {
   LimitWindowName as KimiLimitWindowName,
   UsageResult as KimiUsageResult,
 } from "../providers/kimi/types";
+import type {
+  LimitWindow as CopilotLimitWindow,
+  LimitWindowName as CopilotLimitWindowName,
+  UsageResult as CopilotUsageResult,
+} from "../providers/copilot/types";
 
 const DEMO_KEY = "ai_usage_demo_mode_v1";
 
@@ -531,6 +536,52 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
     ],
     resetCredits: null,
   },
+  {
+    id: "demo_copilot_pro",
+    provider: "copilot",
+    title: "pro@github.demo",
+    planLabel: "Pro",
+    windows: [
+      {
+        id: "credits",
+        name: "credits",
+        label: "AI Credits",
+        usedPercent: 38,
+        resetOffsetMs: 12 * 86_400_000 + 6 * 3_600_000,
+      },
+      {
+        id: "chat",
+        name: "chat",
+        label: "Chat",
+        usedPercent: 0,
+        resetOffsetMs: 12 * 86_400_000 + 6 * 3_600_000,
+      },
+    ],
+    resetCredits: null,
+  },
+  {
+    id: "demo_copilot_free",
+    provider: "copilot",
+    title: "free@github.demo",
+    planLabel: "Free",
+    windows: [
+      {
+        id: "chat",
+        name: "chat",
+        label: "Chat",
+        usedPercent: 62,
+        resetOffsetMs: 18 * 86_400_000 + 2 * 3_600_000,
+      },
+      {
+        id: "completions",
+        name: "completions",
+        label: "Completions",
+        usedPercent: 44,
+        resetOffsetMs: 18 * 86_400_000 + 2 * 3_600_000,
+      },
+    ],
+    resetCredits: null,
+  },
 ];
 
 function futureIso(offsetMs: number): string {
@@ -593,6 +644,10 @@ export function getDemoWidgetResult(
   accountId: string,
 ): KimiUsageResult | null;
 export function getDemoWidgetResult(
+  provider: "copilot",
+  accountId: string,
+): CopilotUsageResult | null;
+export function getDemoWidgetResult(
   provider: UsageCard["provider"],
   accountId: string,
 ):
@@ -602,6 +657,7 @@ export function getDemoWidgetResult(
   | AntigravityUsageResult
   | CursorUsageResult
   | KimiUsageResult
+  | CopilotUsageResult
   | null {
   const account = DEMO_ACCOUNTS.find(
     (item) => item.provider === provider && item.id === accountId,
@@ -744,6 +800,28 @@ export function getDemoWidgetResult(
         windows,
         fiveHour: byName("five_hour"),
         weekly: byName("weekly"),
+        planType: account.planLabel,
+        planLabel: account.planLabel,
+        fetchedAt,
+        source: "live",
+      },
+    };
+  }
+
+  if (provider === "copilot") {
+    const windows: CopilotLimitWindow[] = account.windows.map((window) => ({
+      ...windowBase(window),
+      name: window.name as CopilotLimitWindowName,
+    }));
+    const byName = (name: CopilotLimitWindowName) =>
+      windows.find((window) => window.name === name) || null;
+    return {
+      ok: true,
+      snapshot: {
+        windows,
+        credits: byName("credits"),
+        chat: byName("chat"),
+        completions: byName("completions"),
         planType: account.planLabel,
         planLabel: account.planLabel,
         fetchedAt,

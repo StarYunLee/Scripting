@@ -8,7 +8,7 @@
   </tr>
 </table>
 
-面向 [Scripting App](https://scriptingapp.github.io/) 的非官方多平台用量查看应用。在一个项目里管理 Codex、Grok、Claude、Antigravity、Cursor 与 Kimi Code 的多账号用量、主屏幕小组件和自动化刷新。
+面向 [Scripting App](https://scriptingapp.github.io/) 的非官方多平台用量查看应用。在一个项目里管理 Codex、Grok、Claude、Antigravity、Cursor、Kimi Code 与 GitHub Copilot 的多账号用量、主屏幕小组件和自动化刷新。
 
 当前版本：`1.5.1`
 
@@ -16,7 +16,7 @@
 
 ## 功能
 
-- 统一管理 Codex、Grok、Claude、Antigravity、Cursor、Kimi Code 多个账号
+- 统一管理 Codex、Grok、Claude、Antigravity、Cursor、Kimi Code、GitHub Copilot 多个账号
 - **用量总览**与**小组件总览**可分别选择要展示的账号与额度条目
 - **总用量小组件**（参数 `dashboard`）：Small 列表 / Medium 圆环 / Large 进度条，多账号一览
 - 小组件隐私选项：可单独开关账号邮箱、账号 ID、套餐档位徽章
@@ -88,6 +88,11 @@ https://raw.githubusercontent.com/StarYunLee/Scripting/main/AI-Usage.scripting
 - 应用会打开 Kimi 设备授权页（`auth.kimi.com`）
 - 在浏览器完成授权后返回应用，无需粘贴内容，直接点击“提交并完成授权”
 
+### GitHub Copilot
+
+- 应用会打开 GitHub 设备授权页（`github.com/login/device`）
+- 在页面输入应用显示的设备码完成授权后返回应用，无需粘贴内容，直接点击“提交并完成授权”
+
 OAuth 临时状态有效期为 10 分钟。Authorization Code 通常只能交换一次；授权失败或超时后请重新开始。
 
 > 回调 URL 和一次性授权码属于短期敏感凭据。不要截图、公开或发送给他人。
@@ -149,6 +154,7 @@ provider:profileId
 - Grok：固定展示每周额度
 - Cursor：固定展示 Auto / 总计 / 第三方 API，有资格时附带 Grok Bot 周额度
 - Kimi Code：固定展示 5 小时与每周额度
+- GitHub Copilot：固定展示 AI Credits / Chat / Completions（按套餐自动选取可用额度）
 
 ### Medium（单账号）
 
@@ -211,6 +217,7 @@ iOS WidgetKit 可能根据系统调度延后刷新。所选时间是请求的最
 - Antigravity：Google OAuth 与 Antigravity / Code Assist 用量接口
 - Cursor：Cursor PKCE 登录与 Dashboard 用量接口（`GetCurrentPeriodUsage` + 可选 `GetSandUsageStatus` 获取 Grok Bot，Enterprise 回退 `/auth/usage`）
 - Kimi Code：设备码 OAuth 与 Coding usages 接口（`/coding/v1/usages`）
+- GitHub Copilot：GitHub 设备码 OAuth 与 Copilot 内部用量接口（`/copilot_internal/user`）
 
 服务端更新后，路径、字段或访问策略可能变化。
 

@@ -22,6 +22,10 @@ import {
   getSettings as getKimiSettings,
   setReloadMinutes as setKimiReloadMinutes,
 } from "../providers/kimi/credentials";
+import {
+  getSettings as getCopilotSettings,
+  setReloadMinutes as setCopilotReloadMinutes,
+} from "../providers/copilot/credentials";
 
 const DISPLAY_KEY = "ai_usage_display_settings_v1";
 
@@ -83,6 +87,7 @@ function migrateLegacyWidgetSettings(): void {
   getAntigravitySettings();
   getCursorSettings();
   getKimiSettings();
+  getCopilotSettings();
 }
 
 export function getAppDisplaySettings(): AppDisplaySettings {
@@ -96,7 +101,8 @@ export function getAppDisplaySettings(): AppDisplaySettings {
         getClaudeSettings().reloadMinutes ||
         getAntigravitySettings().reloadMinutes ||
         getCursorSettings().reloadMinutes ||
-        getKimiSettings().reloadMinutes;
+        getKimiSettings().reloadMinutes ||
+        getCopilotSettings().reloadMinutes;
       return { ...DEFAULT_SETTINGS, reloadMinutes: clampMinutes(fallback) };
     }
     return {
@@ -124,6 +130,7 @@ export function setAppReloadMinutes(reloadMinutes: number): AppDisplaySettings {
   setAntigravityReloadMinutes(next.reloadMinutes);
   setCursorReloadMinutes(next.reloadMinutes);
   setKimiReloadMinutes(next.reloadMinutes);
+  setCopilotReloadMinutes(next.reloadMinutes);
   return next;
 }
 

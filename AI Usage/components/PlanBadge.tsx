@@ -3,6 +3,7 @@ import type { Color, DynamicShapeStyle } from "scripting";
 import type { ProviderId } from "../models";
 import { ProviderLogo } from "./ProviderLogo";
 import { kimiBadgePalette } from "../providers/kimi/theme";
+import { copilotBadgePalette } from "../providers/copilot/theme";
 
 const linear = (light: Color[], dark: Color[] = light): DynamicShapeStyle => ({
   light: {
@@ -113,6 +114,15 @@ function palette(provider: ProviderId, label: string): BadgePalette {
 
   if (provider === "kimi") {
     const p = kimiBadgePalette(label);
+    return {
+      text: p.text,
+      background: p.background,
+      foreground: p.foreground,
+    };
+  }
+
+  if (provider === "copilot") {
+    const p = copilotBadgePalette(label);
     return {
       text: p.text,
       background: p.background,
@@ -254,7 +264,9 @@ export function PlanBadge(props: {
             ? "CURSOR"
             : props.provider === "kimi"
               ? "KIMI"
-              : "ANTIGRAVITY";
+              : props.provider === "copilot"
+                ? "COPILOT"
+                : "ANTIGRAVITY";
   const planText = rawPlanText === providerText ? "" : rawPlanText;
   return (
     <HStack

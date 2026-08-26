@@ -23,12 +23,14 @@ function pasteStatus(
   provider: ProviderId,
   mode: "present" | "openURL",
 ): string {
-  if (provider === "cursor" || provider === "kimi") {
+  if (provider === "cursor" || provider === "kimi" || provider === "copilot") {
     if (mode === "present")
       return "关闭授权页后，返回应用并点击提交（无需粘贴）";
-    return provider === "kimi"
-      ? "已在系统 Safari 打开 Kimi Code 授权页，完成后返回并点击提交"
-      : "已在系统 Safari 打开 Cursor 登录页，完成后返回并点击提交";
+    if (provider === "kimi")
+      return "已在系统 Safari 打开 Kimi Code 授权页，完成后返回并点击提交";
+    if (provider === "copilot")
+      return "已在系统 Safari 打开 GitHub 设备授权页，输入设备码后返回并点击提交";
+    return "已在系统 Safari 打开 Cursor 登录页，完成后返回并点击提交";
   }
   if (provider === "codex" && mode === "present") {
     return "未能自动捕获回调时，请粘贴地址栏中的 localhost:1455/auth/callback?...";

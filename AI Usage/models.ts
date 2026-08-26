@@ -7,6 +7,7 @@ export const PROVIDER_IDS = [
   "antigravity",
   "cursor",
   "kimi",
+  "copilot",
 ] as const;
 
 export type ProviderId = (typeof PROVIDER_IDS)[number];
@@ -118,6 +119,17 @@ export const PROVIDERS: Array<{
     accent: "#4F46E5",
     pasteHint:
       "在浏览器完成 Kimi Code 设备授权后返回应用，无需粘贴内容，直接点击“提交并完成授权”。",
+    pastePlaceholder: "无需填写，完成浏览器登录后提交",
+    capabilities: { widget: true },
+  },
+  {
+    id: "copilot",
+    title: "Copilot",
+    connectTitle: "连接 GitHub Copilot 账户",
+    subtitle: "连接 GitHub 账户，查看 Copilot AI Credits / Chat / Completions 用量。",
+    accent: "#8957E5",
+    pasteHint:
+      "在 github.com/login/device 输入设备码完成授权后返回应用，无需粘贴内容，直接点击“提交并完成授权”。",
     pastePlaceholder: "无需填写，完成浏览器登录后提交",
     capabilities: { widget: true },
   },
