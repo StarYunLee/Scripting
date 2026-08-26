@@ -207,7 +207,7 @@ provider:profileId
 ### Kimi Code
 
 - 固定展示 5 小时与每周两个额度窗口的剩余百分比
-- 套餐等级对齐官方 Andante / Moderato / Allegretto / Allegro；缺失窗口时显示 `—`
+- 套餐等级对齐官方 Adagio / Andante / Moderato / Allegretto / Allegro / Vivace；缺失窗口时显示 `—`
 
 ### MiniMax
 

@@ -59,28 +59,29 @@ function titleCaseWords(value: string): string {
 }
 
 /**
- * 对齐官方会员档位（Andante / Moderato / Allegretto / Allegro），
- * 并兼容旧字段名与海外变体。
+ * 对齐官方会员档位（Adagio / Andante / Moderato / Allegretto / Allegro / Vivace）。
+ * LEVEL_* 枚举映射依据 API 实测（user.membership.level）：
+ * LEVEL_FREE→Free、LEVEL_BASIC→Adagio、LEVEL_STANDARD→Moderato、
+ * LEVEL_INTERMEDIATE→Allegretto、LEVEL_ADVANCED→Allegro、LEVEL_PREMIUM→Vivace。
  */
 export function formatPlanLabel(value: string | null | undefined): string | null {
   if (!value || !value.trim()) return null;
   const normalized = normalizePlanKey(value);
   const labels: Record<string, string> = {
-    // 官方四档（帮助中心）
+    // 官方档位名（API 直接返回营销名时原样对齐）
+    adagio: "Adagio",
     andante: "Andante",
     moderato: "Moderato",
     allegretto: "Allegretto",
     allegro: "Allegro",
-    // 免费 / 海外变体
-    free: "Free",
-    adagio: "Free",
     vivace: "Vivace",
-    // 旧 API / 内部别名 → 当前档位名
-    basic: "Andante",
-    intermediate: "Moderato",
-    advanced: "Allegretto",
-    pro: "Allegretto",
-    ultra: "Allegro",
+    // LEVEL_* 枚举（实测映射）
+    free: "Free",
+    basic: "Adagio",
+    standard: "Moderato",
+    intermediate: "Allegretto",
+    advanced: "Allegro",
+    premium: "Vivace",
     enterprise: "Enterprise",
   };
   if (labels[normalized]) return labels[normalized];

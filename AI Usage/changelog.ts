@@ -6,6 +6,16 @@ export type ChangelogEntry = {
 
 export const CHANGELOG = [
   {
+    version: "1.8.1",
+    date: "2026-08-26",
+    changes: [
+      "修复 Kimi Code 订阅档位映射：LEVEL_ADVANCED 正确显示为 Allegro（原错映为 Allegretto），LEVEL_* 枚举按 API 实测全量对齐 Adagio / Andante / Moderato / Allegretto / Allegro / Vivace。",
+      "Kimi / Z.ai / MiniMax / GitHub Copilot 图标与小组件水印替换为官方品牌字形（透明背景），修复模板渲染下显示为纯色块的问题。",
+      "演示模式补齐各平台订阅档位示例（新增 18 个演示账号）。",
+      "修复 Z.ai Pro+ 套餐徽章落入默认配色的问题；Antigravity 小组件徽章紧凑模式去除 Google 等前缀（移植上游 v1.1.2）。",
+    ],
+  },
+  {
     version: "1.8.0",
     date: "2026-08-26",
     changes: [

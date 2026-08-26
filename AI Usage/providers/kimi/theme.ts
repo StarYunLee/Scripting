@@ -40,13 +40,23 @@ function normalizeTier(label: string): string {
     .replace(/[\s_]+/g, "-");
 }
 
-/** 套餐徽章配色：Allegro → Andante 逐级降低饱和度 */
+/** 套餐徽章配色：Vivace / Allegro → Adagio 逐级降低饱和度 */
 export function kimiBadgePalette(label: string): KimiBadgePalette {
   const tier = normalizeTier(label);
 
-  if (tier === "allegro" || tier === "vivace" || tier === "ultra") {
+  if (
+    tier === "allegro" ||
+    tier === "vivace" ||
+    tier === "advanced" ||
+    tier === "premium"
+  ) {
     return {
-      text: tier === "ultra" ? "ALLEGRO" : tier.toUpperCase(),
+      text:
+        tier === "advanced"
+          ? "ALLEGRO"
+          : tier === "premium"
+            ? "VIVACE"
+            : tier.toUpperCase(),
       background: linear(
         ["#0A0A12", "#312E81", "#6366F1", "#8B5CF6"],
         ["#000000", "#1E1B4B", "#4F46E5", "#A78BFA"],
@@ -54,7 +64,7 @@ export function kimiBadgePalette(label: string): KimiBadgePalette {
       foreground: "#F5F3FF",
     };
   }
-  if (tier === "allegretto" || tier === "advanced" || tier === "pro") {
+  if (tier === "allegretto" || tier === "intermediate") {
     return {
       text: "ALLEGRETTO",
       background: linear(
@@ -64,7 +74,7 @@ export function kimiBadgePalette(label: string): KimiBadgePalette {
       foreground: "#EEF2FF",
     };
   }
-  if (tier === "moderato" || tier === "intermediate") {
+  if (tier === "moderato" || tier === "standard") {
     return {
       text: "MODERATO",
       background: linear(
@@ -74,7 +84,7 @@ export function kimiBadgePalette(label: string): KimiBadgePalette {
       foreground: "#EFF6FF",
     };
   }
-  if (tier === "andante" || tier === "basic") {
+  if (tier === "andante") {
     return {
       text: "ANDANTE",
       background: linear(
@@ -84,9 +94,9 @@ export function kimiBadgePalette(label: string): KimiBadgePalette {
       foreground: "#F8FAFC",
     };
   }
-  if (tier === "free" || tier === "adagio") {
+  if (tier === "free" || tier === "adagio" || tier === "basic") {
     return {
-      text: "FREE",
+      text: tier === "free" ? "FREE" : "ADAGIO",
       background: linear(
         ["#94A3B8", "#64748B"],
         ["#64748B", "#475569"],
