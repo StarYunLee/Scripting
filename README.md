@@ -24,7 +24,7 @@
 
 ### AI Usage
 
-统一查看 Codex、Grok、Claude 与 Antigravity 多账号用量的应用，支持 Small / Medium 主屏幕小组件、按账号布局、固定剩余额度显示，以及快捷指令 / App Intent 刷新。
+统一管理 Codex、Grok、Claude 与 Antigravity 的多账号用量。主屏幕小组件支持 Small / Medium，按账号保存布局，固定显示剩余额度，并用绿 / 橙 / 红标示风险；可用快捷指令或 App Intent 刷新，失败时回退最近缓存，未授权时可预览演示模式。
 
 <table>
   <tr>
@@ -47,7 +47,7 @@ https://raw.githubusercontent.com/StarYunLee/Scripting/main/AI-Usage.scripting
 
 ### GitHub Stars
 
-在 iPhone 上浏览与管理 GitHub Stars 和自定义列表，并查看个人资料、贡献热力图、钉选仓库与常用语言。
+浏览已加星仓库，支持搜索、按语言或列表筛选、多种排序，以及粘贴链接加星、长按取消 Star。可维护自定义列表与仓库归属，并在资料卡查看贡献热力图、钉选仓库和常用语言。
 
 <table>
   <tr>
@@ -142,7 +142,7 @@ https://raw.githubusercontent.com/StarYunLee/Scripting/main/Grok-Usage.scripting
 - 作者与维护者：[StarYunLee](https://github.com/StarYunLee)
 - 问题反馈：[GitHub Issues](https://github.com/StarYunLee/Scripting/issues)
 
-提交 Issue 时，请在标题中注明 `[AI Usage]`、`[GitHub Stars]`、`[Surge Metrics]`、`[Codex Usage]`、`[Claude Usage]` 或 `[Grok Usage]`。
+提交 Issue 时，请在标题中用方括号注明项目名称，例如 `[AI Usage]`。
 
 ## 友链
 - [LINUX DO](https://linux.do/) — 社区讨论与反馈
