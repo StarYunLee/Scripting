@@ -329,7 +329,28 @@ export function DetailWidgetView({ result, family, focusWindow }: Props) {
               maxHeight: "infinity",
               alignment: "topLeading",
             }}
-            padding={{ leading: 12, trailing: 12, top: 48 }}
+            padding={{ leading: 12, trailing: 12, top: 40 }}
+          >
+            <Text
+              fontDesign="default"
+              fontWidth="standard"
+              font={13}
+              fontWeight="bold"
+              foregroundStyle={C.primary}
+              lineLimit={1}
+              minScaleFactor={0.7}
+            >
+              {focusTitle(focusWindow)}
+            </Text>
+          </HStack>
+
+          <HStack
+            frame={{
+              maxWidth: "infinity",
+              maxHeight: "infinity",
+              alignment: "topLeading",
+            }}
+            padding={{ leading: 12, trailing: 12, top: 62 }}
           >
             <VStack spacing={1} alignment="leading">
               <Text
@@ -380,7 +401,7 @@ export function DetailWidgetView({ result, family, focusWindow }: Props) {
               maxHeight: "infinity",
               alignment: "topLeading",
             }}
-            padding={{ leading: 12, top: 87 }}
+            padding={{ leading: 12, top: 97 }}
           >
             <Progress
               displayValue={model.progress}
@@ -392,14 +413,14 @@ export function DetailWidgetView({ result, family, focusWindow }: Props) {
           </HStack>
 
           <VStack
-            spacing={5}
+            spacing={4}
             alignment="leading"
             frame={{
               maxWidth: "infinity",
               maxHeight: "infinity",
               alignment: "topLeading",
             }}
-            padding={{ leading: 12, trailing: 12, top: 102 }}
+            padding={{ leading: 12, trailing: 12, top: 111 }}
           >
             <SmallInfoRow
               icon="clock"

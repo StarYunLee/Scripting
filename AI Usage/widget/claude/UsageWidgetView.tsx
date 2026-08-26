@@ -615,7 +615,25 @@ function SingleWindowView({
             maxHeight: "infinity",
             alignment: "topLeading",
           }}
-          padding={{ leading: 12, trailing: 12, top: 48 }}
+          padding={{ leading: 12, trailing: 12, top: 42 }}
+        >
+          <Text
+            font={13}
+            fontWeight="bold"
+            foregroundStyle={C.primary}
+            lineLimit={1}
+            minScaleFactor={0.7}
+          >
+            {title}
+          </Text>
+        </HStack>
+        <HStack
+          frame={{
+            maxWidth: "infinity",
+            maxHeight: "infinity",
+            alignment: "topLeading",
+          }}
+          padding={{ leading: 12, trailing: 12, top: 66 }}
         >
           <VStack spacing={1} alignment="leading">
             <Text font={9} fontWeight="bold" foregroundStyle={C.secondary}>
@@ -641,7 +659,7 @@ function SingleWindowView({
             maxHeight: "infinity",
             alignment: "topLeading",
           }}
-          padding={{ leading: 12, top: 87 }}
+          padding={{ leading: 12, top: 103 }}
         >
           <Progress
             displayValue={shown ?? null}
@@ -659,7 +677,7 @@ function SingleWindowView({
             maxHeight: "infinity",
             alignment: "topLeading",
           }}
-          padding={{ leading: 12, trailing: 12, top: 103 }}
+          padding={{ leading: 12, trailing: 12, top: 118 }}
         >
           <SingleInfoRow
             icon="clock"
