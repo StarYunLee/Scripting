@@ -2,6 +2,7 @@ import { HStack, Text } from "scripting";
 import type { Color, DynamicShapeStyle } from "scripting";
 import type { ProviderId } from "../models";
 import { ProviderLogo } from "./ProviderLogo";
+import { kimiBadgePalette } from "../providers/kimi/theme";
 
 const linear = (light: Color[], dark: Color[] = light): DynamicShapeStyle => ({
   light: {
@@ -111,41 +112,11 @@ function palette(provider: ProviderId, label: string): BadgePalette {
   }
 
   if (provider === "kimi") {
-    const level = normalized.replace(/^level[_-]?/, "");
-    if (level === "allegro" || level === "vivace" || level === "ultra")
-      return {
-        text: level === "ultra" ? "ALLEGRO" : level.toUpperCase(),
-        background: linear(["#0F172A", "#6366F1"], ["#1E293B", "#818CF8"]),
-        foreground: "#EEF2FF",
-      };
-    if (level === "allegretto" || level === "advanced" || level === "pro")
-      return {
-        text: "ALLEGRETTO",
-        background: linear(["#312E81", "#4F46E5"], ["#4338CA", "#6366F1"]),
-        foreground: "#FFFFFF",
-      };
-    if (level === "moderato" || level === "intermediate")
-      return {
-        text: "MODERATO",
-        background: linear(["#1E3A8A", "#3B82F6"], ["#1D4ED8", "#60A5FA"]),
-        foreground: "#EFF6FF",
-      };
-    if (level === "andante" || level === "basic")
-      return {
-        text: "ANDANTE",
-        background: linear(["#334155", "#64748B"], ["#475569", "#94A3B8"]),
-        foreground: "#F8FAFC",
-      };
-    if (level === "free" || level === "adagio")
-      return {
-        text: "FREE",
-        background: linear(["#94A3B8", "#64748B"], ["#64748B", "#475569"]),
-        foreground: "#FFFFFF",
-      };
+    const p = kimiBadgePalette(label);
     return {
-      text: label.trim().toUpperCase() || "KIMI",
-      background: linear(["#111827", "#374151"], ["#1F2937", "#4B5563"]),
-      foreground: "#F9FAFB",
+      text: p.text,
+      background: p.background,
+      foreground: p.foreground,
     };
   }
 

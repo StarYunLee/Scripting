@@ -15,6 +15,10 @@ import {
   formatResetDate,
   formatSmallDate,
 } from "../../providers/kimi/format";
+import {
+  KIMI_WIDGET,
+  kimiWidgetColors,
+} from "../../providers/kimi/theme";
 import { PlanBadge } from "./PlanBadge";
 import type {
   LimitWindow,
@@ -27,24 +31,12 @@ type Props = {
   family: string;
 };
 
-const dynamic = (light: Color, dark: Color): DynamicShapeStyle => ({
-  light,
-  dark,
-});
-
-const C: Record<string, Color | DynamicShapeStyle> = {
-  bg: "systemBackground",
-  primary: "label",
-  secondary: "secondaryLabel",
-  track: dynamic("#C7C8CC", "#55565C"),
-  trackBorder: dynamic("rgba(0,0,0,0.07)", "rgba(255,255,255,0.10)"),
-  warn: "systemOrange",
-  watermark: dynamic("rgba(35,35,38,0.09)", "rgba(245,245,247,0.075)"),
-};
+const C = kimiWidgetColors();
 
 type Model = {
   snapshot: UsageSnapshot | null;
-  windows: LimitWindow[];
+  fiveHour: LimitWindow | null;
+  weekly: LimitWindow | null;
   planLabel: string;
   fetched: string;
   live: boolean;
@@ -53,17 +45,20 @@ type Model = {
 
 function modelFor(result: UsageResult): Model {
   const snapshot = result.ok ? result.snapshot : result.cache || null;
-  const windows: LimitWindow[] = [];
-  if (snapshot) {
-    if (snapshot.fiveHour) windows.push(snapshot.fiveHour);
-    if (snapshot.weekly) windows.push(snapshot.weekly);
+  let fiveHour = snapshot?.fiveHour || null;
+  let weekly = snapshot?.weekly || null;
+  if (snapshot?.windows?.length) {
     for (const window of snapshot.windows) {
-      if (!windows.some((item) => item.id === window.id)) windows.push(window);
+      if (!fiveHour && window.id.includes("five")) fiveHour = window;
+      if (!weekly && window.name === "weekly") weekly = window;
     }
+    if (!fiveHour && snapshot.windows[0]) fiveHour = snapshot.windows[0];
+    if (!weekly && snapshot.windows[1]) weekly = snapshot.windows[1];
   }
   return {
     snapshot,
-    windows: windows.slice(0, 2),
+    fiveHour,
+    weekly,
     planLabel: snapshot?.planLabel || snapshot?.planType || "—",
     fetched: snapshot ? formatResetDate(snapshot.fetchedAt) : "—",
     live: result.ok,
@@ -135,58 +130,261 @@ function Progress({
   );
 }
 
-function WindowRow({
-  window,
-  width,
-  compact,
-}: {
-  window: LimitWindow;
+function shownPercent(window: LimitWindow | null): string {
+  return formatPercent(window?.remainingPercent);
+}
+
+function SmallReset({ value }: { value: string }) {
+  return (
+    <HStack alignment="center" spacing={3}>
+      <Image
+        systemName="calendar"
+        resizable
+        scaleToFit
+        imageScale="small"
+        foregroundStyle={C.secondary}
+        frame={{ width: 9, height: 9 }}
+      />
+      <Text font={9} fontWeight="medium" foregroundStyle={C.secondary}>
+        重置
+      </Text>
+      <Text
+        font={10}
+        fontWeight="bold"
+        foregroundStyle={C.primary}
+        lineLimit={1}
+        minScaleFactor={0.7}
+      >
+        {value}
+      </Text>
+    </HStack>
+  );
+}
+
+function SmallWindow(props: {
+  title: string;
+  window: LimitWindow | null;
   width: number;
-  compact: boolean;
+  top: number;
 }) {
   return (
-    <VStack spacing={compact ? 2 : 3} alignment="leading" frame={{ width }}>
-      <HStack frame={{ width }}>
-        <Text
-          font={compact ? 11 : 13}
-          fontWeight="bold"
-          foregroundStyle={C.primary}
-          lineLimit={1}
-        >
-          {window.label}
+    <>
+      <HStack
+        frame={{
+          maxWidth: "infinity",
+          maxHeight: "infinity",
+          alignment: "topLeading",
+        }}
+        padding={{ leading: 12, trailing: 12, top: props.top }}
+      >
+        <Text font={12} fontWeight="bold" foregroundStyle={C.accent}>
+          {props.title}
         </Text>
         <Spacer />
-        <Text
-          font={compact ? 11 : 13}
-          fontWeight="bold"
-          foregroundStyle={C.primary}
-          monospacedDigit
-        >
-          {`剩余 ${formatPercent(window.remainingPercent)}`}
-        </Text>
+        <HStack alignment="center" spacing={3}>
+          <Image
+            systemName="chart.pie.fill"
+            resizable
+            scaleToFit
+            imageScale="small"
+            foregroundStyle={C.accent}
+            frame={{ width: 10, height: 10 }}
+          />
+          <Text font={11} fontWeight="bold" foregroundStyle={C.primary}>
+            剩余 {shownPercent(props.window)}
+          </Text>
+        </HStack>
       </HStack>
-      <Progress
-        displayValue={window.remainingPercent}
-        usedPercent={window.usedPercent}
-        remainingPercent={window.remainingPercent}
-        width={width}
-        height={compact ? 5 : 6}
-      />
-      <HStack frame={{ width }}>
-        <Text font={compact ? 9 : 10} foregroundStyle={C.secondary}>
-          重置 {compact ? formatSmallDate(window.resetAt) : formatResetDate(window.resetAt)}
-        </Text>
+      <HStack
+        frame={{
+          maxWidth: "infinity",
+          maxHeight: "infinity",
+          alignment: "topLeading",
+        }}
+        padding={{ leading: 12, top: props.top + 20 }}
+      >
+        <Progress
+          displayValue={props.window?.remainingPercent ?? null}
+          usedPercent={props.window?.usedPercent}
+          remainingPercent={props.window?.remainingPercent}
+          width={props.width}
+          height={5}
+        />
       </HStack>
-    </VStack>
+      <HStack
+        frame={{
+          maxWidth: "infinity",
+          maxHeight: "infinity",
+          alignment: "topLeading",
+        }}
+        padding={{ leading: 12, trailing: 12, top: props.top + 30 }}
+      >
+        <SmallReset value={formatSmallDate(props.window?.resetAt)} />
+      </HStack>
+    </>
+  );
+}
+
+function MediumWindow(props: {
+  title: string;
+  window: LimitWindow | null;
+  width: number;
+  top: number;
+}) {
+  return (
+    <>
+      <HStack
+        alignment="lastTextBaseline"
+        frame={{
+          maxWidth: "infinity",
+          maxHeight: "infinity",
+          alignment: "topLeading",
+        }}
+        padding={{ leading: 20, trailing: 20, top: props.top }}
+      >
+        <Text font={15} fontWeight="bold" foregroundStyle={C.primary}>
+          {props.title}
+        </Text>
+        <Spacer />
+        <HStack alignment="center" spacing={4}>
+          <Image
+            systemName="chart.pie.fill"
+            resizable
+            scaleToFit
+            imageScale="small"
+            foregroundStyle={C.accent}
+            frame={{ width: 12, height: 12 }}
+          />
+          <Text font={14} fontWeight="bold" foregroundStyle={C.primary}>
+            剩余 {shownPercent(props.window)}
+          </Text>
+        </HStack>
+      </HStack>
+      <HStack
+        frame={{
+          maxWidth: "infinity",
+          maxHeight: "infinity",
+          alignment: "topLeading",
+        }}
+        padding={{ leading: 20, top: props.top + 24 }}
+      >
+        <Progress
+          displayValue={props.window?.remainingPercent ?? null}
+          usedPercent={props.window?.usedPercent}
+          remainingPercent={props.window?.remainingPercent}
+          width={props.width}
+          height={7}
+        />
+      </HStack>
+      <HStack
+        frame={{
+          maxWidth: "infinity",
+          maxHeight: "infinity",
+          alignment: "topLeading",
+        }}
+        padding={{ leading: 20, trailing: 20, top: props.top + 36 }}
+      >
+        <SmallReset value={formatResetDate(props.window?.resetAt)} />
+      </HStack>
+    </>
+  );
+}
+
+function MinRemainingCapsule(props: {
+  fiveHour: LimitWindow | null;
+  weekly: LimitWindow | null;
+}) {
+  const values = [props.fiveHour, props.weekly]
+    .map((window) => window?.remainingPercent)
+    .filter((value) => value != null && !Number.isNaN(value));
+  if (!values.length) return null;
+  const min = Math.min(...values);
+  return (
+    <HStack
+      padding={{ horizontal: 10, vertical: 6 }}
+      background={C.capsuleBg}
+      clipShape={{ type: "capsule", style: "continuous" }}
+    >
+      <Text font={12} fontWeight="semibold" foregroundStyle={C.capsuleFg}>
+        最低剩余 {formatPercent(min)}
+      </Text>
+    </HStack>
   );
 }
 
 export function UsageWidgetView({ result, family }: Props) {
   const model = modelFor(result);
   const small = isSmall(family);
-  const pad = small ? 12 : 16;
-  const contentWidth = Math.max(90, displayWidth(family) - pad * 2);
+  const width = displayWidth(family);
 
+  if (small) {
+    const contentWidth = Math.max(112, width - 24);
+    return (
+      <ZStack
+        frame={{ maxWidth: "infinity", maxHeight: "infinity" }}
+        widgetBackground={C.bg}
+      >
+        <HStack
+          frame={{
+            maxWidth: "infinity",
+            maxHeight: "infinity",
+            alignment: "bottomTrailing",
+          }}
+          padding={{ trailing: -6, bottom: -6 }}
+        >
+          <Watermark size={96} />
+        </HStack>
+        <HStack
+          frame={{
+            maxWidth: "infinity",
+            maxHeight: "infinity",
+            alignment: "topLeading",
+          }}
+          padding={{ leading: 12, trailing: 12, top: 18 }}
+        >
+          <PlanBadge label={model.planLabel} small />
+          <Spacer minLength={0} />
+          <Text
+            font={8}
+            fontWeight="medium"
+            foregroundStyle={C.secondary}
+            lineLimit={1}
+            minScaleFactor={0.75}
+          >
+            {formatSmallDate(model.snapshot?.fetchedAt)}
+          </Text>
+        </HStack>
+        <SmallWindow
+          title={KIMI_WIDGET.shortFiveHour}
+          window={model.fiveHour}
+          width={contentWidth}
+          top={43}
+        />
+        <SmallWindow
+          title={KIMI_WIDGET.shortWeekly}
+          window={model.weekly}
+          width={contentWidth}
+          top={99}
+        />
+        {!model.live && model.detail ? (
+          <HStack
+            frame={{
+              maxWidth: "infinity",
+              maxHeight: "infinity",
+              alignment: "bottomLeading",
+            }}
+            padding={{ horizontal: 12, bottom: 2 }}
+          >
+            <Text font={7} foregroundStyle={C.warn} lineLimit={1}>
+              {model.detail}
+            </Text>
+          </HStack>
+        ) : null}
+      </ZStack>
+    );
+  }
+
+  const contentWidth = Math.max(220, width - 40);
   return (
     <ZStack
       frame={{ maxWidth: "infinity", maxHeight: "infinity" }}
@@ -198,47 +396,57 @@ export function UsageWidgetView({ result, family }: Props) {
           maxHeight: "infinity",
           alignment: "bottomTrailing",
         }}
-        padding={{ trailing: small ? -6 : -8, bottom: small ? -6 : -10 }}
+        padding={{ trailing: -7, bottom: -11 }}
       >
-        <Watermark size={small ? 88 : 130} />
+        <Watermark size={135} />
       </HStack>
-      <VStack
-        spacing={small ? 8 : 10}
-        alignment="leading"
-        padding={pad}
+      <HStack
+        alignment="top"
         frame={{
           maxWidth: "infinity",
           maxHeight: "infinity",
           alignment: "topLeading",
         }}
+        padding={{ leading: 20, trailing: 20, top: 9 }}
       >
-        <HStack frame={{ width: contentWidth }}>
-          <PlanBadge label={model.planLabel} small={small} />
-          <Spacer />
-          <Text font={small ? 9 : 11} foregroundStyle={C.secondary}>
-            {small ? formatSmallDate(model.snapshot?.fetchedAt) : `更新 ${model.fetched}`}
+        <PlanBadge label={model.planLabel} />
+        <Spacer minLength={0} />
+        <VStack alignment="trailing" spacing={4}>
+          <MinRemainingCapsule
+            fiveHour={model.fiveHour}
+            weekly={model.weekly}
+          />
+          <Text font={9} fontWeight="medium" foregroundStyle={C.secondary}>
+            更新 {model.fetched}
           </Text>
-        </HStack>
-        {model.windows.length === 0 ? (
-          <Text font={12} foregroundStyle={C.secondary}>
-            暂无用量窗口
-          </Text>
-        ) : (
-          model.windows.map((window) => (
-            <WindowRow
-              key={window.id}
-              window={window}
-              width={contentWidth}
-              compact={small}
-            />
-          ))
-        )}
-        {!model.live && model.detail ? (
-          <Text font={small ? 7 : 9} foregroundStyle={C.warn} lineLimit={1}>
+        </VStack>
+      </HStack>
+      <MediumWindow
+        title={KIMI_WIDGET.fiveHourTitle}
+        window={model.fiveHour}
+        width={contentWidth}
+        top={38}
+      />
+      <MediumWindow
+        title={KIMI_WIDGET.weeklyTitle}
+        window={model.weekly}
+        width={contentWidth}
+        top={96}
+      />
+      {!model.live && model.detail ? (
+        <HStack
+          frame={{
+            maxWidth: "infinity",
+            maxHeight: "infinity",
+            alignment: "bottomLeading",
+          }}
+          padding={{ horizontal: 20, bottom: 2 }}
+        >
+          <Text font={8} foregroundStyle={C.warn} lineLimit={1}>
             {model.detail}
           </Text>
-        ) : null}
-      </VStack>
+        </HStack>
+      ) : null}
     </ZStack>
   );
 }

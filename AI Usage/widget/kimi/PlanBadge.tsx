@@ -1,82 +1,6 @@
 import { HStack, Text } from "scripting";
-import type { Color, DynamicShapeStyle } from "scripting";
 import { ProviderLogo } from "../../components/ProviderLogo";
-
-const linear = (light: Color[], dark: Color[]): DynamicShapeStyle => ({
-  light: {
-    gradient: light.map((color, index) => ({
-      color,
-      location: index / (light.length - 1),
-    })),
-    startPoint: "leading" as const,
-    endPoint: "trailing" as const,
-  },
-  dark: {
-    gradient: dark.map((color, index) => ({
-      color,
-      location: index / (dark.length - 1),
-    })),
-    startPoint: "leading" as const,
-    endPoint: "trailing" as const,
-  },
-});
-
-type BadgePalette = {
-  text: string;
-  background: DynamicShapeStyle;
-  foreground: Color;
-};
-
-function palette(label: string): BadgePalette {
-  const normalized = label
-    .trim()
-    .toLowerCase()
-    .replace(/^level[_-]?/, "")
-    .replace(/[\s_]+/g, "-");
-  // 官方四档
-  if (normalized === "allegro" || normalized === "vivace" || normalized === "ultra")
-    return {
-      text: normalized === "ultra" ? "ALLEGRO" : normalized.toUpperCase(),
-      background: linear(["#0F172A", "#6366F1"], ["#1E293B", "#818CF8"]),
-      foreground: "#EEF2FF",
-    };
-  if (
-    normalized === "allegretto" ||
-    normalized === "advanced" ||
-    normalized === "pro"
-  )
-    return {
-      text: "ALLEGRETTO",
-      background: linear(["#312E81", "#4F46E5"], ["#4338CA", "#6366F1"]),
-      foreground: "#FFFFFF",
-    };
-  if (
-    normalized === "moderato" ||
-    normalized === "intermediate"
-  )
-    return {
-      text: "MODERATO",
-      background: linear(["#1E3A8A", "#3B82F6"], ["#1D4ED8", "#60A5FA"]),
-      foreground: "#EFF6FF",
-    };
-  if (normalized === "andante" || normalized === "basic")
-    return {
-      text: "ANDANTE",
-      background: linear(["#334155", "#64748B"], ["#475569", "#94A3B8"]),
-      foreground: "#F8FAFC",
-    };
-  if (normalized === "free" || normalized === "adagio")
-    return {
-      text: "FREE",
-      background: linear(["#94A3B8", "#64748B"], ["#64748B", "#475569"]),
-      foreground: "#FFFFFF",
-    };
-  return {
-    text: label.trim().toUpperCase() || "KIMI",
-    background: linear(["#111827", "#374151"], ["#1F2937", "#4B5563"]),
-    foreground: "#F9FAFB",
-  };
-}
+import { kimiBadgePalette } from "../../providers/kimi/theme";
 
 export function PlanBadge({
   label,
@@ -85,7 +9,8 @@ export function PlanBadge({
   label: string;
   small?: boolean;
 }) {
-  const p = palette(label);
+  const p = kimiBadgePalette(label);
+  const showTier = p.text !== "KIMI";
   return (
     <HStack
       spacing={small ? 5 : 6}
@@ -93,8 +18,12 @@ export function PlanBadge({
       background={p.background}
       clipShape={{ type: "capsule", style: "continuous" }}
     >
-      <ProviderLogo provider="kimi" size={small ? 10 : 11} tint={p.foreground} />
-      {p.text !== "KIMI" ? (
+      <ProviderLogo
+        provider="kimi"
+        size={small ? 10 : 11}
+        tint={p.logoTint ?? p.foreground}
+      />
+      {showTier ? (
         <Text
           font={small ? 9 : 10}
           fontWeight="bold"

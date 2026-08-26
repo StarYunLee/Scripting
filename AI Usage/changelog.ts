@@ -6,6 +6,14 @@ export type ChangelogEntry = {
 
 export const CHANGELOG = [
   {
+    version: "1.5.3",
+    date: "2026-08-26",
+    changes: [
+      "Kimi Code 小组件视觉优化：indigo 品牌水印与进度条、套餐徽章四档渐变配色。",
+      "Kimi 中尺寸对齐 Codex 双额度布局，右上角展示「最低剩余」胶囊与更新时间。",
+    ],
+  },
+  {
     version: "1.5.2",
     date: "2026-08-26",
     changes: [
