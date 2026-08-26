@@ -6,6 +6,14 @@ export type ChangelogEntry = {
 
 export const CHANGELOG = [
   {
+    version: "1.4.2",
+    date: "2026-08-26",
+    changes: [
+      "修复 Claude 订阅档位：改为读取 /api/oauth/profile 的 organization 信息（usage 接口不含套餐字段）。",
+      "修复 Codex / ChatGPT 订阅档位：usage 缺少 plan_type 时回退 JWT chatgpt_plan_type，并避免空值误显示为 Plus。",
+    ],
+  },
+  {
     version: "1.4.1",
     date: "2026-08-26",
     changes: [

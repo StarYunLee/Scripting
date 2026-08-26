@@ -6,6 +6,8 @@ import type { LimitWindow, UsageResult, UsageSnapshot } from "./types";
 const CACHE_KEY = "ai_usage_claude_cache_v1";
 const RATE_LIMIT_KEY = "ai_usage_claude_rate_limit_v1";
 const USAGE_URL = "https://api.anthropic.com/api/oauth/usage";
+/** 当前订阅档位在 profile.organization，不在 usage 响应里。 */
+const PROFILE_URL = "https://api.anthropic.com/api/oauth/profile";
 const MIN_LIVE_INTERVAL_MS = 3 * 60_000;
 const DEFAULT_RATE_LIMIT_MS = 5 * 60_000;
 const CLIENT_USER_AGENT = "claude-code/2.1.239";
@@ -148,7 +150,50 @@ function mergeScopedLimits(
   }
   return windows;
 }
-function planLabel(payload: Record<string, unknown>): string | null {
+/**
+ * 由 organization_type（如 claude_max）与 rate_limit_tier
+ * （如 default_claude_max_20x）拼出展示名。
+ */
+function labelFromSubscription(
+  subscriptionType: string | null,
+  rateLimitTier: string | null,
+): string | null {
+  const tierWords = (rateLimitTier || "")
+    .toLowerCase()
+    .split(/[_\-\s]+/)
+    .filter(Boolean);
+  const fromOrg = (subscriptionType || "")
+    .trim()
+    .toLowerCase()
+    .replace(/^claude_/, "");
+  const base =
+    fromOrg ||
+    (["max", "pro", "team", "enterprise"] as const).find((plan) =>
+      tierWords.includes(plan),
+    ) ||
+    null;
+  if (!base) return null;
+
+  if (base === "pro") return "Claude Pro";
+  if (base.startsWith("team")) return "Claude Team";
+  if (base === "enterprise") return "Claude Enterprise";
+  if (base === "max") {
+    const maxIndex = tierWords.indexOf("max");
+    const multiplier =
+      maxIndex >= 0 ? tierWords[maxIndex + 1] : tierWords.find((w) => /^\d+x$/.test(w));
+    if (multiplier === "20x") return "Claude Max 20×";
+    if (multiplier === "5x") return "Claude Max 5×";
+    return "Claude Max";
+  }
+
+  const clean = base.replace(/[_-]+/g, " ").trim();
+  return clean
+    ? `Claude ${clean.replace(/\b\w/g, (c) => c.toUpperCase())}`
+    : null;
+}
+
+/** usage 响应偶尔带订阅字段时作弱回退；通常为空。 */
+function planLabelFromUsage(payload: Record<string, unknown>): string | null {
   for (const key of [
     "subscription_type",
     "rate_limit_tier",
@@ -163,12 +208,49 @@ function planLabel(payload: Record<string, unknown>): string | null {
         .trim();
       if (/^max\s*20x$/i.test(clean)) return "Claude Max 20×";
       if (/^max\s*5x$/i.test(clean)) return "Claude Max 5×";
+      if (/^max$/i.test(clean)) return "Claude Max";
       if (/^pro$/i.test(clean)) return "Claude Pro";
       if (/^team/i.test(clean)) return "Claude Team";
-      return clean.replace(/\b\w/g, (c) => c.toUpperCase());
+      if (/^enterprise$/i.test(clean)) return "Claude Enterprise";
+      return `Claude ${clean.replace(/\b\w/g, (c) => c.toUpperCase())}`;
     }
   }
   return null;
+}
+
+function planLabelFromProfile(payload: Record<string, unknown>): string | null {
+  const organization = asObject(payload.organization);
+  if (!organization) return null;
+  const organizationType = toStringValue(organization.organization_type);
+  const rateLimitTier = toStringValue(
+    organization.rate_limit_tier ?? organization.rate_limit_tiers,
+  );
+  // organization_type 形如 claude_max；也可直接是 max / pro。
+  const subscription =
+    organizationType?.replace(/^claude_/i, "") ||
+    toStringValue(organization.subscription_type) ||
+    null;
+  return labelFromSubscription(subscription, rateLimitTier);
+}
+
+function toStringValue(v: unknown): string | null {
+  return typeof v === "string" && v.trim() ? v.trim() : null;
+}
+
+async function fetchPlanFromProfile(token: string): Promise<string | null> {
+  try {
+    const response = await fetch(PROFILE_URL, {
+      method: "GET",
+      headers: usageHeaders(token),
+      timeout: 15,
+      debugLabel: "ClaudeOAuthProfile",
+    });
+    if (!response.ok) return null;
+    const payload = asObject(JSON.parse(await response.text()));
+    return payload ? planLabelFromProfile(payload) : null;
+  } catch {
+    return null;
+  }
 }
 function cacheKey(profileId: string): string {
   return `${CACHE_KEY}_${profileId}`;
@@ -397,8 +479,13 @@ export async function fetchUsage(options?: {
       };
     }
 
+    // 套餐以 profile.organization 为准；usage 字段通常缺失，仅作弱回退。
     const plan =
-      planLabel(payload) || cache?.planLabel || cache?.planType || "Claude";
+      (await fetchPlanFromProfile(token)) ||
+      planLabelFromUsage(payload) ||
+      cache?.planLabel ||
+      cache?.planType ||
+      "Claude";
     const snapshot: UsageSnapshot = {
       windows,
       fiveHour,

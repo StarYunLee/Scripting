@@ -183,8 +183,8 @@ function extractWindows(payload: Record<string, unknown>): LimitWindow[] {
     (a, b) => (a.windowSeconds || 1e20) - (b.windowSeconds || 1e20),
   );
 }
-function planLabel(payload: Record<string, unknown>): string | null {
-  const raw = toStringValue(payload.plan_type)?.toLowerCase();
+function planLabel(rawPlanType: string | null): string | null {
+  const raw = rawPlanType?.toLowerCase().trim() || null;
   if (!raw) return null;
   const labels: Record<string, string> = {
     guest: "Guest",
@@ -192,6 +192,8 @@ function planLabel(payload: Record<string, unknown>): string | null {
     go: "Go",
     plus: "Plus",
     pro: "Pro",
+    chatgptpro: "Pro",
+    chatgpt_pro: "Pro",
     prolite: "Pro Lite",
     free_workspace: "Free Workspace",
     team: "Team",
@@ -213,6 +215,31 @@ function planLabel(payload: Record<string, unknown>): string | null {
     labels[raw] ||
     raw.replace(/(^|_)(\w)/g, (_, __, c) => ` ${c.toUpperCase()}`).trim()
   );
+}
+
+/** JWT https://api.openai.com/auth.chatgpt_plan_type，usage 缺 plan_type 时回退。 */
+function planTypeFromAccessToken(token: string | null): string | null {
+  if (!token) return null;
+  try {
+    let raw = token.split(".")[1]?.replace(/-/g, "+").replace(/_/g, "/");
+    if (!raw) return null;
+    while (raw.length % 4) raw += "=";
+    const json = decodeURIComponent(
+      Array.from(atob(raw))
+        .map((c) => "%" + c.charCodeAt(0).toString(16).padStart(2, "0"))
+        .join(""),
+    );
+    const payload = asObject(JSON.parse(json));
+    if (!payload) return null;
+    const auth = asObject(payload["https://api.openai.com/auth"]);
+    const value =
+      toStringValue(payload.chatgpt_plan_type) ||
+      toStringValue(auth?.chatgpt_plan_type) ||
+      toStringValue(auth?.plan_type);
+    return value;
+  } catch {
+    return null;
+  }
 }
 function parseCreditStatus(
   payload: Record<string, unknown>,
@@ -501,7 +528,7 @@ export async function fetchUsage(options?: {
       };
     }
     const rawPlanType =
-      typeof payload.plan_type === "string" ? payload.plan_type : null;
+      toStringValue(payload.plan_type) || planTypeFromAccessToken(token);
     const creditStatus = parseCreditStatus(payload);
     const spendControl = parseSpendControl(payload);
     const status = rateLimitStatus(payload);
@@ -519,13 +546,15 @@ export async function fetchUsage(options?: {
       detailedResetCredits != null || embeddedResetCredits.count != null
         ? liveResetExpirations
         : (cache?.resetCreditExpirations ?? []);
+    const resolvedPlanLabel =
+      planLabel(rawPlanType) || cache?.planLabel || cache?.planType || null;
     const snapshot: UsageSnapshot = {
       windows,
       fiveHour: windows.find((w) => w.name === "five_hour") || null,
       weekly: windows.find((w) => w.name === "weekly") || null,
       monthly: windows.find((w) => w.name === "monthly") || null,
       planType: rawPlanType,
-      planLabel: planLabel(payload),
+      planLabel: resolvedPlanLabel,
       creditStatus,
       spendControl,
       rateLimitAllowed: status.allowed,

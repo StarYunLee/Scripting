@@ -60,7 +60,7 @@ function modelFor(result: UsageResult): Model {
       snapshot?.weekly ||
       snapshot?.windows.find((w) => w.name === "weekly") ||
       null,
-    planLabel: snapshot?.planLabel || snapshot?.planType || "Plus",
+    planLabel: snapshot?.planLabel || snapshot?.planType || "—",
     resetLabel:
       resets.available == null ? "重置—" : `重置${resets.available}次`,
     resetExpiration: formatResetDate(resets.nearestExpiration),

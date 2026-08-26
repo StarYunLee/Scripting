@@ -184,6 +184,23 @@ function palette(provider: ProviderId, label: string): BadgePalette {
         foreground: "#FFFFFF",
       };
     }
+    if (normalized === "enterprise" || normalized.startsWith("enterprise")) {
+      return {
+        text: "ENTERPRISE",
+        background: linear(["#0F172A", "#334155"], ["#1E293B", "#475569"]),
+        foreground: "#F8FAFC",
+      };
+    }
+    if (normalized === "max") {
+      return {
+        text: "MAX",
+        background: linear(
+          ["#F97316", "#F59E0B", "#F43F5E"],
+          ["#FB923C", "#FBBF24", "#FB7185"],
+        ),
+        foreground: "#000000",
+      };
+    }
     return {
       text:
         label
