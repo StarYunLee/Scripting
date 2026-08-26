@@ -6,13 +6,9 @@ export type ChangelogEntry = {
 
 export const CHANGELOG = [
   {
-    version: "1.8.1",
+    version: "1.8.2",
     date: "2026-08-26",
     changes: [
-      "修复 Kimi Code 订阅档位映射：LEVEL_ADVANCED 正确显示为 Allegro（原错映为 Allegretto），LEVEL_* 枚举按 API 实测全量对齐 Adagio / Andante / Moderato / Allegretto / Allegro / Vivace。",
-      "Kimi / Z.ai / MiniMax / GitHub Copilot 图标与小组件水印替换为官方品牌字形（透明背景），修复模板渲染下显示为纯色块的问题。",
-      "演示模式补齐各平台订阅档位示例（新增 18 个演示账号）。",
-      "修复 Z.ai Pro+ 套餐徽章落入默认配色的问题；Antigravity 小组件徽章紧凑模式去除 Google 等前缀（移植上游 v1.1.2）。",
       "设置页新增总用量小组件预览（Small / Medium / Large）。",
       "修复 Cursor Ultra 等套餐徽章不显示：GetPlanInfo 无结果时回退 Stripe profile 的 membershipType，并兼容 ultra_yearly 等变体写法。",
       "GitHub Copilot 图标修正为 GitHub Copilot 官方标志（原误用 Microsoft Copilot 素材）。",
@@ -26,6 +22,17 @@ export const CHANGELOG = [
       "总用量小组件缓存窗口从 3 分钟拉长到 10 分钟：缓存新鲜时不再逐账号发起网络请求，渲染明显加快。",
       "单账号小组件头部对齐：徽章统一左上、更新时间统一右上；Kimi 徽章尺寸向 Codex 看齐；Codex 小尺寸恢复重置卡展示；widget 视图全面清除 null 子节点（改用 EmptyView），消除小组件构建失败隐患。"
     ],
+  },
+  {
+    version: "1.8.1",
+    date: "2026-08-26",
+    changes: [
+      "修复 Kimi Code 订阅档位映射：LEVEL_ADVANCED 正确显示为 Allegro（原错映为 Allegretto），LEVEL_* 枚举按 API 实测全量对齐 Adagio / Andante / Moderato / Allegretto / Allegro / Vivace。",
+      "Kimi / Z.ai / MiniMax / GitHub Copilot 图标与小组件水印替换为官方品牌字形（透明背景），修复模板渲染下显示为纯色块的问题。",
+      "演示模式补齐各平台订阅档位示例（新增 18 个演示账号）。",
+      "修复 Z.ai Pro+ 套餐徽章落入默认配色的问题；Antigravity 小组件徽章紧凑模式去除 Google 等前缀（移植上游 v1.1.2）。",
+    ],
+  },
   },
   {
     version: "1.8.0",
