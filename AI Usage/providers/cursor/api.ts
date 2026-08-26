@@ -1,4 +1,5 @@
 import { fetch, Response } from "scripting";
+import { PERIOD } from "../../copy/labels";
 import {
   getProfileAccessToken,
   needsEmailBackfill,
@@ -201,10 +202,10 @@ function parsePlanUsageWindows(
   // 「所有」优先用 totalPercentUsed；缺失时回退套餐花费占比。
   const allPercent = totalPercent ?? spendPercent;
   if (allPercent != null)
-    windows.push(makeWindow("total", "所有", allPercent, reset));
+    windows.push(makeWindow("total", PERIOD.TOTAL.app, allPercent, reset));
 
   if (apiPercent != null)
-    windows.push(makeWindow("api", "第三方模型", apiPercent, reset));
+    windows.push(makeWindow("api", PERIOD.API.app, apiPercent, reset));
 
   // 若三个百分比都缺失，至少保留套餐花费窗口。
   if (!windows.length && spendPercent != null)

@@ -7,6 +7,7 @@ import {
   Text,
   VStack,
 } from "scripting";
+import { normalizeAppWindowLabel } from "../copy/labels";
 import {
   formatFetchedAt,
   formatPercent,
@@ -99,7 +100,7 @@ export function UsageCardView(props: {
           return (
             <VStack key={window.id} alignment="leading" spacing={6}>
               <HStack>
-                <Text font={15}>{window.label}</Text>
+                <Text font={15}>{normalizeAppWindowLabel(window.label)}</Text>
                 <Spacer />
                 <Text font={15} fontWeight="medium" monospacedDigit>
                   {percentLabel} {formatPercent(value)}

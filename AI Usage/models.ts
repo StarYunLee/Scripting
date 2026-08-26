@@ -82,7 +82,7 @@ export const PROVIDERS: Array<{
     id: "claude",
     title: "Claude",
     connectTitle: "连接 Anthropic 账户",
-    subtitle: "连接 Anthropic 账户，查看 5 小时与周限用量。",
+    subtitle: "连接 Anthropic 账户，查看 5 小时与每周用量。",
     accent: "#D97757",
     pasteHint: "Anthropic 授权完成后会显示一次性授权码，通常形如 code#state。",
     pastePlaceholder: "粘贴 code#state",
@@ -103,7 +103,7 @@ export const PROVIDERS: Array<{
     id: "cursor",
     title: "Cursor",
     connectTitle: "连接 Cursor 账户",
-    subtitle: "连接 Cursor 账户，查看 Auto / 所有 / 第三方模型 / Grok Bot 用量。",
+    subtitle: "连接 Cursor 账户，查看 Auto / 总计 / 第三方 API / Grok Bot 用量。",
     accent: "#111827",
     pasteHint:
       "在浏览器完成 Cursor 登录后返回应用，无需粘贴内容，直接点击“提交并完成授权”。",

@@ -6,7 +6,7 @@
   "permissions": null,
   "runInApp": true,
   "contributors": [],
-  "version": "1.4.9",
+  "version": "1.5.0",
   "intentInputTypes": [],
   "localizedNames": {
     "zh": "AI Usage",
@@ -23,7 +23,7 @@
     "homepage": "https://github.com/StarYunLee"
   },
   "localizedDescriptions": {
-    "zh": "整合 Codex / Grok / Claude / Antigravity / Cursor / Kimi Code 用量的应用。Cursor 支持 Auto / 所有 / 第三方模型与 Grok Bot 周额度；支持多账号、按账号设置主屏幕小组件布局，小组件固定显示剩余额度。",
+    "zh": "整合 Codex / Grok / Claude / Antigravity / Cursor / Kimi Code 用量的应用。Cursor 支持 Auto / 总计 / 第三方 API 与 Grok Bot 周额度；支持多账号、按账号设置主屏幕小组件布局，小组件固定显示剩余额度。",
     "en": "Unified Codex, Grok, Claude, Antigravity, Cursor, and Kimi Code usage app with Cursor Grok Bot weekly quota, multi-account Home Screen widgets, and remaining-quota display."
   },
   "iconImage": null

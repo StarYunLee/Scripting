@@ -9,6 +9,7 @@ import {
   ZStack,
 } from "scripting";
 import type { Color, DynamicShapeStyle } from "scripting";
+import { CLAUDE_WIDGET } from "../../copy/labels";
 import { usageTint } from "../../services/usage-colors";
 import {
   formatPercent,
@@ -260,7 +261,7 @@ function MetaColumn({
   );
 }
 function focusTitle(small = false): string {
-  return small ? "周限" : "每周额度";
+  return small ? CLAUDE_WIDGET.shortWeekly : CLAUDE_WIDGET.weeklyQuota;
 }
 
 export function WeeklyUsageWidgetView({ result, family }: Props) {

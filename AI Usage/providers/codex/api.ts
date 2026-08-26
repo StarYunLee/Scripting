@@ -194,9 +194,9 @@ function planLabel(rawPlanType: string | null): string | null {
     plus: "Plus",
     // ChatGPT Pro：$100=5× → prolite；$200=20× → pro
     prolite: "Pro 5X",
-    pro: "Pro 20x",
-    chatgptpro: "Pro 20x",
-    chatgpt_pro: "Pro 20x",
+    pro: "Pro 20X",
+    chatgptpro: "Pro 20X",
+    chatgpt_pro: "Pro 20X",
     free_workspace: "Free Workspace",
     team: "Team",
     self_serve_business_prolite: "Business Pro Lite",

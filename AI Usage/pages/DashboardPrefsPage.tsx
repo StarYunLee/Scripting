@@ -12,6 +12,10 @@ import {
   useState,
 } from "scripting";
 import { providerMeta, type UsageCard } from "../models";
+import {
+  DASHBOARD_PREFS_WIDGET_PRIVACY_FOOTER,
+  normalizeAppWindowLabel,
+} from "../copy/labels";
 import { listAllAuthorizedCards } from "../services/hub";
 import {
   getDashboardPrefs,
@@ -117,8 +121,7 @@ export function DashboardPrefsPage(props: {
             header={<Text foregroundStyle="secondaryLabel">隐私与显示</Text>}
             footer={
               <Text font="caption" foregroundStyle="secondaryLabel">
-                默认隐藏邮箱与账号 ID，避免主屏幕泄露隐私。Small 为文本列表，Medium
-                为圆环，Large 为进度条，Extra Large 按账号分组展示详情。
+                {DASHBOARD_PREFS_WIDGET_PRIVACY_FOOTER}
               </Text>
             }
           >
@@ -246,7 +249,7 @@ function AccountPrefSection(props: {
               <VStack key={window.id} spacing={0}>
                 {index > 0 ? <Divider /> : null}
                 <Toggle
-                  title={window.label}
+                  title={normalizeAppWindowLabel(window.label)}
                   value={!props.hiddenWindowIds.includes(window.id)}
                   onChanged={(visible) =>
                     props.onWindowChanged(window.id, visible)

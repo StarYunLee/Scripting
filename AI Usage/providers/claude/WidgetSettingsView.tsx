@@ -1,4 +1,5 @@
 import { Divider, Picker, Text, useState } from "scripting";
+import { CLAUDE_WIDGET } from "../../copy/labels";
 import * as ClaudeSettings from "./credentials";
 
 export function ClaudeWidgetSettingsView(props: {
@@ -46,8 +47,8 @@ export function ClaudeWidgetSettingsView(props: {
           padding={{ vertical: true }}
           frame={{ minHeight: 44, maxWidth: "infinity" }}
         >
-          <Text tag="five_hour_weekly">5 小时 + 周限</Text>
-          <Text tag="weekly_fable">周限 + Fable 周限</Text>
+          <Text tag="five_hour_weekly">{CLAUDE_WIDGET.dualFiveHourWeekly}</Text>
+          <Text tag="weekly_fable">{CLAUDE_WIDGET.dualWeeklyFable}</Text>
         </Picker>
       ) : (
         <Picker
@@ -63,9 +64,9 @@ export function ClaudeWidgetSettingsView(props: {
           padding={{ vertical: true }}
           frame={{ minHeight: 44, maxWidth: "infinity" }}
         >
-          <Text tag="five_hour">5 小时额度</Text>
-          <Text tag="weekly">周限</Text>
-          <Text tag="weekly_fable">Fable 周限</Text>
+          <Text tag="five_hour">{CLAUDE_WIDGET.fiveHourQuota}</Text>
+          <Text tag="weekly">{CLAUDE_WIDGET.shortWeekly}</Text>
+          <Text tag="weekly_fable">{CLAUDE_WIDGET.shortFableWeekly}</Text>
         </Picker>
       )}
     </>

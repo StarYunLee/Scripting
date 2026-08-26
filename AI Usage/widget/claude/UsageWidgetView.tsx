@@ -9,6 +9,7 @@ import {
   ZStack,
 } from "scripting";
 import type { Color, DynamicShapeStyle } from "scripting";
+import { CLAUDE_WIDGET } from "../../copy/labels";
 import { ProviderLogo } from "../../components/ProviderLogo";
 import { usageTint } from "../../services/usage-colors";
 import { pickFocusWindow } from "../../providers/claude/api";
@@ -496,9 +497,9 @@ function MediumWindow({
 }
 
 function singleWindowTitle(focus: FocusWindow): string {
-  if (focus === "five_hour") return "5 小时额度";
-  if (focus === "weekly") return "周限额度";
-  return "Fable 周限";
+  if (focus === "five_hour") return CLAUDE_WIDGET.fiveHourQuota;
+  if (focus === "weekly") return CLAUDE_WIDGET.weeklyQuota;
+  return CLAUDE_WIDGET.fableWeekly;
 }
 function SingleInfoRow({
   icon,
@@ -595,10 +596,10 @@ function SingleWindowView({
         >
           <Text font={16} fontWeight="bold" foregroundStyle={C.primary}>
             {focusWindow === "five_hour"
-              ? "5H"
+              ? CLAUDE_WIDGET.shortFiveHour
               : focusWindow === "weekly_fable"
                 ? "Fable"
-                : "周限"}
+                : CLAUDE_WIDGET.shortWeekly}
           </Text>
           <Spacer />
           <PlanBadge label={model.planLabel} small />
@@ -843,12 +844,21 @@ export function UsageWidgetView({
   const secondWindow =
     dualQuotaPreset === "weekly_fable" ? model.weeklyFable : model.weekly;
   const firstTitle =
-    dualQuotaPreset === "weekly_fable" ? "周限额度" : "5 小时额度";
+    dualQuotaPreset === "weekly_fable"
+      ? CLAUDE_WIDGET.weeklyQuota
+      : CLAUDE_WIDGET.fiveHourQuota;
   const secondTitle =
-    dualQuotaPreset === "weekly_fable" ? "Fable 周限" : "周限额度";
-  const smallFirstTitle = dualQuotaPreset === "weekly_fable" ? "周限" : "5H";
+    dualQuotaPreset === "weekly_fable"
+      ? CLAUDE_WIDGET.fableWeekly
+      : CLAUDE_WIDGET.weeklyQuota;
+  const smallFirstTitle =
+    dualQuotaPreset === "weekly_fable"
+      ? CLAUDE_WIDGET.shortWeekly
+      : CLAUDE_WIDGET.shortFiveHour;
   const smallSecondTitle =
-    dualQuotaPreset === "weekly_fable" ? "Fable 周限" : "周限";
+    dualQuotaPreset === "weekly_fable"
+      ? CLAUDE_WIDGET.shortFableWeekly
+      : CLAUDE_WIDGET.shortWeekly;
   const small = isSmall(family);
   const width = displayWidth(family);
 

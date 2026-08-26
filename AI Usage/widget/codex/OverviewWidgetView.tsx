@@ -1,5 +1,6 @@
 import { HStack, Image, Script, Spacer, Text, Widget, ZStack } from "scripting";
 import type { Color, DynamicShapeStyle } from "scripting";
+import { PERIOD } from "../../copy/labels";
 import { usageTint } from "../../services/usage-colors";
 import {
   formatPercent,
@@ -470,7 +471,7 @@ export function OverviewWidgetView({ result, family }: Props) {
           top={43}
         />
         <SmallWindow
-          title="周限"
+          title={PERIOD.WEEKLY.widget}
           window={model.weekly}
           width={contentWidth}
           top={99}

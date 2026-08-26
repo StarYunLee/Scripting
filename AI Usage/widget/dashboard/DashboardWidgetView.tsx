@@ -15,6 +15,19 @@ import type { WidgetPrivacyPrefs } from "../../services/dashboard-prefs";
 import { usageTint } from "../../services/usage-colors";
 import type { UsageCard } from "../../models";
 import {
+  WIDGET_EMPTY_NO_ACCOUNTS,
+  WIDGET_EMPTY_NO_ROWS,
+  WIDGET_TITLE,
+  widgetAccountEntryCount,
+  widgetEntryCount,
+  widgetOverflowAccount,
+  widgetOverflowLarge,
+  widgetOverflowMedium,
+  widgetOverflowSmall,
+  widgetQuotaTitle,
+  widgetRemainingLabel,
+} from "../../copy/labels";
+import {
   flattenCards,
   groupRowsByAccount,
   largeVisibleLimit,
@@ -94,7 +107,7 @@ function EmptyView({ message }: { message: string }) {
       />
       <Spacer />
       <Text font={13} fontWeight="bold">
-        总用量
+        {WIDGET_TITLE}
       </Text>
       <Text
         font={10}
@@ -122,7 +135,7 @@ function ErrorHint({ show }: { show?: boolean }) {
 function TextRow(props: { row: DashboardRow; privacy: WidgetPrivacyPrefs }) {
   const meta = providerMeta(props.row.provider);
   const subtitle = privacySubtitle(props.row, props.privacy);
-  const label = `${providerShortName(props.row.provider)} · ${shortWindowLabel(props.row.windowLabel)}`;
+  const label = widgetQuotaTitle(props.row.provider, props.row.windowLabel);
   return (
     <VStack alignment="leading" spacing={2} frame={{ maxWidth: "infinity" }}>
       <HStack alignment="center" spacing={6}>
@@ -259,7 +272,7 @@ function BarRow(props: {
             lineLimit={1}
             minScaleFactor={0.8}
           >
-            {providerShortName(props.row.provider)} · {props.row.windowLabel}
+            {widgetQuotaTitle(props.row.provider, props.row.windowLabel)}
           </Text>
           {subtitle ? (
             <Text font={8} foregroundStyle={C.secondary} lineLimit={1}>
@@ -274,7 +287,7 @@ function BarRow(props: {
           monospacedDigit
           foregroundStyle={C.primary}
         >
-          剩余 {remainingLabel(props.row.remainingPercent)}
+          {widgetRemainingLabel(remainingLabel(props.row.remainingPercent))}
         </Text>
       </HStack>
       <ProgressBar
@@ -339,7 +352,7 @@ function SmallTextLayout(props: {
       <HStack alignment="center">
         {hidden > 0 ? (
           <Text font={8} foregroundStyle={C.secondary}>
-            +{hidden} 条
+            {widgetOverflowSmall(hidden)}
           </Text>
         ) : (
           <Spacer minLength={0} />
@@ -400,7 +413,7 @@ function MediumRingLayout(props: {
       ) : null}
       {hidden > 0 ? (
         <Text font={9} foregroundStyle={C.secondary} padding={{ top: 4 }}>
-          另有 {hidden} 条 · 可换大尺寸查看详情
+          {widgetOverflowMedium(hidden)}
         </Text>
       ) : (
         <HStack padding={{ top: 4 }}>
@@ -437,11 +450,11 @@ function LargeBarLayout(props: {
     >
       <HStack alignment="center">
         <Text font={14} fontWeight="bold">
-          总用量
+          {WIDGET_TITLE}
         </Text>
         <Spacer minLength={0} />
         <Text font={9} foregroundStyle={C.secondary}>
-          {props.rows.length} 条目
+          {widgetEntryCount(props.rows.length)}
         </Text>
         <ErrorHint show={props.hasErrors} />
       </HStack>
@@ -458,7 +471,7 @@ function LargeBarLayout(props: {
       </VStack>
       {hidden > 0 ? (
         <Text font={10} foregroundStyle={C.secondary}>
-          另有 {hidden} 条未显示
+          {widgetOverflowLarge(hidden)}
         </Text>
       ) : null}
       <Spacer minLength={0} />
@@ -487,11 +500,11 @@ function ExtraLargeGroupedLayout(props: {
     >
       <HStack alignment="center">
         <Text font={16} fontWeight="bold">
-          总用量
+          {WIDGET_TITLE}
         </Text>
         <Spacer minLength={0} />
         <Text font={10} foregroundStyle={C.secondary}>
-          {groups.length} 账号 · {props.rows.length} 条目
+          {widgetAccountEntryCount(groups.length, props.rows.length)}
         </Text>
         <ErrorHint show={props.hasErrors} />
       </HStack>
@@ -536,7 +549,7 @@ function ExtraLargeGroupedLayout(props: {
               </VStack>
               {extra > 0 ? (
                 <Text font={9} foregroundStyle={C.secondary}>
-                  该账号另有 {extra} 条未显示
+                  {widgetOverflowAccount(extra)}
                 </Text>
               ) : null}
             </VStack>
@@ -546,7 +559,7 @@ function ExtraLargeGroupedLayout(props: {
 
       {hidden > 0 ? (
         <Text font={10} foregroundStyle={C.secondary}>
-          另有 {hidden} 条未显示
+          {widgetOverflowLarge(hidden)}
         </Text>
       ) : null}
       <Spacer minLength={0} />
@@ -570,8 +583,8 @@ export function DashboardWidgetView(props: Props) {
       <EmptyView
         message={
           accountCount === 0
-            ? "请先在 AI Usage 连接账号，或在设置中为总览小组件选择展示内容。"
-            : "所选账号暂无可见额度条目，请在设置中调整小组件总览。"
+            ? WIDGET_EMPTY_NO_ACCOUNTS
+            : WIDGET_EMPTY_NO_ROWS
         }
       />
     );

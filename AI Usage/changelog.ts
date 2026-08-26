@@ -6,6 +6,15 @@ export type ChangelogEntry = {
 
 export const CHANGELOG = [
   {
+    version: "1.5.0",
+    date: "2026-08-26",
+    changes: [
+      "新增 copy/labels.ts 术语表，统一应用内中文与小组件英文缩写（5h / Weekly / API 等）。",
+      "Claude「周限」统一为「每周」；Cursor「所有 / 第三方模型」改为「总计 / 第三方 API」。",
+      "总用量小组件各尺寸共用缩写规则；溢出提示与设置页尺寸说明一并统一。",
+    ],
+  },
+  {
     version: "1.4.9",
     date: "2026-08-26",
     changes: [

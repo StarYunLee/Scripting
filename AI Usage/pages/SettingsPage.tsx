@@ -42,8 +42,10 @@ import type { AuthSheet } from "../models";
 import { listDemoAccounts } from "../services/demo";
 import { requestWidgetReload } from "../services/widgets";
 import {
-  WIDGET_DASHBOARD_PARAMETER,
-} from "../widget/parameter";
+  APP_DASHBOARD_SETTINGS_FOOTER,
+  WIDGET_DASHBOARD_SETTINGS_FOOTER,
+} from "../copy/labels";
+import { WIDGET_DASHBOARD_PARAMETER } from "../widget/parameter";
 
 function errorText(error: unknown): string {
   if (error instanceof Error && error.message) return error.message;
@@ -424,7 +426,7 @@ export function SettingsPage(props: {
           header={<Text foregroundStyle="secondaryLabel">用量总览</Text>}
           footer={
             <Text font="caption" foregroundStyle="secondaryLabel">
-              选择用量页要展示的账号与额度条目（5 小时 / 周限等）。
+              {APP_DASHBOARD_SETTINGS_FOOTER}
             </Text>
           }
         >
@@ -455,7 +457,7 @@ export function SettingsPage(props: {
           header={<Text foregroundStyle="secondaryLabel">小组件总览</Text>}
           footer={
             <Text font="caption" foregroundStyle="secondaryLabel">
-              添加 AI Usage 小组件后，将参数粘贴为 dashboard，即可显示多账号总用量。Small 文本、Medium 圆环、Large 进度条、Extra Large 分组详情。
+              {WIDGET_DASHBOARD_SETTINGS_FOOTER}
             </Text>
           }
         >

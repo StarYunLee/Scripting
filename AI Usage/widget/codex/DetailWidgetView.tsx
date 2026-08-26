@@ -9,6 +9,7 @@ import {
   ZStack,
 } from "scripting";
 import type { Color, DynamicShapeStyle } from "scripting";
+import { PERIOD } from "../../copy/labels";
 import { MEDIUM_LAYOUT } from "../../providers/codex/credentials";
 import { usageTint } from "../../services/usage-colors";
 import { pickFocusWindow } from "../../providers/codex/api";
@@ -315,10 +316,10 @@ export function DetailWidgetView({ result, family, focusWindow }: Props) {
               foregroundStyle={C.primary}
             >
               {focusWindow === "five_hour"
-                ? "5H"
+                ? PERIOD.FIVE_HOUR.widget.toUpperCase()
                 : focusWindow === "monthly"
-                  ? "月限"
-                  : "周限"}
+                  ? PERIOD.MONTHLY.widget
+                  : PERIOD.WEEKLY.widget}
             </Text>
             <Spacer />
             <PlanBadge label={model.planLabel} small />

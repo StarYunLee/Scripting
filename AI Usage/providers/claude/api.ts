@@ -1,4 +1,5 @@
 import { fetch, Response } from "scripting";
+import { claudeScopedAppLabel, PERIOD } from "../../copy/labels";
 import { getProfileAccessToken, resolveProfile } from "./accounts";
 import { refreshOAuthToken } from "./oauth";
 import type { LimitWindow, UsageResult, UsageSnapshot } from "./types";
@@ -83,8 +84,7 @@ function parseWindow(
   );
 }
 function scopedLabel(value: string): string {
-  const normalized = value.trim();
-  return normalized ? `${normalized} 周限` : "模型周限";
+  return claudeScopedAppLabel(value);
 }
 function scopedId(value: string, index: number): string {
   const normalized = value
@@ -121,12 +121,12 @@ function parseFlatScopedLimits(
   payload: Record<string, unknown>,
 ): LimitWindow[] {
   const definitions: Array<[string, string, LimitWindow["name"]]> = [
-    ["seven_day_sonnet", "Sonnet 周限", "weekly_scoped"],
-    ["seven_day_opus", "Opus 周限", "weekly_scoped"],
-    ["seven_day_oauth_apps", "OAuth Apps 周限", "weekly_scoped"],
-    ["seven_day_fable", "Fable 周限", "weekly_fable"],
-    ["seven_day_fable_5", "Fable 周限", "weekly_fable"],
-    ["fable_seven_day", "Fable 周限", "weekly_fable"],
+    ["seven_day_sonnet", "Sonnet 每周", "weekly_scoped"],
+    ["seven_day_opus", "Opus 每周", "weekly_scoped"],
+    ["seven_day_oauth_apps", "OAuth Apps 每周", "weekly_scoped"],
+    ["seven_day_fable", "Fable 每周", "weekly_fable"],
+    ["seven_day_fable_5", "Fable 每周", "weekly_fable"],
+    ["fable_seven_day", "Fable 每周", "weekly_fable"],
   ];
   const windows: LimitWindow[] = [];
   for (const [key, label, name] of definitions) {
@@ -450,14 +450,14 @@ export async function fetchUsage(options?: {
       payload,
       "five_hour",
       "five_hour",
-      "5 小时",
+      PERIOD.FIVE_HOUR.app,
       5 * 3600,
     );
     const weekly = parseWindow(
       payload,
       "seven_day",
       "weekly",
-      "周限",
+      PERIOD.WEEKLY.app,
       7 * 86400,
     );
     const dynamicScoped = parseScopedLimits(payload);
