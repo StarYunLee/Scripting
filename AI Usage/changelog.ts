@@ -6,6 +6,15 @@ export type ChangelogEntry = {
 
 export const CHANGELOG = [
   {
+    version: "1.9.0",
+    date: "2026-08-27",
+    changes: [
+      "六个平台补齐小组件设置面板（账号详情页 → 小组件设置）：Cursor 可按窗口开关显示内容；Kimi / MiniMax / Copilot / Z.ai 支持双额度概览与单额度详情切换、自选显示额度；Grok 可选每周额度或 Grok Build。",
+      "修复 Codex 小尺寸小组件底部重置行被裁切的问题。",
+      "总览小组件构建提速：不再打包授权代码，演示数据改为按需加载。",
+    ],
+  },
+  {
     version: "1.8.4",
     date: "2026-08-27",
     changes: [
