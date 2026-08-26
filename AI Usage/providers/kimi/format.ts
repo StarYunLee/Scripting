@@ -41,20 +41,48 @@ export function formatResetDate(resetAtIso: string | null | undefined): string {
   return `${month}月${day}日 ${hour}:${minute}`;
 }
 
+function normalizePlanKey(value: string): string {
+  return value
+    .trim()
+    .replace(/^LEVEL[_-]?/i, "")
+    .replace(/^MEMBERSHIP[_-]?/i, "")
+    .replace(/^PLAN[_-]?/i, "")
+    .replace(/[\s_]+/g, "-")
+    .toLowerCase();
+}
+
+function titleCaseWords(value: string): string {
+  return value
+    .replace(/[_-]+/g, " ")
+    .trim()
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+/**
+ * 对齐官方会员档位（Andante / Moderato / Allegretto / Allegro），
+ * 并兼容旧字段名与海外变体。
+ */
 export function formatPlanLabel(value: string | null | undefined): string | null {
   if (!value || !value.trim()) return null;
-  const normalized = value
-    .trim()
-    .replace(/^LEVEL_/i, "")
-    .toLowerCase();
+  const normalized = normalizePlanKey(value);
   const labels: Record<string, string> = {
+    // 官方四档（帮助中心）
+    andante: "Andante",
+    moderato: "Moderato",
+    allegretto: "Allegretto",
+    allegro: "Allegro",
+    // 免费 / 海外变体
     free: "Free",
-    basic: "Basic",
-    intermediate: "Intermediate",
-    advanced: "Advanced",
-    pro: "Pro",
-    ultra: "Ultra",
+    adagio: "Free",
+    vivace: "Vivace",
+    // 旧 API / 内部别名 → 当前档位名
+    basic: "Andante",
+    intermediate: "Moderato",
+    advanced: "Allegretto",
+    pro: "Allegretto",
+    ultra: "Allegro",
     enterprise: "Enterprise",
   };
-  return labels[normalized] || value.trim().replace(/^LEVEL_/i, "");
+  if (labels[normalized]) return labels[normalized];
+  return titleCaseWords(value.trim().replace(/^LEVEL[_-]?/i, ""));
 }

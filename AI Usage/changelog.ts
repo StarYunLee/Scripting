@@ -6,6 +6,14 @@ export type ChangelogEntry = {
 
 export const CHANGELOG = [
   {
+    version: "1.3.1",
+    date: "2026-08-26",
+    changes: [
+      "修复 Kimi Code 订阅档位展示：对齐官方 Andante / Moderato / Allegretto / Allegro 四档命名。",
+      "兼容旧字段别名，并在 usages 缺少会员信息时回退读取 /me。",
+    ],
+  },
+  {
     version: "1.3.0",
     date: "2026-08-26",
     changes: [

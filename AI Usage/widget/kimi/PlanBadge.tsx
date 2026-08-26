@@ -31,25 +31,45 @@ function palette(label: string): BadgePalette {
   const normalized = label
     .trim()
     .toLowerCase()
-    .replace(/^level_/, "")
+    .replace(/^level[_-]?/, "")
     .replace(/[\s_]+/g, "-");
-  if (normalized === "ultra" || normalized === "advanced")
+  // 官方四档
+  if (normalized === "allegro" || normalized === "vivace" || normalized === "ultra")
     return {
-      text: normalized.toUpperCase(),
+      text: normalized === "ultra" ? "ALLEGRO" : normalized.toUpperCase(),
       background: linear(["#0F172A", "#6366F1"], ["#1E293B", "#818CF8"]),
       foreground: "#EEF2FF",
     };
-  if (normalized === "pro" || normalized === "intermediate")
+  if (
+    normalized === "allegretto" ||
+    normalized === "advanced" ||
+    normalized === "pro"
+  )
     return {
-      text: normalized === "intermediate" ? "INTERMEDIATE" : "PRO",
+      text: "ALLEGRETTO",
       background: linear(["#312E81", "#4F46E5"], ["#4338CA", "#6366F1"]),
       foreground: "#FFFFFF",
     };
-  if (normalized === "basic")
+  if (
+    normalized === "moderato" ||
+    normalized === "intermediate"
+  )
     return {
-      text: "BASIC",
+      text: "MODERATO",
       background: linear(["#1E3A8A", "#3B82F6"], ["#1D4ED8", "#60A5FA"]),
       foreground: "#EFF6FF",
+    };
+  if (normalized === "andante" || normalized === "basic")
+    return {
+      text: "ANDANTE",
+      background: linear(["#334155", "#64748B"], ["#475569", "#94A3B8"]),
+      foreground: "#F8FAFC",
+    };
+  if (normalized === "free" || normalized === "adagio")
+    return {
+      text: "FREE",
+      background: linear(["#94A3B8", "#64748B"], ["#64748B", "#475569"]),
+      foreground: "#FFFFFF",
     };
   return {
     text: label.trim().toUpperCase() || "KIMI",

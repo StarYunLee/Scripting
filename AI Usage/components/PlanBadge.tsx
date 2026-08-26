@@ -111,24 +111,36 @@ function palette(provider: ProviderId, label: string): BadgePalette {
   }
 
   if (provider === "kimi") {
-    const level = normalized.replace(/^level_/, "");
-    if (level === "ultra" || level === "advanced")
+    const level = normalized.replace(/^level[_-]?/, "");
+    if (level === "allegro" || level === "vivace" || level === "ultra")
       return {
-        text: level.toUpperCase(),
+        text: level === "ultra" ? "ALLEGRO" : level.toUpperCase(),
         background: linear(["#0F172A", "#6366F1"], ["#1E293B", "#818CF8"]),
         foreground: "#EEF2FF",
       };
-    if (level === "pro" || level === "intermediate")
+    if (level === "allegretto" || level === "advanced" || level === "pro")
       return {
-        text: level === "intermediate" ? "INTERMEDIATE" : "PRO",
+        text: "ALLEGRETTO",
         background: linear(["#312E81", "#4F46E5"], ["#4338CA", "#6366F1"]),
         foreground: "#FFFFFF",
       };
-    if (level === "basic")
+    if (level === "moderato" || level === "intermediate")
       return {
-        text: "BASIC",
+        text: "MODERATO",
         background: linear(["#1E3A8A", "#3B82F6"], ["#1D4ED8", "#60A5FA"]),
         foreground: "#EFF6FF",
+      };
+    if (level === "andante" || level === "basic")
+      return {
+        text: "ANDANTE",
+        background: linear(["#334155", "#64748B"], ["#475569", "#94A3B8"]),
+        foreground: "#F8FAFC",
+      };
+    if (level === "free" || level === "adagio")
+      return {
+        text: "FREE",
+        background: linear(["#94A3B8", "#64748B"], ["#64748B", "#475569"]),
+        foreground: "#FFFFFF",
       };
     return {
       text: label.trim().toUpperCase() || "KIMI",

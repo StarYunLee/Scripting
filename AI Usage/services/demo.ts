@@ -479,10 +479,10 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
     resetCredits: null,
   },
   {
-    id: "demo_kimi_pro",
+    id: "demo_kimi_moderato",
     provider: "kimi",
-    title: "pro@kimi.demo",
-    planLabel: "Pro",
+    title: "moderato@kimi.demo",
+    planLabel: "Moderato",
     windows: [
       {
         id: "five_hour",
@@ -502,10 +502,10 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
     resetCredits: null,
   },
   {
-    id: "demo_kimi_ultra",
+    id: "demo_kimi_allegro",
     provider: "kimi",
-    title: "ultra@kimi.demo",
-    planLabel: "Ultra",
+    title: "allegro@kimi.demo",
+    planLabel: "Allegro",
     windows: [
       {
         id: "five_hour",

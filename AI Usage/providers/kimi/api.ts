@@ -115,16 +115,56 @@ function fiveHourLabel(window: Record<string, unknown> | null): string {
   return "5 小时";
 }
 
+function firstString(...values: unknown[]): string | null {
+  for (const value of values) {
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  return null;
+}
+
 function parseMembership(payload: Record<string, unknown>): string | null {
   const user = asObject(payload.user);
-  const membership = asObject(user?.membership);
-  const level =
-    typeof membership?.level === "string"
-      ? membership.level
-      : typeof payload.membership === "string"
-        ? payload.membership
-        : null;
+  const membership =
+    asObject(user?.membership) ||
+    asObject(payload.membership) ||
+    asObject(user?.subscription) ||
+    asObject(payload.subscription);
+  const level = firstString(
+    membership?.level,
+    membership?.name,
+    membership?.plan,
+    membership?.planName,
+    membership?.plan_name,
+    membership?.tier,
+    membership?.tierName,
+    membership?.tier_name,
+    membership?.product,
+    user?.membership_level,
+    user?.membershipLevel,
+    user?.plan,
+    user?.plan_name,
+    payload.membership_level,
+    payload.plan,
+    payload.plan_name,
+    typeof payload.membership === "string" ? payload.membership : null,
+  );
   return formatPlanLabel(level);
+}
+
+async function fetchPlanLabelFromMe(token: string): Promise<string | null> {
+  try {
+    const response = await fetch("https://api.kimi.com/coding/v1/me", {
+      method: "GET",
+      headers: kimiRequestHeaders(token),
+      timeout: 15,
+      debugLabel: "KimiPlanInfo",
+    });
+    if (!response.ok) return null;
+    const payload = asObject(JSON.parse(await response.text()));
+    return payload ? parseMembership(payload) : null;
+  } catch {
+    return null;
+  }
 }
 
 function parseUsages(payload: Record<string, unknown>): {
@@ -341,12 +381,19 @@ export async function fetchUsage(options?: {
       };
     }
 
+    const planLabel =
+      parsed.planLabel ||
+      (await fetchPlanLabelFromMe(token)) ||
+      cache?.planLabel ||
+      cache?.planType ||
+      null;
+
     const snapshot: UsageSnapshot = {
       windows: parsed.windows,
       fiveHour: parsed.fiveHour,
       weekly: parsed.weekly,
-      planType: parsed.planLabel,
-      planLabel: parsed.planLabel,
+      planType: planLabel,
+      planLabel,
       fetchedAt: new Date().toISOString(),
       source: "live",
     };
