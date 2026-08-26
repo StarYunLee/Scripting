@@ -423,19 +423,25 @@ export async function refreshOAuthToken(
     return current;
   const refreshToken = getProfileRefreshToken(profileId);
   if (!refreshToken) return current;
-  const response = await fetch(CURSOR_REFRESH_URL, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${refreshToken}`,
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    },
-    body: "{}",
-    timeout: 20,
-    debugLabel: "CursorTokenRefresh",
-  });
-  const data = await jsonObject(response);
-  if (!response.ok || typeof data.accessToken !== "string") return current;
+  // 网络失败时回退当前 token，不向调用方抛异常（widget 等无防护上下文中尤为重要）
+  let data: Record<string, unknown>;
+  try {
+    const response = await fetch(CURSOR_REFRESH_URL, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${refreshToken}`,
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: "{}",
+      timeout: 20,
+      debugLabel: "CursorTokenRefresh",
+    });
+    data = await jsonObject(response);
+    if (!response.ok || typeof data.accessToken !== "string") return current;
+  } catch {
+    return current;
+  }
   const identity = await resolveIdentity(data.accessToken, data);
   saveProfileCredentials(profileId, {
     accessToken: data.accessToken,
