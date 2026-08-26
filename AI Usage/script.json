@@ -1,8 +1,7 @@
 {
   "remoteResource" : {
-    "url" : "https:\/\/github.com\/gamesme\/scripting\/raw\/refs\/heads\/main\/AI%20Usage.scripting",
-    "autoUpdateInterval" : 600,
-    "hash" : "c3eaa86439ed1233cab5bd9f5958eba0"
+    "url" : "https:\/\/raw.githubusercontent.com\/StarYunLee\/Scripting\/main\/AI-Usage.scripting",
+    "autoUpdateInterval" : 86400
   },
   "permissions" : null,
   "icon" : "chart.bar.doc.horizontal.fill",

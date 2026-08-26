@@ -13,6 +13,7 @@ export const CHANGELOG = [
       "Kimi / Z.ai / MiniMax / GitHub Copilot 图标与小组件水印替换为官方品牌字形（透明背景），修复模板渲染下显示为纯色块的问题。",
       "演示模式补齐各平台订阅档位示例（新增 18 个演示账号）。",
       "修复 Z.ai Pro+ 套餐徽章落入默认配色的问题；Antigravity 小组件徽章紧凑模式去除 Google 等前缀（移植上游 v1.1.2）。",
+      "设置页新增总用量小组件预览（Small / Medium / Large）。",
     ],
   },
   {

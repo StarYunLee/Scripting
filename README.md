@@ -88,12 +88,12 @@ OpenAI Codex 用量小组件，支持 OpenAI OAuth、多账号、账号级显示
 ![Codex Usage 小组件预览](./Deprecated/Codex%20Usage/assets/codex-usage-preview.png)
 
 - [查看源码与使用说明](./Deprecated/Codex%20Usage/)
-- [直接安装 Codex-Usage.scripting](https://raw.githubusercontent.com/StarYunLee/Scripting/main/Codex-Usage.scripting)
+- [直接安装 Codex-Usage.scripting](https://raw.githubusercontent.com/StarYunLee/Scripting/main/Deprecated/Codex-Usage.scripting)
 
 远程导入地址：
 
 ```text
-https://raw.githubusercontent.com/StarYunLee/Scripting/main/Codex-Usage.scripting
+https://raw.githubusercontent.com/StarYunLee/Scripting/main/Deprecated/Codex-Usage.scripting
 ```
 
 ### Claude Usage
@@ -103,12 +103,12 @@ Claude Code 用量小组件，支持 Anthropic OAuth、多账号、账号级显�
 ![Claude Usage 小组件预览](./Deprecated/Claude%20Usage/assets/claude-usage-preview.png)
 
 - [查看源码与使用说明](./Deprecated/Claude%20Usage/)
-- [直接安装 Claude-Usage.scripting](https://raw.githubusercontent.com/StarYunLee/Scripting/main/Claude-Usage.scripting)
+- [直接安装 Claude-Usage.scripting](https://raw.githubusercontent.com/StarYunLee/Scripting/main/Deprecated/Claude-Usage.scripting)
 
 远程导入地址：
 
 ```text
-https://raw.githubusercontent.com/StarYunLee/Scripting/main/Claude-Usage.scripting
+https://raw.githubusercontent.com/StarYunLee/Scripting/main/Deprecated/Claude-Usage.scripting
 ```
 
 ### Grok Usage
@@ -118,12 +118,12 @@ Grok Build 额度小组件，支持 xAI OAuth、多账号、账号级显示设�
 ![Grok Usage 小组件预览](./Deprecated/Grok%20Usage/assets/grok-usage-preview.png)
 
 - [查看源码与使用说明](./Deprecated/Grok%20Usage/)
-- [直接安装 Grok-Usage.scripting](https://raw.githubusercontent.com/StarYunLee/Scripting/main/Grok-Usage.scripting)
+- [直接安装 Grok-Usage.scripting](https://raw.githubusercontent.com/StarYunLee/Scripting/main/Deprecated/Grok-Usage.scripting)
 
 远程导入地址：
 
 ```text
-https://raw.githubusercontent.com/StarYunLee/Scripting/main/Grok-Usage.scripting
+https://raw.githubusercontent.com/StarYunLee/Scripting/main/Deprecated/Grok-Usage.scripting
 ```
 
 ## 隐私
