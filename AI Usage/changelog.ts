@@ -21,6 +21,7 @@ export const CHANGELOG = [
       "修复 Copilot Free 账号徽章误显示为 Individual：改按 access_type_sku 权威判定（free_limited_copilot → Free）。",
       "修复 Copilot 授权后缺少账号邮箱：授权 scope 增加 user:email 并回退 /user/emails 主邮箱，老账号在刷新时自动回填。",
       "修复 Cursor 小组件偶发“网络请求失败”：token 刷新请求增加网络异常防护，失败时正确回退缓存数据。",
+      "修复总用量小组件中尺寸（Medium）构建失败：清除视图树中的 null 子节点，改用 EmptyView 占位。"
     ],
   },
   {

@@ -1,4 +1,5 @@
 import {
+  EmptyView as BuiltinEmptyView,
   HStack,
   Image,
   ProgressView,
@@ -85,7 +86,7 @@ function ProgressBar(props: {
           background={usageTint(props.usedPercent, props.remainingPercent)}
           clipShape={{ type: "capsule", style: "continuous" }}
         />
-      ) : null}
+      ) : <BuiltinEmptyView />}
     </ZStack>
   );
 }
@@ -121,7 +122,7 @@ function EmptyView({ message }: { message: string }) {
 }
 
 function ErrorHint({ show }: { show?: boolean }) {
-  if (!show) return null;
+  if (!show) return <BuiltinEmptyView />;
   return (
     <Image
       systemName="exclamationmark.triangle.fill"
@@ -160,7 +161,7 @@ function TextRow(props: { row: DashboardRow; privacy: WidgetPrivacyPrefs }) {
         <Text font={8} foregroundStyle={C.secondary} lineLimit={1}>
           {props.row.planLabel || meta.title}
         </Text>
-      ) : null}
+      ) : <BuiltinEmptyView />}
     </VStack>
   );
 }
@@ -277,7 +278,7 @@ function BarRow(props: {
             <Text font={8} foregroundStyle={C.secondary} lineLimit={1}>
               {subtitle}
             </Text>
-          ) : null}
+          ) : <BuiltinEmptyView />}
         </VStack>
         <Spacer minLength={0} />
         <Text
@@ -322,7 +323,7 @@ function RingRow(props: {
         ? Array.from({ length: props.columns - props.items.length }).map(
             (_, index) => <Spacer key={`pad-${index}`} minLength={0} />,
           )
-        : null}
+        : <BuiltinEmptyView />}
     </HStack>
   );
 }
@@ -409,13 +410,13 @@ function MediumRingLayout(props: {
           privacy={props.privacy}
           compact
         />
-      ) : null}
+      ) : <BuiltinEmptyView />}
       <HStack alignment="center" spacing={4} padding={{ top: 4 }}>
         {hidden > 0 ? (
           <Text font={9} foregroundStyle={C.secondary}>
             {widgetOverflowMedium(hidden)}
           </Text>
-        ) : null}
+        ) : <BuiltinEmptyView />}
         <ErrorHint show={props.hasErrors} />
       </HStack>
       <Spacer minLength={0} />
@@ -471,7 +472,7 @@ function LargeBarLayout(props: {
         <Text font={10} foregroundStyle={C.secondary}>
           {widgetOverflowLarge(hidden)}
         </Text>
-      ) : null}
+      ) : <BuiltinEmptyView />}
       <Spacer minLength={0} />
     </VStack>
   );
