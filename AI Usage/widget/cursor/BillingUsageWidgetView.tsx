@@ -54,7 +54,14 @@ type Model = {
 
 function modelFor(result: UsageResult): Model {
   const snapshot = result.ok ? result.snapshot : result.cache || null;
-  const preferred = ["auto", "total", "api", "plan", "weekly"] as const;
+  const preferred = [
+    "auto",
+    "total",
+    "api",
+    "grok_bot",
+    "plan",
+    "weekly",
+  ] as const;
   const windows: LimitWindow[] = [];
   if (snapshot) {
     for (const name of preferred) {
@@ -62,6 +69,7 @@ function modelFor(result: UsageResult): Model {
         (name === "auto" && snapshot.auto) ||
         (name === "total" && snapshot.total) ||
         (name === "api" && snapshot.api) ||
+        (name === "grok_bot" && snapshot.grokBot) ||
         (name === "plan" && snapshot.plan) ||
         (name === "weekly" && snapshot.weekly) ||
         snapshot.windows.find((window) => window.name === name) ||
@@ -195,7 +203,8 @@ export function BillingUsageWidgetView({ result, family }: Props) {
   const small = isSmall(family);
   const pad = small ? 12 : 16;
   const contentWidth = Math.max(90, displayWidth(family) - pad * 2);
-  const rows = model.windows.slice(0, 3);
+  const rows = model.windows.slice(0, 4);
+  const tight = small && rows.length >= 4;
 
   return (
     <ZStack
@@ -214,7 +223,7 @@ export function BillingUsageWidgetView({ result, family }: Props) {
       </HStack>
 
       <VStack
-        spacing={small ? 8 : 10}
+        spacing={tight ? 5 : small ? 8 : 10}
         alignment="leading"
         padding={pad}
         frame={{ maxWidth: "infinity", maxHeight: "infinity", alignment: "topLeading" }}
@@ -244,7 +253,7 @@ export function BillingUsageWidgetView({ result, family }: Props) {
               key={window.id}
               window={window}
               width={contentWidth}
-              compact={small}
+              compact={small || tight}
             />
           ))
         )}

@@ -475,6 +475,13 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
         usedPercent: 33,
         resetOffsetMs: 18 * 86_400_000 + 2 * 3_600_000,
       },
+      {
+        id: "grok_bot",
+        name: "grok_bot",
+        label: "Grok Bot",
+        usedPercent: 27,
+        resetOffsetMs: 4 * 86_400_000 + 8 * 3_600_000,
+      },
     ],
     resetCredits: null,
   },
@@ -698,6 +705,7 @@ export function getDemoWidgetResult(
         window.name === "auto" ||
         window.name === "total" ||
         window.name === "api" ||
+        window.name === "grok_bot" ||
         window.name === "plan" ||
         window.name === "weekly"
           ? window.name
@@ -712,6 +720,7 @@ export function getDemoWidgetResult(
         auto: byName("auto"),
         total: byName("total"),
         api: byName("api"),
+        grokBot: byName("grok_bot"),
         plan: byName("plan"),
         weekly: byName("weekly"),
         planType: account.planLabel,

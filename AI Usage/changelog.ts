@@ -6,6 +6,15 @@ export type ChangelogEntry = {
 
 export const CHANGELOG = [
   {
+    version: "1.4.0",
+    date: "2026-08-26",
+    changes: [
+      "Cursor 新增独立 Grok Bot 周额度窗口（Dashboard GetSandUsageStatus）。",
+      "无 Bot 包含额度或接口失败时 fail-soft，不影响 Auto / 所有 / 第三方模型展示。",
+      "演示模式 Ultra 样例与 Small / Medium 小组件支持最多四个用量窗口。",
+    ],
+  },
+  {
     version: "1.3.2",
     date: "2026-08-26",
     changes: [

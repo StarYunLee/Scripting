@@ -10,7 +10,7 @@
 
 面向 [Scripting App](https://scriptingapp.github.io/) 的非官方多平台用量查看应用。在一个项目里管理 Codex、Grok、Claude、Antigravity、Cursor 与 Kimi Code 的多账号用量、主屏幕小组件和自动化刷新。
 
-当前版本：`1.3.2`
+当前版本：`1.4.0`
 
 > 本项目不是 OpenAI、xAI、Anthropic、Google、Cursor、Moonshot / Kimi 或 Scripting App 官方产品，与上述平台无隶属或合作关系。
 
@@ -119,7 +119,7 @@ provider:profileId
 
 - Codex / Claude / Antigravity：可按账号选择单额度详情或双额度概览
 - Grok：固定展示每周额度
-- Cursor：固定展示 Auto / 所有 / 第三方模型
+- Cursor：固定展示 Auto / 所有 / 第三方模型，有资格时附带 Grok Bot 周额度
 - Kimi Code：固定展示 5 小时与每周额度
 - 单额度详情同时列出已用和剩余百分比，主数字与进度条仍表示剩余
 
@@ -155,8 +155,9 @@ provider:profileId
 
 ### Cursor
 
-- 固定展示 Auto、所有、第三方模型三个额度窗口的剩余百分比
-- 三个窗口共享计费周期重置时间；缺失字段时跳过对应窗口
+- 固定展示 Auto、所有、第三方模型三个计费周期额度窗口的剩余百分比
+- 有 Grok Bot 包含额度时，额外展示独立的 **Grok Bot** 周额度（`GetSandUsageStatus`）
+- 无 Bot 资格或接口失败时不影响前三个窗口
 
 ### Kimi Code
 
@@ -181,7 +182,7 @@ iOS WidgetKit 可能根据系统调度延后刷新。所选时间是请求的最
 - Grok：xAI OAuth 与 Grok Build / CLI 订阅额度接口
 - Claude：Anthropic OAuth 与 Claude Code 用量接口
 - Antigravity：Google OAuth 与 Antigravity / Code Assist 用量接口
-- Cursor：Cursor PKCE 登录与 Dashboard 用量接口（`GetCurrentPeriodUsage`，Enterprise 回退 `/auth/usage`）
+- Cursor：Cursor PKCE 登录与 Dashboard 用量接口（`GetCurrentPeriodUsage` + 可选 `GetSandUsageStatus` 获取 Grok Bot，Enterprise 回退 `/auth/usage`）
 - Kimi Code：设备码 OAuth 与 Coding usages 接口（`/coding/v1/usages`）
 
 服务端更新后，路径、字段或访问策略可能变化。

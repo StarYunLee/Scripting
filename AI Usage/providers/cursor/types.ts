@@ -17,6 +17,7 @@ export type LimitWindowName =
   | "auto"
   | "total"
   | "api"
+  | "grok_bot"
   | "plan"
   | "weekly"
   | "unknown";
@@ -37,6 +38,7 @@ export type UsageSnapshot = {
   auto: LimitWindow | null;
   total: LimitWindow | null;
   api: LimitWindow | null;
+  grokBot: LimitWindow | null;
   plan: LimitWindow | null;
   weekly: LimitWindow | null;
   planType: string | null;

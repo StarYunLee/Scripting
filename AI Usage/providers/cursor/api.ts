@@ -8,7 +8,7 @@ import { formatPlanLabel } from "./format";
 import type { LimitWindow, UsageResult, UsageSnapshot } from "./types";
 
 const API_BASE = "https://api2.cursor.sh";
-const CACHE_KEY = "ai_usage_cursor_cache_v2";
+const CACHE_KEY = "ai_usage_cursor_cache_v3";
 const MIN_LIVE_INTERVAL_MS = 3 * 60_000;
 const INCLUDED_MODEL_KEY = "gpt-4";
 
@@ -133,6 +133,7 @@ function makeWindow(
   label: string,
   usedPercent: number,
   reset: { iso: string | null; ms: number | null },
+  windowSeconds: number | null = null,
 ): LimitWindow {
   const used = clamp(usedPercent);
   return {
@@ -143,7 +144,7 @@ function makeWindow(
     remainingPercent: clamp(100 - used),
     resetAt: reset.iso,
     resetAtMs: reset.ms,
-    windowSeconds: null,
+    windowSeconds,
   };
 }
 
@@ -177,6 +178,7 @@ function planSpendPercent(
  * - Auto → autoPercentUsed
  * - 所有 → totalPercentUsed（回退套餐花费占比）
  * - 第三方模型 → apiPercentUsed
+ * Grok Bot 由 GetSandUsageStatus 另行附加。
  */
 function parsePlanUsageWindows(
   payload: Record<string, unknown>,
@@ -209,6 +211,89 @@ function parsePlanUsageWindows(
 
   if (!windows.length) return null;
   return { windows, planLabel: plan.planLabel };
+}
+
+function truthyFlag(value: unknown): boolean {
+  return value === true || value === 1 || value === "true" || value === "1";
+}
+
+/** 解析 Grok Bot（内部 Sand）周额度；无包含额度时返回 null。 */
+function parseSandUsageWindow(
+  payload: Record<string, unknown>,
+): LimitWindow | null {
+  const root =
+    asObject(payload.sandUsage) ||
+    asObject(payload.sand_usage) ||
+    asObject(payload.usageStatus) ||
+    asObject(payload.status) ||
+    payload;
+  const includedLimit =
+    toNumber(root.includedLimit) ??
+    toNumber(root.included_limit) ??
+    toNumber(root.includedAmount) ??
+    toNumber(root.limit);
+  const hasLimit =
+    truthyFlag(root.hasNonZeroIncludedLimit) ||
+    truthyFlag(root.has_non_zero_included_limit) ||
+    (includedLimit != null && includedLimit > 0);
+  if (!hasLimit) return null;
+
+  const used =
+    toNumber(root.usagePercent) ??
+    toNumber(root.usage_percent) ??
+    toNumber(root.percentUsed) ??
+    toNumber(root.percent_used) ??
+    toNumber(root.usedPercent) ??
+    toNumber(root.used_percent);
+  if (used == null) return null;
+
+  const reset = isoDate(
+    root.nextResetTimestampUtc ??
+      root.next_reset_timestamp_utc ??
+      root.nextResetTime ??
+      root.next_reset_time ??
+      root.resetAt ??
+      root.resetsAt ??
+      root.reset_at,
+  );
+  const start = isoDate(
+    root.currentPeriodStart ??
+      root.current_period_start ??
+      root.periodStart ??
+      root.period_start,
+  );
+  let windowSeconds: number | null = 7 * 86_400;
+  if (start.ms != null && reset.ms != null && reset.ms > start.ms)
+    windowSeconds = Math.round((reset.ms - start.ms) / 1000);
+
+  return makeWindow("grok_bot", "Grok Bot", used, reset, windowSeconds);
+}
+
+async function requestSandUsage(token: string): Promise<LimitWindow | null> {
+  try {
+    const response = await requestDashboard(
+      token,
+      "/aiserver.v1.DashboardService/GetSandUsageStatus",
+    );
+    if (!response.ok) return null;
+    const payload = asObject(JSON.parse(await response.text()));
+    return payload ? parseSandUsageWindow(payload) : null;
+  } catch {
+    return null;
+  }
+}
+
+async function attachGrokBotWindow(
+  token: string,
+  parsed: ParsedBilling,
+): Promise<ParsedBilling> {
+  if (parsed.windows.some((window) => window.name === "grok_bot")) return parsed;
+  const grokBot = await requestSandUsage(token);
+  if (!grokBot) return parsed;
+  return {
+    ...parsed,
+    windows: [...parsed.windows, grokBot],
+  };
 }
 
 function parseSpendLimit(
@@ -287,6 +372,7 @@ function toSnapshot(
     auto: byName("auto"),
     total: byName("total"),
     api: byName("api"),
+    grokBot: byName("grok_bot"),
     plan: byName("plan"),
     weekly: byName("weekly"),
     planType: parsed.planLabel,
@@ -374,10 +460,13 @@ async function fetchUsagePayload(token: string): Promise<FetchPayloadOutcome> {
       const plan = await requestPlanInfo(token);
       const usageReset = isoDate(payload.billingCycleEnd);
       const reset = usageReset.iso != null ? usageReset : plan.billingCycleEnd;
-      const parsed =
+      let parsed =
         parsePlanUsageWindows(payload, plan) ||
         parseSpendLimit(payload, plan.planLabel, reset);
-      if (parsed) return { ok: true, parsed };
+      if (parsed) {
+        parsed = await attachGrokBotWindow(token, parsed);
+        return { ok: true, parsed };
+      }
       return {
         ok: false,
         code: "invalid_json",
@@ -424,7 +513,10 @@ async function fetchUsagePayload(token: string): Promise<FetchPayloadOutcome> {
     };
   }
   const legacy = legacyPayload ? parseLegacyUsage(legacyPayload) : null;
-  if (legacy) return { ok: true, parsed: legacy };
+  if (legacy) {
+    const withGrok = await attachGrokBotWindow(token, legacy);
+    return { ok: true, parsed: withGrok };
+  }
   return {
     ok: false,
     code: "invalid_json",
