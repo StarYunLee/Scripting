@@ -58,6 +58,15 @@ export type UsageResult =
       cache?: UsageSnapshot | null;
     };
 
+export type FocusWindow = "credits" | "chat" | "completions";
+export type WidgetStyle = "dual" | "single";
+export type DualQuotaPreset =
+  | "credits_chat"
+  | "credits_completions"
+  | "chat_completions";
 export type WidgetSettings = {
+  focusWindow: FocusWindow;
   reloadMinutes: number;
+  widgetStyle: WidgetStyle;
+  dualQuotaPreset: DualQuotaPreset;
 };

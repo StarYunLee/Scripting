@@ -29,6 +29,9 @@ import type {
 type Props = {
   result: UsageResult;
   family: string;
+  focusWindow?: "credits" | "chat" | "completions";
+  widgetStyle?: "dual" | "single";
+  dualQuotaPreset?: "credits_chat" | "credits_completions" | "chat_completions";
 };
 
 const C = copilotWidgetColors();
@@ -80,6 +83,86 @@ function modelFor(result: UsageResult): Model {
     live: result.ok,
     detail: result.ok ? "" : result.error.message,
   };
+}
+
+function windowByName(
+  snapshot: UsageSnapshot | null,
+  name: string,
+): LimitWindow | null {
+  if (!snapshot) return null;
+  if (name === "credits") return snapshot.credits;
+  if (name === "chat") return snapshot.chat;
+  if (name === "completions") return snapshot.completions;
+  return null;
+}
+
+function pickFocusWindow(
+  snapshot: UsageSnapshot | null,
+  focus: Props["focusWindow"],
+): LimitWindow | null {
+  if (!snapshot) return null;
+  const preferred = windowByName(snapshot, focus || "credits");
+  if (preferred) return preferred;
+  const order = ["credits", "chat", "completions"];
+  for (const name of order) {
+    const window = windowByName(snapshot, name);
+    if (window) return window;
+  }
+  return snapshot.windows[0] || null;
+}
+
+function pickDualWindows(
+  snapshot: UsageSnapshot | null,
+  preset: NonNullable<Props["dualQuotaPreset"]>,
+): { primary: LimitWindow | null; secondary: LimitWindow | null } {
+  let firstName = "credits";
+  let secondName = "chat";
+  if (preset === "credits_completions") {
+    secondName = "completions";
+  } else if (preset === "chat_completions") {
+    firstName = "chat";
+    secondName = "completions";
+  }
+  if (!snapshot) return { primary: null, secondary: null };
+  const picked: LimitWindow[] = [];
+  const first = windowByName(snapshot, firstName);
+  const second = windowByName(snapshot, secondName);
+  if (first) picked.push(first);
+  if (second) picked.push(second);
+  const order = ["credits", "chat", "completions"];
+  for (const name of order) {
+    if (picked.length >= 2) break;
+    if (name === firstName || name === secondName) continue;
+    const window = windowByName(snapshot, name);
+    if (window) picked.push(window);
+  }
+  for (const window of snapshot.windows) {
+    if (picked.length >= 2) break;
+    if (picked.indexOf(window) < 0) picked.push(window);
+  }
+  return { primary: picked[0] || null, secondary: picked[1] || null };
+}
+
+function singleTitle(
+  window: LimitWindow | null,
+  focus: Props["focusWindow"],
+): string {
+  const name = window?.name || focus || "credits";
+  if (name === "credits") return COPILOT_WIDGET.creditsTitle;
+  if (name === "chat") return COPILOT_WIDGET.chatTitle;
+  if (name === "completions") return COPILOT_WIDGET.completionsTitle;
+  return window?.label || COPILOT_WIDGET.creditsTitle;
+}
+
+function singleShortTitle(
+  window: LimitWindow | null,
+  focus: Props["focusWindow"],
+): string {
+  const name = window?.name || focus || "credits";
+  if (name === "credits") return COPILOT_WIDGET.shortCredits;
+  if (name === "chat") return COPILOT_WIDGET.shortChat;
+  if (name === "completions") return COPILOT_WIDGET.shortCompletions;
+  return shortLabel(window);
 }
 
 function isSmall(family: string): boolean {
@@ -324,8 +407,268 @@ function MinRemainingCapsule(props: {
   );
 }
 
-export function UsageWidgetView({ result, family }: Props) {
+function SingleWindowView(props: {
+  model: Model;
+  family: string;
+  focusWindow?: "credits" | "chat" | "completions";
+}) {
+  const model = props.model;
+  const small = isSmall(props.family);
+  const width = displayWidth(props.family);
+  const focus = pickFocusWindow(model.snapshot, props.focusWindow);
+
+  if (small) {
+    const contentWidth = Math.max(112, width - 24);
+    return (
+      <ZStack
+        frame={{ maxWidth: "infinity", maxHeight: "infinity" }}
+        widgetBackground={C.bg}
+      >
+        <HStack
+          frame={{
+            maxWidth: "infinity",
+            maxHeight: "infinity",
+            alignment: "bottomTrailing",
+          }}
+          padding={{ trailing: -6, bottom: -6 }}
+        >
+          <Watermark size={96} />
+        </HStack>
+        <HStack
+          frame={{
+            maxWidth: "infinity",
+            maxHeight: "infinity",
+            alignment: "topLeading",
+          }}
+          padding={{ leading: 12, trailing: 12, top: 18 }}
+        >
+          <PlanBadge label={model.planLabel} small />
+          <Spacer minLength={0} />
+          <Text
+            font={8}
+            fontWeight="medium"
+            foregroundStyle={C.secondary}
+            lineLimit={1}
+            minScaleFactor={0.75}
+          >
+            {formatSmallDate(model.snapshot?.fetchedAt)}
+          </Text>
+        </HStack>
+        <HStack
+          frame={{
+            maxWidth: "infinity",
+            maxHeight: "infinity",
+            alignment: "topLeading",
+          }}
+          padding={{ leading: 12, trailing: 12, top: 40 }}
+        >
+          <Text font={12} fontWeight="bold" foregroundStyle={C.accent}>
+            {singleShortTitle(focus, props.focusWindow)}
+          </Text>
+        </HStack>
+        <HStack
+          alignment="lastTextBaseline"
+          spacing={4}
+          frame={{
+            maxWidth: "infinity",
+            maxHeight: "infinity",
+            alignment: "topLeading",
+          }}
+          padding={{ leading: 12, top: 56 }}
+        >
+          <Text
+            font={26}
+            fontWeight="bold"
+            foregroundStyle={C.primary}
+            minScaleFactor={0.5}
+          >
+            {shownPercent(focus)}
+          </Text>
+          <Text font={10} fontWeight="medium" foregroundStyle={C.secondary}>
+            剩余
+          </Text>
+        </HStack>
+        <HStack
+          frame={{
+            maxWidth: "infinity",
+            maxHeight: "infinity",
+            alignment: "topLeading",
+          }}
+          padding={{ leading: 12, top: 94 }}
+        >
+          <Progress
+            displayValue={focus?.remainingPercent ?? null}
+            usedPercent={focus?.usedPercent}
+            remainingPercent={focus?.remainingPercent}
+            width={contentWidth}
+            height={5}
+          />
+        </HStack>
+        <HStack
+          frame={{
+            maxWidth: "infinity",
+            maxHeight: "infinity",
+            alignment: "topLeading",
+          }}
+          padding={{ leading: 12, trailing: 12, top: 104 }}
+        >
+          <SmallReset value={formatSmallDate(focus?.resetAt)} />
+        </HStack>
+        {!model.live && model.detail ? (
+          <HStack
+            frame={{
+              maxWidth: "infinity",
+              maxHeight: "infinity",
+              alignment: "bottomLeading",
+            }}
+            padding={{ horizontal: 12, bottom: 2 }}
+          >
+            <Text font={7} foregroundStyle={C.warn} lineLimit={1}>
+              {model.detail}
+            </Text>
+          </HStack>
+        ) : <EmptyView />}
+      </ZStack>
+    );
+  }
+
+  const contentWidth = Math.max(220, width - 40);
+  return (
+    <ZStack
+      frame={{ maxWidth: "infinity", maxHeight: "infinity" }}
+      widgetBackground={C.bg}
+    >
+      <HStack
+        frame={{
+          maxWidth: "infinity",
+          maxHeight: "infinity",
+          alignment: "bottomTrailing",
+        }}
+        padding={{ trailing: -7, bottom: -11 }}
+      >
+        <Watermark size={135} />
+      </HStack>
+      <HStack
+        alignment="top"
+        frame={{
+          maxWidth: "infinity",
+          maxHeight: "infinity",
+          alignment: "topLeading",
+        }}
+        padding={{ leading: 20, trailing: 20, top: 9 }}
+      >
+        <PlanBadge label={model.planLabel} />
+        <Spacer minLength={0} />
+        <Text font={9} fontWeight="medium" foregroundStyle={C.secondary}>
+          更新 {model.fetched}
+        </Text>
+      </HStack>
+      <HStack
+        frame={{
+          maxWidth: "infinity",
+          maxHeight: "infinity",
+          alignment: "topLeading",
+        }}
+        padding={{ leading: 20, trailing: 20, top: 38 }}
+      >
+        <Text font={17} fontWeight="bold" foregroundStyle={C.primary}>
+          {singleTitle(focus, props.focusWindow)}
+        </Text>
+      </HStack>
+      <HStack
+        alignment="lastTextBaseline"
+        spacing={7}
+        frame={{
+          maxWidth: "infinity",
+          maxHeight: "infinity",
+          alignment: "topLeading",
+        }}
+        padding={{ leading: 20, top: 62 }}
+      >
+        <Text
+          font={40}
+          fontWeight="bold"
+          foregroundStyle={C.primary}
+          minScaleFactor={0.4}
+        >
+          {shownPercent(focus)}
+        </Text>
+        <Text font={12} fontWeight="medium" foregroundStyle={C.secondary}>
+          剩余
+        </Text>
+      </HStack>
+      <HStack
+        frame={{
+          maxWidth: "infinity",
+          maxHeight: "infinity",
+          alignment: "topLeading",
+        }}
+        padding={{ leading: 20, top: 112 }}
+      >
+        <Progress
+          displayValue={focus?.remainingPercent ?? null}
+          usedPercent={focus?.usedPercent}
+          remainingPercent={focus?.remainingPercent}
+          width={contentWidth}
+          height={7}
+        />
+      </HStack>
+      <HStack
+        frame={{
+          maxWidth: "infinity",
+          maxHeight: "infinity",
+          alignment: "topLeading",
+        }}
+        padding={{ leading: 20, trailing: 20, top: 126 }}
+      >
+        <SmallReset value={formatResetDate(focus?.resetAt)} />
+      </HStack>
+      {!model.live && model.detail ? (
+        <HStack
+          frame={{
+            maxWidth: "infinity",
+            maxHeight: "infinity",
+            alignment: "bottomLeading",
+          }}
+          padding={{ horizontal: 20, bottom: 2 }}
+        >
+          <Text font={8} foregroundStyle={C.warn} lineLimit={1}>
+            {model.detail}
+          </Text>
+        </HStack>
+      ) : <EmptyView />}
+    </ZStack>
+  );
+}
+
+export function UsageWidgetView({
+  result,
+  family,
+  focusWindow,
+  widgetStyle,
+  dualQuotaPreset,
+}: Props) {
   const model = modelFor(result);
+  if (widgetStyle === "single") {
+    return (
+      <SingleWindowView
+        model={model}
+        family={family}
+        focusWindow={focusWindow}
+      />
+    );
+  }
+  let primary = model.primary;
+  let secondary = model.secondary;
+  let primaryShort = model.primaryShort;
+  let secondaryShort = model.secondaryShort;
+  if (dualQuotaPreset) {
+    const picked = pickDualWindows(model.snapshot, dualQuotaPreset);
+    primary = picked.primary;
+    secondary = picked.secondary;
+    primaryShort = shortLabel(primary);
+    secondaryShort = shortLabel(secondary);
+  }
   const small = isSmall(family);
   const width = displayWidth(family);
 
@@ -367,14 +710,14 @@ export function UsageWidgetView({ result, family }: Props) {
           </Text>
         </HStack>
         <SmallWindow
-          title={model.primaryShort}
-          window={model.primary}
+          title={primaryShort}
+          window={primary}
           width={contentWidth}
           top={43}
         />
         <SmallWindow
-          title={model.secondaryShort}
-          window={model.secondary}
+          title={secondaryShort}
+          window={secondary}
           width={contentWidth}
           top={99}
         />
@@ -397,8 +740,8 @@ export function UsageWidgetView({ result, family }: Props) {
   }
 
   const contentWidth = Math.max(220, width - 40);
-  const primaryTitle = model.primary?.label || COPILOT_WIDGET.creditsTitle;
-  const secondaryTitle = model.secondary?.label || COPILOT_WIDGET.chatTitle;
+  const primaryTitle = primary?.label || COPILOT_WIDGET.creditsTitle;
+  const secondaryTitle = secondary?.label || COPILOT_WIDGET.chatTitle;
   return (
     <ZStack
       frame={{ maxWidth: "infinity", maxHeight: "infinity" }}
@@ -426,7 +769,7 @@ export function UsageWidgetView({ result, family }: Props) {
         <PlanBadge label={model.planLabel} />
         <Spacer minLength={0} />
         <VStack alignment="trailing" spacing={4}>
-          <MinRemainingCapsule primary={model.primary} secondary={model.secondary} />
+          <MinRemainingCapsule primary={primary} secondary={secondary} />
           <Text font={9} fontWeight="medium" foregroundStyle={C.secondary}>
             更新 {model.fetched}
           </Text>
@@ -434,13 +777,13 @@ export function UsageWidgetView({ result, family }: Props) {
       </HStack>
       <MediumWindow
         title={primaryTitle}
-        window={model.primary}
+        window={primary}
         width={contentWidth}
         top={38}
       />
       <MediumWindow
         title={secondaryTitle}
-        window={model.secondary}
+        window={secondary}
         width={contentWidth}
         top={96}
       />
