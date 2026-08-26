@@ -290,3 +290,9 @@ export function getPendingUserCode(): string | null {
   if (!pending || Date.now() - pending.createdAt > PENDING_TTL_MS) return null;
   return pending.userCode;
 }
+
+export function getPendingVerificationUri(): string | null {
+  const pending = readPending();
+  if (!pending || Date.now() - pending.createdAt > PENDING_TTL_MS) return null;
+  return pending.verificationUri;
+}

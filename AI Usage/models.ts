@@ -135,7 +135,7 @@ export const PROVIDERS: Array<{
     subtitle: "连接 GitHub 账户，查看 Copilot AI Credits / Chat / Completions 用量。",
     accent: "#8957E5",
     pasteHint:
-      "在 github.com/login/device 输入设备码完成授权后返回应用，无需粘贴内容，直接点击“提交并完成授权”。",
+      "设备码会自动复制到剪贴板。点击「打开 GitHub 授权页」粘贴设备码完成授权，返回应用后点击“提交并完成授权”。",
     pastePlaceholder: "无需填写，完成浏览器登录后提交",
     capabilities: { widget: true },
   },

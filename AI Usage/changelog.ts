@@ -17,6 +17,7 @@ export const CHANGELOG = [
       "修复 Cursor Ultra 等套餐徽章不显示：GetPlanInfo 无结果时回退 Stripe profile 的 membershipType，并兼容 ultra_yearly 等变体写法。",
       "GitHub Copilot 图标修正为 GitHub Copilot 官方标志（原误用 Microsoft Copilot 素材）。",
       "修复 GitHub Copilot 授权不显示设备码的问题：授权弹窗现在展示设备码并支持点击复制。",
+      "优化 Copilot 授权流程：先生成并自动复制设备码，由用户手动打开 GitHub 授权页，不再出现“码还没看到浏览器已打开”。",
     ],
   },
   {

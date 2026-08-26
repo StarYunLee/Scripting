@@ -10,9 +10,11 @@ import {
   Text,
   TextField,
   VStack,
+  useEffect,
 } from "scripting";
 import { providerMeta, type AuthSheet } from "../models";
 import { getPendingUserCode } from "../providers/copilot/oauth";
+import { openPendingAuthorizationPage } from "../services/auth-flow";
 import { PageBackground } from "./PageBackground";
 import type { BackgroundThemeId } from "../services/settings";
 
@@ -52,6 +54,11 @@ export function AuthSheetView(props: {
   const deviceCode =
     props.authSheet.provider === "copilot" ? getPendingUserCode() : null;
 
+  // 设备码弹窗出现时自动复制到剪贴板，用户打开授权页后直接粘贴
+  useEffect(() => {
+    if (deviceCode) void Pasteboard.setString(deviceCode);
+  }, []);
+
   async function copyDeviceCode(code: string) {
     await Pasteboard.setString(code);
     await Dialog.alert({
@@ -59,6 +66,21 @@ export function AuthSheetView(props: {
       message: "请在 GitHub 设备授权页粘贴或输入该设备码。",
       buttonLabel: "知道了",
     });
+  }
+
+  async function openGitHubDevicePage() {
+    try {
+      await openPendingAuthorizationPage("copilot");
+    } catch (error) {
+      await Dialog.alert({
+        title: "无法打开授权页",
+        message:
+          error instanceof Error && error.message
+            ? error.message
+            : "授权会话可能已过期，请取消后重新开始。",
+        buttonLabel: "关闭",
+      });
+    }
   }
   return (
     <NavigationStack>
@@ -117,6 +139,30 @@ export function AuthSheetView(props: {
                     imageScale="medium"
                     foregroundStyle="accentColor"
                   />
+                </HStack>
+              </Button>
+            ) : null}
+            {deviceCode ? <Divider /> : null}
+            {deviceCode ? (
+              <Button
+                buttonStyle="plain"
+                frame={{ maxWidth: "infinity" }}
+                action={() => void openGitHubDevicePage()}
+              >
+                <HStack
+                  padding={{ vertical: true }}
+                  frame={{ minHeight: 44, maxWidth: "infinity" }}
+                  contentShape="rect"
+                >
+                  <Image
+                    systemName="safari"
+                    imageScale="medium"
+                    foregroundStyle="accentColor"
+                  />
+                  <Text foregroundStyle="accentColor" fontWeight="semibold">
+                    打开 GitHub 授权页
+                  </Text>
+                  <Spacer />
                 </HStack>
               </Button>
             ) : null}

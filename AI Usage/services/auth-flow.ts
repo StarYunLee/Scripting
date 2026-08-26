@@ -5,6 +5,7 @@ import {
 } from "./hub";
 import { openAuthorizationPage } from "./browser";
 import { openAuthAndCaptureLocalCallback } from "./local-oauth";
+import { getPendingVerificationUri } from "../providers/copilot/oauth";
 
 export type AuthLaunchResult = {
   profileId: string;
@@ -84,6 +85,18 @@ export async function launchProviderAuthorization(
     };
   }
 
+  if (provider === "copilot") {
+    // 设备码流程：先展示设备码（sheet 内自动复制），由用户手动打开授权页，
+    // 避免“还没看到/复制设备码，浏览器就已经打开”。
+    return {
+      profileId: started.profileId,
+      mode: "openURL",
+      autoCompleted: false,
+      needsSheet: true,
+      status: "设备码已生成并复制到剪贴板，打开 GitHub 授权页后粘贴",
+    };
+  }
+
   const mode = await openAuthorizationPage(started.url);
   return {
     profileId: started.profileId,
@@ -92,4 +105,14 @@ export async function launchProviderAuthorization(
     needsSheet: true,
     status: pasteStatus(provider, mode),
   };
+}
+
+/** 打开待完成授权的授权页（设备码流程由用户在授权弹窗中手动触发）。 */
+export async function openPendingAuthorizationPage(
+  provider: ProviderId,
+): Promise<void> {
+  if (provider !== "copilot") return;
+  const url = getPendingVerificationUri();
+  if (!url) throw new Error("授权会话已过期，请重新开始");
+  await openAuthorizationPage(url);
 }
