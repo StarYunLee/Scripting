@@ -20,6 +20,7 @@ import { usePageToolbar } from "../components/PageToolbar";
 import { UsageCardView } from "../components/UsageCardView";
 import { type AuthSheet, type ProviderId, type UsageCard } from "../models";
 import { launchProviderAuthorization } from "../services/auth-flow";
+import { applyDashboardPrefs } from "../services/dashboard-prefs";
 import { refreshAccounts } from "../services/refresh";
 import { requestWidgetReload } from "../services/widgets";
 import { type BackgroundThemeId } from "../services/settings";
@@ -35,11 +36,21 @@ export function StatusPage(props: {
   dashboardEpoch?: number;
 }) {
   const [provider, setProvider] = useState<ProviderId>("codex");
-  const [cards, setCards] = useState<UsageCard[]>(() => listAuthorizedCards());
+  const [cards, setCardsRaw] = useState<UsageCard[]>(() => listAuthorizedCards());
   const [sheet, setSheet] = useState<AuthSheet | null>(null);
   const [busy, setBusy] = useState(false);
   const [openedCard, setOpenedCard] = useState<UsageCard | null>(null);
   const displayMode = "remaining";
+
+  // 所有卡片 state 写入的唯一入口：刷新路径返回的是未过滤卡片，
+  // 这里统一套用总览偏好，保证「隐藏的账号/额度行」刷新后不复活。
+  function setCards(
+    next: UsageCard[] | ((current: UsageCard[]) => UsageCard[]),
+  ) {
+    setCardsRaw((current) =>
+      applyDashboardPrefs(typeof next === "function" ? next(current) : next),
+    );
+  }
 
   function setCardRefreshState(
     key: string,
