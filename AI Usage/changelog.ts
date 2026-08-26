@@ -6,6 +6,14 @@ export type ChangelogEntry = {
 
 export const CHANGELOG = [
   {
+    version: "1.4.4",
+    date: "2026-08-26",
+    changes: [
+      "修复 Codex / ChatGPT Pro 档位徽章：prolite 显示为 Pro 5X，pro 显示为 Pro 20x。",
+      "Codex 登录尽量自动捕获 localhost 回调（本机 HttpServer）；失败时仍可手动粘贴。",
+    ],
+  },
+  {
     version: "1.4.3",
     date: "2026-08-26",
     changes: [

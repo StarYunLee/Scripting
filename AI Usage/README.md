@@ -10,7 +10,7 @@
 
 面向 [Scripting App](https://scriptingapp.github.io/) 的非官方多平台用量查看应用。在一个项目里管理 Codex、Grok、Claude、Antigravity、Cursor 与 Kimi Code 的多账号用量、主屏幕小组件和自动化刷新。
 
-当前版本：`1.4.3`
+当前版本：`1.4.4`
 
 > 本项目不是 OpenAI、xAI、Anthropic、Google、Cursor、Moonshot / Kimi 或 Scripting App 官方产品，与上述平台无隶属或合作关系。
 
@@ -56,7 +56,8 @@ https://raw.githubusercontent.com/StarYunLee/Scripting/main/AI-Usage.scripting
 ### Codex
 
 - 回调：`http://localhost:1455/auth/callback?...`
-- 复制 Safari 地址栏中的完整回调地址
+- 应用会尽量在本机自动捕获回调并完成登录（需 Scripting 提供 HttpServer 能力）
+- 若未自动完成：复制 Safari 地址栏中的完整回调地址并粘贴提交
 
 ### Grok
 

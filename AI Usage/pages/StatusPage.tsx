@@ -1,7 +1,6 @@
 import { List, NavigationStack, Text, useEffect, useState } from "scripting";
 import { AccountDetailPage } from "./AccountDetailPage";
 import {
-  beginProviderAuth,
   cancelProviderAuth,
   completeProviderAuth,
   deleteAuthorizedAccount,
@@ -19,7 +18,7 @@ import { PageBackground } from "../components/PageBackground";
 import { usePageToolbar } from "../components/PageToolbar";
 import { UsageCardView } from "../components/UsageCardView";
 import { type AuthSheet, type ProviderId, type UsageCard } from "../models";
-import { openAuthorizationPage } from "../services/browser";
+import { launchProviderAuthorization } from "../services/auth-flow";
 import { refreshAccounts } from "../services/refresh";
 import { requestWidgetReload } from "../services/widgets";
 import { type BackgroundThemeId } from "../services/settings";
@@ -114,23 +113,25 @@ export function StatusPage(props: {
     if (busy) return;
     setBusy(true);
     try {
-      const started = await beginProviderAuth(target, profileId);
-      // 先打开授权页；关闭后再进入粘贴页，避免状态页被粘贴界面顶掉。
-      const mode = await openAuthorizationPage(started.url);
+      const launched = await launchProviderAuthorization(target, profileId);
+      if (launched.autoCompleted) {
+        reloadCards();
+        const next = await refreshCard(target, launched.profileId, true);
+        setCards((current) => {
+          const exists = current.some((item) => item.key === next.key);
+          return exists
+            ? current.map((item) => (item.key === next.key ? next : item))
+            : [...current, next];
+        });
+        requestWidgetReload();
+        return;
+      }
+      if (!launched.needsSheet) return;
       setSheet({
         provider: target,
-        profileId: started.profileId,
+        profileId: launched.profileId,
         authorizationInput: "",
-        status:
-          target === "cursor" || target === "kimi"
-            ? mode === "present"
-              ? "关闭授权页后，返回应用并点击提交（无需粘贴）"
-              : target === "kimi"
-                ? "已在系统 Safari 打开 Kimi Code 授权页，完成后返回并点击提交"
-                : "已在系统 Safari 打开 Cursor 登录页，完成后返回并点击提交"
-            : mode === "present"
-              ? "关闭授权页后，把回调地址或授权码粘贴到下方"
-              : "已在系统 Safari 打开授权页，完成后把回调地址或授权码粘贴到下方",
+        status: launched.status,
       });
     } catch (error) {
       setSheet({

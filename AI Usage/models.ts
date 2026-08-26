@@ -63,7 +63,7 @@ export const PROVIDERS: Array<{
     subtitle: "连接 ChatGPT 账户，查看用量与重置时间。",
     accent: "#10A37F",
     pasteHint:
-      "授权完成后，复制地址栏中的 localhost:1455/auth/callback?... 完整地址。",
+      "应用会尽量自动捕获 localhost 回调；若未自动完成，再复制地址栏中的 localhost:1455/auth/callback?... 完整地址。",
     pastePlaceholder: "localhost:1455/auth/callback?code=…&state=…",
     capabilities: { widget: true },
   },
