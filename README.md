@@ -4,14 +4,20 @@
 
 ## 安装方式
 
-每个项目都提供两种入口，指向同一个 `.scripting` 安装包：
+两种入口指向同一个 `.scripting` 安装包：
 
-- **直接安装**：点击项目下的安装链接，下载当前安装包并用 Scripting App 打开。适合第一次安装。
-- **远程导入**：复制项目下的远程地址，在 Scripting App 中粘贴导入。桌面版 GitHub 把鼠标移到地址框上可复制；手机上请长按地址手动复制。
+- **直接安装**：点击项目下的安装链接，下载当前包并用 Scripting 打开。适合第一次安装。
+- **远程导入**：复制项目下的远程地址，在 Scripting 中选择「导入远程脚本」并粘贴导入。
 
-直接安装拿到的是当时那一份文件，之后更新仓库不会自动同步到已安装副本。远程导入把同一地址交给 Scripting；只有安装包本身配置了自动更新检查时，已安装副本才会按间隔检查新版本。当前 AI Usage 已启用每日检查，其余项目仍需重新导入才能更新。
+直接安装只拿到当时那一份，之后更新仓库不会自动同步。远程导入由 Scripting 记住该地址；只有安装包启用了自动更新，才会定期检查新版本。目前仅 AI Usage 会每日检查，其余项目仍需重新导入。
 
-安装包内包含完整 TypeScript/TSX 源码，可在 Scripting 中查看和修改。
+## 目录
+
+- [AI Usage](#ai-usage)
+- [Surge Metrics](#surge-metrics)
+- [Codex Usage](#codex-usage)（不再更新，请用 [AI Usage](#ai-usage)）
+- [Claude Usage](#claude-usage)（不再更新，请用 [AI Usage](#ai-usage)）
+- [Grok Usage](#grok-usage)（不再更新，请用 [AI Usage](#ai-usage)）
 
 ## 项目
 
@@ -36,7 +42,7 @@
 https://raw.githubusercontent.com/StarYunLee/Scripting/main/AI-Usage.scripting
 ```
 
-> 新用户请使用 AI Usage。下方 Codex Usage、Claude Usage、Grok Usage 仍可安装，但不再作为推荐入口。
+> Codex Usage、Claude Usage、Grok Usage 不再更新，请改用 AI Usage。旧项目仍可安装，仅作兼容保留。
 
 ### Surge Metrics
 
