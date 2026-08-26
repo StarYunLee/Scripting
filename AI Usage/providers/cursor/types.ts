@@ -68,6 +68,17 @@ export type UsageResult =
       cache?: UsageSnapshot | null;
     };
 
+/** 可在小组件设置中开关的额度窗口（unknown 不提供开关） */
+export const CURSOR_WINDOW_NAMES: LimitWindowName[] = [
+  "auto",
+  "total",
+  "api",
+  "grok_bot",
+  "plan",
+  "weekly",
+];
+
 export type WidgetSettings = {
   reloadMinutes: number;
+  hiddenWindows: string[];
 };

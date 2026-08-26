@@ -26,6 +26,7 @@ import type {
 type Props = {
   result: UsageResult;
   family: string;
+  hiddenWindows?: string[];
 };
 
 const dynamic = (light: Color, dark: Color): DynamicShapeStyle => ({
@@ -199,13 +200,22 @@ function WindowRow({
   );
 }
 
-export function BillingUsageWidgetView({ result, family }: Props) {
+export function BillingUsageWidgetView({ result, family, hiddenWindows }: Props) {
   const model = modelFor(result);
   const small = isSmall(family);
   const pad = small ? 12 : 16;
   const contentWidth = Math.max(90, displayWidth(family) - pad * 2);
   const large = family.toLowerCase().includes("large");
-  const rows = model.windows.slice(0, small || large ? 4 : 2);
+  let windows = model.windows;
+  if (hiddenWindows && hiddenWindows.length) {
+    const visible = windows.filter(
+      (window) => hiddenWindows.indexOf(window.name) < 0,
+    );
+    // 全部被隐藏时兜底显示全部，避免空白小组件
+    if (visible.length) windows = visible;
+  }
+  const rows = windows.slice(0, small || large ? 4 : 2);
+  const resetAt = windows[0] ? windows[0].resetAt : null;
   const tight = small && rows.length >= 4;
 
   return (
@@ -263,7 +273,7 @@ export function BillingUsageWidgetView({ result, family }: Props) {
         {!small ? (
           <HStack frame={{ width: contentWidth }}>
             <Text font={10} foregroundStyle={C.secondary}>
-              重置 {formatResetDate(model.resetAt)}
+              重置 {formatResetDate(resetAt)}
             </Text>
             <Spacer />
             {!model.live && model.detail ? (
