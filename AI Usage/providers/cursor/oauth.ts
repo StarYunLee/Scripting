@@ -184,6 +184,73 @@ async function fetchEmailFromStripeProfile(
   }
 }
 
+/** 从 JWT sub 解析网页会话用的 userId（auth0|xxx → xxx）。 */
+function sessionUserIdFromToken(token: string): string | null {
+  const payload = decodeJwtPayload(token);
+  const sub = payload?.sub;
+  if (typeof sub !== "string" || !sub.trim()) return null;
+  const parts = sub.split("|");
+  const userId = (parts.length > 1 ? parts[parts.length - 1] : sub).trim();
+  return userId || null;
+}
+
+/**
+ * 官方网页身份接口：GET https://cursor.com/api/auth/me
+ * 使用 WorkosCursorSessionToken=userId::accessToken Cookie（与 Dashboard 一致）。
+ */
+async function fetchIdentityFromAuthMe(
+  token: string,
+): Promise<{ email: string | null; accountId: string | null }> {
+  const jwt = decodeJwtPayload(token);
+  const userId = sessionUserIdFromToken(token);
+  const jwtSub =
+    typeof jwt?.sub === "string" && jwt.sub.trim() ? jwt.sub.trim() : null;
+  const attempts: Array<Record<string, string>> = [];
+  if (userId) {
+    attempts.push({
+      Accept: "application/json",
+      Cookie: `WorkosCursorSessionToken=${encodeURIComponent(`${userId}::${token}`)}`,
+    });
+  }
+  attempts.push({
+    Accept: "application/json",
+    Authorization: `Bearer ${token}`,
+  });
+
+  for (const headers of attempts) {
+    try {
+      const response = await fetch("https://cursor.com/api/auth/me", {
+        method: "GET",
+        headers,
+        timeout: 15,
+        debugLabel: "CursorAuthMe",
+      });
+      if (!response.ok) continue;
+      const payload = await jsonObject(response);
+      if (typeof payload.sub === "string" && payload.sub.trim()) {
+        const meSub = payload.sub.trim();
+        if (
+          userId &&
+          meSub !== userId &&
+          jwtSub &&
+          meSub !== jwtSub
+        ) {
+          continue;
+        }
+      }
+      const email = emailFromObject(payload);
+      const accountId =
+        (typeof payload.sub === "string" && payload.sub.trim()
+          ? payload.sub.trim()
+          : null) || accountIdFromObject(payload);
+      if (email || accountId) return { email, accountId };
+    } catch {
+      /* try next */
+    }
+  }
+  return { email: null, accountId: null };
+}
+
 async function resolveIdentity(
   token: string,
   extra?: Record<string, unknown> | null,
@@ -193,9 +260,18 @@ async function resolveIdentity(
     emailFromObject(jwt) ||
     emailFromObject(extra || null) ||
     null;
-  if (!email) email = await fetchEmailFromStripeProfile(token);
-  const accountId =
+  let accountId =
     accountIdFromObject(jwt) || accountIdFromObject(extra || null);
+
+  // 优先走官方网页身份接口拿邮箱。
+  if (!email) {
+    const fromMe = await fetchIdentityFromAuthMe(token);
+    email = fromMe.email;
+    accountId = accountId || fromMe.accountId;
+  }
+
+  // 回退 Stripe profile（IDE 订阅页同源）。
+  if (!email) email = await fetchEmailFromStripeProfile(token);
   return { email, accountId };
 }
 
@@ -319,7 +395,7 @@ export async function completeCursorLogin(_input?: string): Promise<void> {
   }
 }
 
-/** 在缺少邮箱时回填账号显示名（JWT → 轮询字段 → Stripe profile）。 */
+/** 在缺少邮箱时回填账号显示名（JWT → auth/me → Stripe profile）。 */
 export async function ensureAccountEmail(
   profileId: string,
   token?: string | null,
@@ -327,7 +403,7 @@ export async function ensureAccountEmail(
   const accessToken = token || getProfileAccessToken(profileId);
   if (!accessToken) return null;
   const identity = await resolveIdentity(accessToken);
-  // 只有拿到邮箱才回写，避免仅有 accountId 时把展示名改坏。
+  // 只有拿到邮箱才回写，避免仅有 accountId 时把展示名写成 acct_ id。
   if (!identity.email) return null;
   saveProfileCredentials(profileId, {
     accessToken,
