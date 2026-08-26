@@ -327,7 +327,8 @@ export async function ensureAccountEmail(
   const accessToken = token || getProfileAccessToken(profileId);
   if (!accessToken) return null;
   const identity = await resolveIdentity(accessToken);
-  if (!identity.email && !identity.accountId) return null;
+  // 只有拿到邮箱才回写，避免仅有 accountId 时把展示名改坏。
+  if (!identity.email) return null;
   saveProfileCredentials(profileId, {
     accessToken,
     accountId: identity.accountId,

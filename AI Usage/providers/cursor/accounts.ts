@@ -63,7 +63,16 @@ function jwtEmail(token: string | null): string | null {
 
 function isPlaceholderName(name: string | null | undefined): boolean {
   if (!name) return true;
-  return /^账号\s*\d+$/i.test(name.trim());
+  const trimmed = name.trim();
+  // 「账号 1」占位，或误把内部 profile id（acct_…）当成展示名。
+  return (
+    /^账号\s*\d+$/i.test(trimmed) ||
+    /^acct_[a-z0-9]+_/i.test(trimmed)
+  );
+}
+
+function friendlyAccountName(index: number): string {
+  return `账号 ${index + 1}`;
 }
 
 function makeId(): string {
@@ -93,23 +102,36 @@ export function ensureAccountMigration(): AccountRegistry {
   let registry = readRegistryRaw();
   if (!registry.accounts.length) return registry;
   let changed = false;
-  const accounts = registry.accounts.map((account) => {
+  const accounts = registry.accounts.map((account, index) => {
     const email =
       account.email ||
       jwtEmail(getSecretRaw(secretKey(account.id, "access_token")));
-    if (!email) return account;
-    const shouldRename =
-      !account.email ||
+    const badName =
       isPlaceholderName(account.name) ||
-      account.name !== email;
-    if (!shouldRename && account.email === email) return account;
-    changed = true;
-    return {
-      ...account,
-      email,
-      name: email,
-      updatedAt: new Date().toISOString(),
-    };
+      account.name === account.id ||
+      /^acct_/i.test(account.name.trim());
+    if (email) {
+      const shouldRename =
+        !account.email || badName || account.name !== email;
+      if (!shouldRename && account.email === email) return account;
+      changed = true;
+      return {
+        ...account,
+        email,
+        name: email,
+        updatedAt: new Date().toISOString(),
+      };
+    }
+    // 无邮箱时，把误写入的 acct_ id 还原为可读占位名。
+    if (badName && account.name !== friendlyAccountName(index)) {
+      changed = true;
+      return {
+        ...account,
+        name: friendlyAccountName(index),
+        updatedAt: new Date().toISOString(),
+      };
+    }
+    return account;
   });
   if (changed) registry = writeRegistry({ ...registry, accounts });
   return registry;
@@ -171,19 +193,39 @@ export function updateProfileIdentity(
   const registry = getAccountRegistry();
   writeRegistry({
     ...registry,
-    accounts: registry.accounts.map((account) => {
+    accounts: registry.accounts.map((account, index) => {
       if (account.id !== profileId) return account;
       const email = identity.email || account.email || null;
+      let name = account.name;
+      if (email) {
+        name = email;
+      } else if (
+        isPlaceholderName(name) ||
+        name === account.id ||
+        /^acct_/i.test(name.trim())
+      ) {
+        // 绝不用内部 id 做展示名；保留可读占位。
+        name = friendlyAccountName(index);
+      }
       return {
         ...account,
         accountId: identity.accountId || account.accountId,
         email,
-        // 有邮箱时一律用邮箱作为展示名，避免停留在「账号 1」。
-        name: email || (isPlaceholderName(account.name) ? account.id : account.name),
+        name,
         updatedAt: new Date().toISOString(),
       };
     }),
   });
+}
+
+/** 是否仍缺邮箱或展示名异常，需要尝试回填。 */
+export function needsEmailBackfill(profile: CursorAccountProfile): boolean {
+  if (!profile.email) return true;
+  return (
+    isPlaceholderName(profile.name) ||
+    profile.name === profile.id ||
+    /^acct_/i.test(profile.name.trim())
+  );
 }
 
 export function deleteAccount(profileId: string): void {

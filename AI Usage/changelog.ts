@@ -6,6 +6,13 @@ export type ChangelogEntry = {
 
 export const CHANGELOG = [
   {
+    version: "1.4.1",
+    date: "2026-08-26",
+    changes: [
+      "修复 Cursor 账号展示成 acct_ 内部 ID 的问题：无邮箱时保留可读占位名，并继续尝试回填邮箱。",
+    ],
+  },
+  {
     version: "1.4.0",
     date: "2026-08-26",
     changes: [

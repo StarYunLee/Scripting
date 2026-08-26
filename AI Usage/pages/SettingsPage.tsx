@@ -322,7 +322,12 @@ export function SettingsPage(props: {
                           contentShape="rect"
                         >
                           <Text font="body" lineLimit={1} truncationMode="tail">
-                            {account.email || account.name}
+                            {account.email ||
+                              (account.name &&
+                              account.name !== account.id &&
+                              !/^acct_/i.test(account.name)
+                                ? account.name
+                                : "未命名账号")}
                           </Text>
                           <Spacer />
                           <Image

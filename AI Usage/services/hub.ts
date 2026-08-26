@@ -29,6 +29,13 @@ export function findPendingAuth(): {
   return null;
 }
 
+function accountTitle(account: AccountLike): string {
+  if (account.email && account.email.includes("@")) return account.email;
+  const name = String(account.name || "").trim();
+  if (name && name !== account.id && !/^acct_/i.test(name)) return name;
+  return "未命名账号";
+}
+
 export function buildCard(
   provider: ProviderId,
   account: AccountLike,
@@ -45,7 +52,7 @@ export function buildCard(
     key: `${provider}:${account.id}`,
     provider,
     accountId: account.id,
-    title: account.email || account.name,
+    title: accountTitle(account),
     planLabel: cache?.planLabel || null,
     authorized,
     windows: cache?.windows || [],

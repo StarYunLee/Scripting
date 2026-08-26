@@ -358,9 +358,19 @@ export function StatusPage(props: {
                 const email =
                   profile?.email ||
                   (openedCard.title.includes("@") ? openedCard.title : null);
+                const rawName = profile?.name || openedCard.title;
+                const safeName =
+                  email ||
+                  (rawName &&
+                  rawName !== openedCard.accountId &&
+                  !/^acct_/i.test(rawName)
+                    ? rawName
+                    : openedCard.title.includes("@")
+                      ? openedCard.title
+                      : "未命名账号");
                 return {
                   id: openedCard.accountId,
-                  name: email || profile?.name || openedCard.title,
+                  name: safeName,
                   email,
                 };
               })()}

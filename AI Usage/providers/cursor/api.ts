@@ -1,6 +1,7 @@
 import { fetch, Response } from "scripting";
 import {
   getProfileAccessToken,
+  needsEmailBackfill,
   resolveProfile,
 } from "./accounts";
 import { refreshOAuthToken, ensureAccountEmail } from "./oauth";
@@ -538,8 +539,8 @@ export async function fetchUsage(options?: {
 
   const cache = readCache(profile.id);
 
-  // 旧账号可能只有「账号 1」；即使命中用量缓存也先回填邮箱展示名。
-  if (!profile.email || /^账号\s*\d+$/i.test(profile.name)) {
+  // 旧账号可能是「账号 1」或误存的 acct_ id；刷新时回填邮箱展示名。
+  if (needsEmailBackfill(profile)) {
     const identityToken =
       getProfileAccessToken(profile.id) ||
       (await refreshOAuthToken(profile.id, false));
