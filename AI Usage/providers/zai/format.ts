@@ -71,6 +71,8 @@ export function formatPlanLabel(value: string | null | undefined): string | null
     ultra: "Ultra",
   };
   if (labels[normalized]) return labels[normalized];
+  // Pro+ 优先于词边界回退：「+」是非单词字符，\bPro\b 会抢先命中 "Pro+"
+  if (/pro[\s_-]*(\+|plus\b)/i.test(value)) return "Pro+";
   // 保留原始 productName 中的档位词
   const match = value.match(/\b(Lite|Pro|Max|Ultra|Free)\b/i);
   if (match) return match[1].charAt(0).toUpperCase() + match[1].slice(1).toLowerCase();
