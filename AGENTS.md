@@ -39,14 +39,15 @@
 
 - **禁止** re-export（`export { x }`）——会导致运行时 SyntaxError
 - **禁止** 类型谓词（`x is T`）——改用 `flatMap` 等方式窄化
-- **禁止** `as const`——用显式类型标注
-- **经验约定**：统一用 `<EmptyView />`（从 `scripting` 导入）代替 null 字面量 JSX 子节点（`cond ? <X/> : null`）和函数组件 `return null`。注意：曾推测 null 子节点导致构建器报 `TypeError: ... e.isInternal`，但历史反例（ErrorHint 长期 `return null` 且 Small/Large 正常）否定了这个因果——Medium 那次失败的真凶是下一条的 circular ProgressView。此约定作为经验保留，根因未确证
+- 对象字面量的 key 必须加引号，尤其是非 ASCII key（`as const` 本身在现役代码中正常使用，不再禁止——c955792 的 SyntaxError 真凶是未加引号的中文 key 等，as const 是被连坐的）
+- **条件渲染用 `{cond ? <X/> : null}`，与官方文档一致**（llms-full.txt 中这是标准写法，MapKit 示例甚至在 map 回调里 `return null`）。`EmptyView` 未在官方文档中列为导出，**不要新增使用**；v1.8.2 已改成 EmptyView 的约 30 处保留不回滚（能跑就不动），但也别再扩散。历史上 Medium 构建失败（`e.isInternal`）的真凶是下一条的 circular ProgressView，不是 null 子节点
 - `progressViewStyle="circular"` 的 ProgressView 在 iOS 上是不确定加载指示器（转圈），**不能**用作确定性圆环；画圆环用 `Circle + trim + stroke`
+- **内存与求值预算**：iOS 对小组件有约 30MB 内存限制，渲染失败/空白通常是内存问题；`Widget.present(...)` 后当前执行上下文立即销毁；小组件是一次性渲染，`widget.tsx` 的整个 import 图每次 timeline reload 都会重新解析求值。新增 widget 代码前先掂量 import 图的增量（参考：v1.9.0 设置面板功能让 import 图涨了 1832 行/52KB，抵消了同期 perf 重构的减量）
 
 ## 验证
 
 - 语法检查（仓库根目录可跑，只查语法不做类型检查，不需要 dts）：`npx --yes -p typescript@5 node tools/check-syntax.js "AI Usage"`；release 前必跑
-- 类型检查（**只能在开发目录跑**，仓库内没有 tsconfig.json）：`/Users/gamesme/Developer/code/scripting-workspace` 下执行 `npx --yes -p typescript tsc --noEmit -p tsconfig.json`
+- 类型检查（**只能在开发目录跑**，`AI Usage/` 下没有 tsconfig.json）：`/Users/gamesme/Developer/code/scripting-workspace` 下执行 `npx --yes -p typescript tsc --noEmit -p tsconfig.json`
 - `providers/` 下 `atob` / `URL` / `URLSearchParams` / `Data` 相关的报错是**基线噪音**（dts 未声明运行时全局），不要修它们，也不算新增错误
 - 视觉改动无法本地验证，必须真机预览（设置页有小组件预览入口）后才能发版
 
