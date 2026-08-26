@@ -2,6 +2,7 @@ import {
   Button,
   Divider,
   HStack,
+  Image,
   List,
   NavigationStack,
   Section,
@@ -11,6 +12,7 @@ import {
   VStack,
 } from "scripting";
 import { providerMeta, type AuthSheet } from "../models";
+import { getPendingUserCode } from "../providers/copilot/oauth";
 import { PageBackground } from "./PageBackground";
 import type { BackgroundThemeId } from "../services/settings";
 
@@ -46,6 +48,18 @@ export function AuthSheetView(props: {
     props.authSheet.provider === "copilot";
   const submitDisabled =
     !pasteFree && props.authSheet.authorizationInput.trim().length === 0;
+  // GitHub 设备授权码：从 Keychain 的 pending 状态读取（开始授权时已写入）
+  const deviceCode =
+    props.authSheet.provider === "copilot" ? getPendingUserCode() : null;
+
+  async function copyDeviceCode(code: string) {
+    await Pasteboard.setString(code);
+    await Dialog.alert({
+      title: "已复制设备码",
+      message: "请在 GitHub 设备授权页粘贴或输入该设备码。",
+      buttonLabel: "知道了",
+    });
+  }
   return (
     <NavigationStack>
       <List
@@ -78,6 +92,35 @@ export function AuthSheetView(props: {
             frame={{ maxWidth: "infinity" }}
             listRowInsets={{ top: 0, bottom: 0, leading: 16, trailing: 16 }}
           >
+            {deviceCode ? (
+              <Button
+                buttonStyle="plain"
+                frame={{ maxWidth: "infinity" }}
+                action={() => copyDeviceCode(deviceCode)}
+              >
+                <HStack
+                  padding={{ vertical: true }}
+                  frame={{ minHeight: 44, maxWidth: "infinity" }}
+                  contentShape="rect"
+                >
+                  <VStack alignment="leading" spacing={2}>
+                    <Text font="caption" foregroundStyle="secondaryLabel">
+                      设备码（点击复制）
+                    </Text>
+                    <Text font="title3" fontWeight="bold" monospaced>
+                      {deviceCode}
+                    </Text>
+                  </VStack>
+                  <Spacer />
+                  <Image
+                    systemName="doc.on.doc"
+                    imageScale="medium"
+                    foregroundStyle="accentColor"
+                  />
+                </HStack>
+              </Button>
+            ) : null}
+            {deviceCode ? <Divider /> : null}
             {status ? (
               <HStack
                 padding={{ vertical: true }}
