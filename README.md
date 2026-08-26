@@ -2,6 +2,17 @@
 
 适用于 [Scripting App](https://scriptingapp.github.io/) 的非官方开源小组件与脚本项目。
 
+## 安装方式
+
+每个项目都提供两种入口，指向同一个 `.scripting` 安装包：
+
+- **直接安装**：点击项目下的安装链接，下载当前安装包并用 Scripting App 打开。适合第一次安装。
+- **远程导入**：复制项目下的远程地址，在 Scripting App 中粘贴导入。桌面版 GitHub 把鼠标移到地址框上可复制；手机上请长按地址手动复制。
+
+直接安装拿到的是当时那一份文件，之后更新仓库不会自动同步到已安装副本。远程导入把同一地址交给 Scripting；只有安装包本身配置了自动更新检查时，已安装副本才会按间隔检查新版本。当前 AI Usage 已启用每日检查，其余项目仍需重新导入才能更新。
+
+安装包内包含完整 TypeScript/TSX 源码，可在 Scripting 中查看和修改。
+
 ## 项目
 
 ### AI Usage
@@ -86,10 +97,6 @@ Grok Build 额度小组件，支持 xAI OAuth、多账号、账号级显示设�
 ```text
 https://raw.githubusercontent.com/StarYunLee/Scripting/main/Grok-Usage.scripting
 ```
-
-## 安装
-
-点击对应的 `.scripting` 链接下载，然后选择使用 Scripting App 打开并导入。安装包内包含完整 TypeScript/TSX 源码，可在 Scripting 中查看和修改。
 
 ## 隐私
 
