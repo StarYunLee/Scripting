@@ -8,6 +8,7 @@
 - `GitHub Stars/`、`Surge Metrics/`：其他活跃项目，各自独立
 - `Deprecated/`：不再维护的旧项目（Codex/Claude/Grok Usage），不要改
 - `AI-Usage.scripting` 等 `.scripting` 文件：**打包产物**（zip），不要手工编辑
+- `tools/`：仓库侧辅助脚本（如 `check-syntax.js` 语法检查），不同步到开发目录
 
 ## 开发目录与同步
 
@@ -19,10 +20,11 @@
 ## 发布节奏（重要）
 
 - **开发期**：小步提交随意，但**不动版本号、不重建安装包、不写 changelog**
-- **真机验证通过后**，一个 release 提交做三件事：
+- **真机验证通过后**，一个 release 提交做四件事：
   1. `AI Usage/script.json` 的 `version` 升号（bugfix 升 patch，新平台/大功能升 minor）
   2. `AI Usage/changelog.ts` 顶部新增对应版本条目（中文，面向用户）
-  3. 重建安装包：仓库根目录执行 `rm -f AI-Usage.scripting && zip -qr AI-Usage.scripting "AI Usage" -x "*.DS_Store" -x "__MACOSX*"`
+  3. **先跑通语法检查**：仓库根目录执行 `npx --yes -p typescript@5 node tools/check-syntax.js "AI Usage"`，0 错误才继续
+  4. 重建安装包（**扁平结构**：压缩包根目录直接是 `script.json`，不能套一层 `AI Usage/`）：仓库根目录执行 `rm -f AI-Usage.scripting && (cd "AI Usage" && zip -qr ../AI-Usage.scripting . -x "*.DS_Store" -x "__MACOSX*")`
 - README 顶部「当前版本」同步更新
 - 一个版本的 changelog 条目只在该版本发布前累积；**发布后就封版**，后续修复开新条目
 
@@ -38,12 +40,13 @@
 - **禁止** re-export（`export { x }`）——会导致运行时 SyntaxError
 - **禁止** 类型谓词（`x is T`）——改用 `flatMap` 等方式窄化
 - **禁止** `as const`——用显式类型标注
-- **禁止** null 字面量作为 JSX 子节点（`cond ? <X/> : null`）和函数组件 `return null`——设备端构建器会报 `TypeError: null is not an object (evaluating 'e.isInternal')`。一律改用 `<EmptyView />`（从 `scripting` 导入）
+- **经验约定**：统一用 `<EmptyView />`（从 `scripting` 导入）代替 null 字面量 JSX 子节点（`cond ? <X/> : null`）和函数组件 `return null`。注意：曾推测 null 子节点导致构建器报 `TypeError: ... e.isInternal`，但历史反例（ErrorHint 长期 `return null` 且 Small/Large 正常）否定了这个因果——Medium 那次失败的真凶是下一条的 circular ProgressView。此约定作为经验保留，根因未确证
 - `progressViewStyle="circular"` 的 ProgressView 在 iOS 上是不确定加载指示器（转圈），**不能**用作确定性圆环；画圆环用 `Circle + trim + stroke`
 
 ## 验证
 
-- 类型检查：在开发目录运行 `npx --yes -p typescript tsc --noEmit -p tsconfig.json`
+- 语法检查（仓库根目录可跑，只查语法不做类型检查，不需要 dts）：`npx --yes -p typescript@5 node tools/check-syntax.js "AI Usage"`；release 前必跑
+- 类型检查（**只能在开发目录跑**，仓库内没有 tsconfig.json）：`/Users/gamesme/Developer/code/scripting-workspace` 下执行 `npx --yes -p typescript tsc --noEmit -p tsconfig.json`
 - `providers/` 下 `atob` / `URL` / `URLSearchParams` / `Data` 相关的报错是**基线噪音**（dts 未声明运行时全局），不要修它们，也不算新增错误
 - 视觉改动无法本地验证，必须真机预览（设置页有小组件预览入口）后才能发版
 
