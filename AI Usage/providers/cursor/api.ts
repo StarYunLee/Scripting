@@ -46,6 +46,13 @@ function clamp(value: number): number {
   return Math.max(0, Math.min(100, value));
 }
 
+function firstString(...values: unknown[]): string | null {
+  for (const value of values) {
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  return null;
+}
+
 /** 兼容 RFC3339 与 unix 毫秒（数字或数字字符串，Cursor Dashboard 常见）。 */
 function isoDate(value: unknown): { iso: string | null; ms: number | null } {
   if (typeof value === "number" && Number.isFinite(value)) {
@@ -107,13 +114,47 @@ async function requestPlanInfo(token: string): Promise<PlanInfo> {
     if (!planInfo) return empty;
     return {
       planLabel: formatPlanLabel(
-        typeof planInfo.planName === "string" ? planInfo.planName : null,
+        firstString(
+          planInfo.planName,
+          planInfo.name,
+          planInfo.membershipType,
+          planInfo.tier,
+        ),
       ),
       includedAmountCents: toNumber(planInfo.includedAmountCents),
       billingCycleEnd: isoDate(planInfo.billingCycleEnd),
     };
   } catch {
     return empty;
+  }
+}
+
+/** 回退：IDE 订阅页同源接口，响应含 membershipType（如 "ultra"）。 */
+async function requestMembershipLabel(token: string): Promise<string | null> {
+  try {
+    const response = await fetch(`${API_BASE}/auth/full_stripe_profile`, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/json",
+      },
+      timeout: 15,
+      debugLabel: "CursorStripePlan",
+    });
+    if (!response.ok) return null;
+    const payload = asObject(JSON.parse(await response.text()));
+    if (!payload) return null;
+    return formatPlanLabel(
+      firstString(
+        payload.membershipType,
+        payload.stripeMembershipType,
+        payload.planName,
+        asObject(payload.subscription)?.membershipType,
+        asObject(payload.subscription)?.planName,
+      ),
+    );
+  } catch {
+    return null;
   }
 }
 
@@ -460,6 +501,8 @@ async function fetchUsagePayload(token: string): Promise<FetchPayloadOutcome> {
     }
     if (payload) {
       const plan = await requestPlanInfo(token);
+      if (!plan.planLabel)
+        plan.planLabel = await requestMembershipLabel(token);
       const usageReset = isoDate(payload.billingCycleEnd);
       const reset = usageReset.iso != null ? usageReset : plan.billingCycleEnd;
       let parsed =

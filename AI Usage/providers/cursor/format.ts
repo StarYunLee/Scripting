@@ -48,7 +48,7 @@ export function formatResetDate(resetAtIso: string | null | undefined): string {
 
 export function formatPlanLabel(value: string | null | undefined): string | null {
   if (!value || !value.trim()) return null;
-  const normalized = value.trim().toLowerCase();
+  const normalized = value.trim().toLowerCase().replace(/[\s_-]+/g, "");
   const labels: Record<string, string> = {
     pro: "Pro",
     ultra: "Ultra",
@@ -58,5 +58,18 @@ export function formatPlanLabel(value: string | null | undefined): string | null
     free: "Free",
     hobby: "Hobby",
   };
-  return labels[normalized] || value.trim();
+  if (labels[normalized]) return labels[normalized];
+  // 兼容 "ultra_yearly" / "Ultra Plan" 等变体：按前缀归属档位（具体在前）。
+  for (const key of [
+    "enterprise",
+    "business",
+    "ultra",
+    "team",
+    "pro",
+    "hobby",
+    "free",
+  ]) {
+    if (normalized.startsWith(key)) return labels[key];
+  }
+  return value.trim();
 }
