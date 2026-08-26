@@ -15,6 +15,7 @@ function App() {
   const [demoMode, setDemoModeState] = useState(() => isDemoMode());
   const [backgroundTheme, setBackgroundThemeState] =
     useState<BackgroundThemeId>(() => getAppDisplaySettings().backgroundTheme);
+  const [dashboardEpoch, setDashboardEpoch] = useState(0);
 
   function updateDemoMode(enabled: boolean) {
     setDemoMode(enabled);
@@ -29,7 +30,11 @@ function App() {
   return (
     <TabView>
       <Tab title="用量" systemImage="chart.bar.fill" value="status">
-        <StatusPage demoMode={demoMode} backgroundTheme={backgroundTheme} />
+        <StatusPage
+          demoMode={demoMode}
+          backgroundTheme={backgroundTheme}
+          dashboardEpoch={dashboardEpoch}
+        />
       </Tab>
       <Tab title="设置" systemImage="gearshape.fill" value="settings">
         <SettingsPage
@@ -37,6 +42,9 @@ function App() {
           backgroundTheme={backgroundTheme}
           onDemoModeChange={updateDemoMode}
           onBackgroundThemeChange={updateBackgroundTheme}
+          onDashboardPrefsChange={() =>
+            setDashboardEpoch((value) => value + 1)
+          }
         />
       </Tab>
     </TabView>

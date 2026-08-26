@@ -6,6 +6,13 @@ export type ChangelogEntry = {
 
 export const CHANGELOG = [
   {
+    version: "1.4.5",
+    date: "2026-08-26",
+    changes: [
+      "新增用量总览偏好：可手动选择用量页展示的账号订阅与额度条目（不影响小组件）。",
+    ],
+  },
+  {
     version: "1.4.4",
     date: "2026-08-26",
     changes: [

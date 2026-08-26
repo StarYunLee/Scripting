@@ -10,13 +10,14 @@
 
 面向 [Scripting App](https://scriptingapp.github.io/) 的非官方多平台用量查看应用。在一个项目里管理 Codex、Grok、Claude、Antigravity、Cursor 与 Kimi Code 的多账号用量、主屏幕小组件和自动化刷新。
 
-当前版本：`1.4.4`
+当前版本：`1.4.5`
 
 > 本项目不是 OpenAI、xAI、Anthropic、Google、Cursor、Moonshot / Kimi 或 Scripting App 官方产品，与上述平台无隶属或合作关系。
 
 ## 功能
 
 - 统一管理 Codex、Grok、Claude、Antigravity、Cursor、Kimi Code 多个账号
+- 用量总览可手动选择要展示的账号与额度条目
 - Access Token、Refresh Token 和相关身份凭据保存在本机 Keychain
 - Token 到期前自动刷新
 - 主屏幕小组件支持 Small、Medium，并按账号独立保存布局

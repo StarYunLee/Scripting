@@ -36,6 +36,7 @@ import { usePageToolbar } from "../components/PageToolbar";
 import { CURRENT_VERSION } from "../changelog";
 import { ChangelogPage } from "./ChangelogPage";
 import { AccountDetailPage } from "./AccountDetailPage";
+import { DashboardPrefsPage } from "./DashboardPrefsPage";
 import { LogPage } from "./LogPage";
 import type { AuthSheet } from "../models";
 import { listDemoAccounts } from "../services/demo";
@@ -53,7 +54,8 @@ type SelectedDestination =
       account: { id: string; name: string; email: string | null };
     }
   | { kind: "log" }
-  | { kind: "changelog" };
+  | { kind: "changelog" }
+  | { kind: "dashboard" };
 
 function SettingsRowBackground() {
   return (
@@ -90,6 +92,7 @@ export function SettingsPage(props: {
   backgroundTheme: BackgroundThemeId;
   onDemoModeChange: (enabled: boolean) => void;
   onBackgroundThemeChange: (theme: BackgroundThemeId) => void;
+  onDashboardPrefsChange?: () => void;
 }) {
   const [tick, setTick] = useState(0);
   const [sheet, setSheet] = useState<AuthSheet | null>(null);
@@ -241,6 +244,15 @@ export function SettingsPage(props: {
               <LogPage backgroundTheme={props.backgroundTheme} />
             ) : selectedDestination?.kind === "changelog" ? (
               <ChangelogPage backgroundTheme={props.backgroundTheme} />
+            ) : selectedDestination?.kind === "dashboard" ? (
+              <DashboardPrefsPage
+                backgroundTheme={props.backgroundTheme}
+                demoMode={props.demoMode}
+                onChanged={() => {
+                  refresh();
+                  props.onDashboardPrefsChange?.();
+                }}
+              />
             ) : (
               <Text>选择项目</Text>
             ),
@@ -390,6 +402,37 @@ export function SettingsPage(props: {
               <Text tag="30">30 分钟</Text>
               <Text tag="60">60 分钟</Text>
             </Picker>
+          </SettingsGroup>
+        </Section>
+
+        <Section
+          listRowBackground={settingsRowBackground}
+          header={<Text foregroundStyle="secondaryLabel">用量总览</Text>}
+          footer={
+            <Text font="caption" foregroundStyle="secondaryLabel">
+              选择用量页要展示的账号与额度条目（5 小时 / 周限等）。
+            </Text>
+          }
+        >
+          <SettingsGroup>
+            <Button
+              buttonStyle="plain"
+              frame={{ maxWidth: "infinity" }}
+              action={() => setSelectedDestination({ kind: "dashboard" })}
+            >
+              <HStack
+                padding={{ vertical: true }}
+                frame={{ minHeight: 44, maxWidth: "infinity" }}
+                contentShape="rect"
+              >
+                <Text>选择展示内容</Text>
+                <Spacer />
+                <Image
+                  systemName="chevron.right"
+                  foregroundStyle="tertiaryLabel"
+                />
+              </HStack>
+            </Button>
           </SettingsGroup>
         </Section>
 

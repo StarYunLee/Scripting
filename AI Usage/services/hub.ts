@@ -9,6 +9,7 @@ import {
 import { writeLog } from "./logger";
 import { refreshAccount } from "./refresh";
 import { PROVIDER_IDS, type ProviderId, type UsageCard } from "../models";
+import { applyDashboardPrefs } from "./dashboard-prefs";
 
 type AccountLike = ProviderAccount;
 
@@ -67,6 +68,11 @@ export function buildCard(
 }
 
 export function listAuthorizedCards(): UsageCard[] {
+  return applyDashboardPrefs(listAllAuthorizedCards());
+}
+
+/** 未应用总览偏好的完整账号卡片（设置页选条目用）。 */
+export function listAllAuthorizedCards(): UsageCard[] {
   if (isDemoMode()) return listDemoCards();
   const cards: UsageCard[] = [];
   for (const provider of PROVIDER_IDS) {

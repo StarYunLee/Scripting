@@ -84,9 +84,11 @@ export function UsageCardView(props: {
         </Text>
       ) : null}
 
-      {props.card.windows.length === 0 ? (
+          {props.card.windows.length === 0 ? (
         <Text font={13} foregroundStyle="secondaryLabel">
-          {props.card.authorized ? "暂无用量窗口" : "尚未授权"}
+          {props.card.authorized
+            ? "暂无用量窗口（或已在总览中隐藏全部条目）"
+            : "尚未授权"}
         </Text>
       ) : (
         props.card.windows.map((window) => {

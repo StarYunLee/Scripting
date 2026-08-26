@@ -7,6 +7,7 @@ import {
   findPendingAuth,
   buildCard,
   listAuthorizedCards,
+  listAllAuthorizedCards,
   listProviderAccounts,
   refreshCard,
 } from "../services/hub";
@@ -31,6 +32,7 @@ function errorText(error: unknown): string {
 export function StatusPage(props: {
   demoMode: boolean;
   backgroundTheme: BackgroundThemeId;
+  dashboardEpoch?: number;
 }) {
   const [provider, setProvider] = useState<ProviderId>("codex");
   const [cards, setCards] = useState<UsageCard[]>(() => listAuthorizedCards());
@@ -67,7 +69,7 @@ export function StatusPage(props: {
 
   useEffect(() => {
     reloadCards();
-  }, [props.demoMode]);
+  }, [props.demoMode, props.dashboardEpoch]);
 
   useEffect(() => {
     if (props.demoMode) return;
@@ -320,14 +322,34 @@ export function StatusPage(props: {
   }
 
   if (!cards.length) {
+    const hasAccounts = listAllAuthorizedCards().length > 0;
     return (
       <NavigationStack>
-        <ConnectEmptyView
-          provider={provider}
-          backgroundTheme={props.backgroundTheme}
-          onSelectProvider={setProvider}
-          onConnect={() => startAuth(provider)}
-        />
+        {hasAccounts ? (
+          <List
+            navigationTitle="用量"
+            navigationBarTitleDisplayMode="inline"
+            scrollContentBackground="hidden"
+            listStyle="plain"
+            background={<PageBackground theme={props.backgroundTheme} />}
+            toolbar={toolbar}
+          >
+            <Text
+              padding
+              foregroundStyle="secondaryLabel"
+              frame={{ maxWidth: "infinity", alignment: "center" }}
+            >
+              当前没有可展示的账号。请到「设置 → 用量总览」开启要显示的账号或条目。
+            </Text>
+          </List>
+        ) : (
+          <ConnectEmptyView
+            provider={provider}
+            backgroundTheme={props.backgroundTheme}
+            onSelectProvider={setProvider}
+            onConnect={() => startAuth(provider)}
+          />
+        )}
       </NavigationStack>
     );
   }
