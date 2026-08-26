@@ -9,11 +9,12 @@
 - **直接安装**：点击项目下的安装链接，下载当前包并用 Scripting 打开。适合第一次安装。
 - **远程导入**：复制项目下的远程地址，在 Scripting 中选择「导入远程脚本」并粘贴导入。
 
-直接安装只拿到当时那一份，之后更新仓库不会自动同步。远程导入由 Scripting 记住该地址；只有安装包启用了自动更新，才会定期检查新版本。目前仅 AI Usage 会每日检查，其余项目仍需重新导入。
+直接安装只拿到当时那一份，之后更新仓库不会自动同步。远程导入由 Scripting 记住该地址；只有安装包启用了自动更新，才会定期检查新版本。目前仅 AI Usage 与 GitHub Stars 会每日检查，其余项目仍需重新导入。
 
 ## 目录
 
 - [AI Usage](#ai-usage)
+- [GitHub Stars](#github-stars)
 - [Surge Metrics](#surge-metrics)
 - [Codex Usage](#codex-usage)（不再更新，请用 [AI Usage](#ai-usage)）
 - [Claude Usage](#claude-usage)（不再更新，请用 [AI Usage](#ai-usage)）
@@ -43,6 +44,27 @@ https://raw.githubusercontent.com/StarYunLee/Scripting/main/AI-Usage.scripting
 ```
 
 > Codex Usage、Claude Usage、Grok Usage 不再更新，请改用 AI Usage。旧项目仍可安装，仅作兼容保留。
+
+### GitHub Stars
+
+在 iPhone 上浏览与管理 GitHub Stars 和自定义列表，并查看个人资料、贡献热力图、钉选仓库与常用语言。
+
+<table>
+  <tr>
+    <td align="center" width="33%"><img src="./GitHub%20Stars/assets/github-stars-preview-stars.jpeg" alt="GitHub Stars 收藏仓库页预览" /></td>
+    <td align="center" width="33%"><img src="./GitHub%20Stars/assets/github-stars-preview-lists.jpeg" alt="GitHub Stars 列表页预览" /></td>
+    <td align="center" width="33%"><img src="./GitHub%20Stars/assets/github-stars-preview-settings.jpeg" alt="GitHub Stars 设置页预览" /></td>
+  </tr>
+</table>
+
+- [查看源码与使用说明](./GitHub%20Stars/)
+- [直接安装 GitHub-Stars.scripting](https://raw.githubusercontent.com/StarYunLee/Scripting/main/GitHub-Stars.scripting)
+
+远程导入地址：
+
+```text
+https://raw.githubusercontent.com/StarYunLee/Scripting/main/GitHub-Stars.scripting
+```
 
 ### Surge Metrics
 
@@ -120,7 +142,7 @@ https://raw.githubusercontent.com/StarYunLee/Scripting/main/Grok-Usage.scripting
 - 作者与维护者：[StarYunLee](https://github.com/StarYunLee)
 - 问题反馈：[GitHub Issues](https://github.com/StarYunLee/Scripting/issues)
 
-提交 Issue 时，请在标题中注明 `[AI Usage]`、`[Surge Metrics]`、`[Codex Usage]`、`[Claude Usage]` 或 `[Grok Usage]`。
+提交 Issue 时，请在标题中注明 `[AI Usage]`、`[GitHub Stars]`、`[Surge Metrics]`、`[Codex Usage]`、`[Claude Usage]` 或 `[Grok Usage]`。
 
 ## 友链
 - [LINUX DO](https://linux.do/) — 社区讨论与反馈
@@ -128,4 +150,4 @@ https://raw.githubusercontent.com/StarYunLee/Scripting/main/Grok-Usage.scripting
 
 ## 免责声明
 
-本仓库项目不是 Surge、OpenAI、Anthropic、xAI、Google 或 Scripting App 官方产品。相关 HTTP API、OAuth、用量及 Billing 接口可能随服务端更新而变化。使用者应遵守对应软件许可与平台服务条款并自行承担使用风险。
+本仓库项目不是 GitHub、Surge、OpenAI、Anthropic、xAI、Google 或 Scripting App 官方产品。相关 HTTP API、OAuth、用量及 Billing 接口可能随服务端更新而变化。使用者应遵守对应软件许可与平台服务条款并自行承担使用风险。

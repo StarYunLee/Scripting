@@ -1,0 +1,30 @@
+{
+  "icon": "star.square.fill",
+  "name": "GitHub Stars",
+  "color": "#57606A",
+  "entry": "index.tsx",
+  "permissions": null,
+  "runInApp": true,
+  "contributors": [],
+  "version": "0.9.0",
+  "intentInputTypes": [],
+  "localizedNames": {
+    "zh": "GitHub Stars",
+    "en": "GitHub Stars"
+  },
+  "description": "Browse and manage GitHub Stars, custom lists, contributions heatmap, and top languages with Liquid Glass UI.",
+  "remoteResource": {
+    "url": "https://raw.githubusercontent.com/StarYunLee/Scripting/main/GitHub-Stars.scripting",
+    "autoUpdateInterval": 86400
+  },
+  "author": {
+    "name": "StarYunLee",
+    "email": null,
+    "homepage": "https://github.com/StarYunLee"
+  },
+  "localizedDescriptions": {
+    "zh": "浏览与管理 GitHub Stars 与列表，支持仓库归属维护、多年度贡献热力图、常用语言分析与 Liquid Glass 界面。",
+    "en": "Browse and manage GitHub Stars and lists, featuring repository memberships, multi-year contributions heatmap, top languages breakdown, and Liquid Glass UI."
+  },
+  "iconImage": "https://raw.githubusercontent.com/StarYunLee/Profiles/main/icon/github.png"
+}
