@@ -13,9 +13,19 @@ export type DashboardWidgetData = {
   hasErrors: boolean;
 };
 
+/** 总览小组件的缓存新鲜度：10 分钟内直接复用缓存，避免每次渲染都全量打网络。 */
+const WIDGET_CACHE_FRESH_MS = 10 * 60_000;
+
 async function refreshCardForWidget(card: UsageCard): Promise<UsageCard> {
   if (isDemoMode() || isDemoAccountId(card.accountId)) {
     return refreshDemoCard(card.accountId);
+  }
+
+  // 缓存新鲜时直接复用（card 本身就是从缓存构建的），不发起网络请求
+  const cached = getProvider(card.provider).usage.cache(card.accountId);
+  if (cached?.fetchedAt) {
+    const age = Date.now() - new Date(cached.fetchedAt).getTime();
+    if (Number.isFinite(age) && age < WIDGET_CACHE_FRESH_MS) return card;
   }
 
   const outcome = await refreshAccount(
