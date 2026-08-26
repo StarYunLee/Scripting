@@ -291,11 +291,14 @@ function sleep(ms: number): Promise<void> {
 async function pollForTokens(
   uuid: string,
   verifier: string,
+  createdAt: number,
 ): Promise<TokenPayload & Record<string, unknown>> {
   let delay = POLL_BASE_DELAY_MS;
   let consecutiveErrors = 0;
 
   for (let attempt = 0; attempt < POLL_MAX_ATTEMPTS; attempt++) {
+    if (Date.now() - createdAt > PENDING_TTL_MS)
+      throw new Error("Cursor 授权已过期（超过 10 分钟），请重新发起授权");
     await sleep(delay);
     try {
       const url = `${CURSOR_POLL_URL}?uuid=${encodeURIComponent(uuid)}&verifier=${encodeURIComponent(verifier)}`;
@@ -378,7 +381,11 @@ export async function completeCursorLogin(_input?: string): Promise<void> {
     throw new Error("OAuth 会话已超过 10 分钟，请重新授权");
   }
   try {
-    const tokens = await pollForTokens(pending.uuid, pending.verifier);
+    const tokens = await pollForTokens(
+      pending.uuid,
+      pending.verifier,
+      pending.createdAt,
+    );
     const identity = await resolveIdentity(tokens.accessToken!, tokens);
     const saved = saveProfileCredentials(pending.profileId, {
       accessToken: tokens.accessToken!,
