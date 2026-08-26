@@ -23,7 +23,7 @@ export const CHANGELOG = [
       "修复 GitHub Copilot 账号邮箱永远不显示：API 版本号笔误导致 GitHub 接口直接拒绝请求。",
       "修复 Cursor 授权等待可能超过 10 分钟仍不提示过期。",
       "修复 Z.ai Pro+ 套餐被降级显示为 Pro。",
-      "修复 MiniMax 周额度重置时间误显示为 5 小时窗口倒计时、套餐档位一律推断为 Ultra 的问题。",
+      "修复 MiniMax 周额度重置时间误显示为 5 小时窗口倒计时。",
       "补回 v1.1.2 版本更新日志。",
     ],
   },
