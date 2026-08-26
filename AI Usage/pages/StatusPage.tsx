@@ -1,16 +1,18 @@
 import { List, NavigationStack, Text, useEffect, useState } from "scripting";
 import { AccountDetailPage } from "./AccountDetailPage";
 import {
-  cancelProviderAuth,
-  completeProviderAuth,
   deleteAuthorizedAccount,
-  findPendingAuth,
   buildCard,
   listAuthorizedCards,
   listAllAuthorizedCards,
   listProviderAccounts,
   refreshCard,
 } from "../services/hub";
+import {
+  cancelProviderAuth,
+  completeProviderAuth,
+  findPendingAuth,
+} from "../services/hub-auth";
 import { demoAccountCount, refreshDemoCard } from "../services/demo";
 import { writeLog } from "../services/logger";
 import { AuthSheetView } from "../components/AuthSheetView";

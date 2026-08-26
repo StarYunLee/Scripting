@@ -2,7 +2,7 @@ import type { ProviderId } from "../models";
 import {
   beginProviderAuth,
   completeProviderAuth,
-} from "./hub";
+} from "./hub-auth";
 import { openAuthorizationPage } from "./browser";
 import { openAuthAndCaptureLocalCallback } from "./local-oauth";
 import { getPendingVerificationUri } from "../providers/copilot/oauth";

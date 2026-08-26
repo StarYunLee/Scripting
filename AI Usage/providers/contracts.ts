@@ -54,3 +54,7 @@ export type ProviderCore = AccountLookupProvider & {
   };
   clearSettings(profileId: string): unknown;
 };
+
+export type ProviderUsageCore = Omit<ProviderCore, "auth">;
+
+export type ProviderAuthCore = Pick<ProviderCore, "id" | "auth">;

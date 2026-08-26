@@ -17,12 +17,11 @@ import {
 } from "scripting";
 import { PROVIDERS, type ProviderId } from "../models";
 import {
-  cancelProviderAuth,
-  completeProviderAuth,
   deleteAuthorizedAccount,
   isAuthorized,
   listProviderAccounts,
 } from "../services/hub";
+import { cancelProviderAuth, completeProviderAuth } from "../services/hub-auth";
 import {
   BACKGROUND_THEMES,
   getAppDisplaySettings,

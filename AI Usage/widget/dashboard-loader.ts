@@ -6,7 +6,7 @@ import {
 import { refreshDemoCard } from "../services/demo";
 import { isDemoAccountId, isDemoMode } from "../services/demo-flags";
 import { refreshAccount } from "../services/refresh";
-import { getProvider } from "../providers/registry";
+import { getProviderUsage as getProvider } from "../providers/registry-usage";
 import type { UsageCard } from "../models";
 
 export type DashboardWidgetData = {
