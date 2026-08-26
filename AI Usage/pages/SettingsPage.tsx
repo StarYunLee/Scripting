@@ -455,7 +455,7 @@ export function SettingsPage(props: {
           header={<Text foregroundStyle="secondaryLabel">小组件总览</Text>}
           footer={
             <Text font="caption" foregroundStyle="secondaryLabel">
-              添加 AI Usage 小组件后，将参数粘贴为 dashboard，即可显示多账号总用量。支持小 / 中 / 大三种尺寸。
+              添加 AI Usage 小组件后，将参数粘贴为 dashboard，即可显示多账号总用量。Small 文本、Medium 圆环、Large 进度条、Extra Large 分组详情。
             </Text>
           }
         >

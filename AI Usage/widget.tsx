@@ -10,6 +10,7 @@ import { UsageWidgetView as AntigravityUsageWidgetView } from "./widget/antigrav
 import { UsageWidgetView as CursorUsageWidgetView } from "./widget/cursor/UsageWidgetView";
 import { UsageWidgetView as KimiUsageWidgetView } from "./widget/kimi/UsageWidgetView";
 import { getAppDisplaySettings } from "./services/settings";
+import { getWidgetPrivacyPrefs } from "./services/dashboard-prefs";
 import { writeLog } from "./services/logger";
 
 function ErrorWidget({ message }: { message: string }) {
@@ -53,6 +54,7 @@ async function run() {
         cards={loaded.cards}
         family={family}
         hasErrors={loaded.hasErrors}
+        privacy={getWidgetPrivacyPrefs()}
       />,
       { reloadPolicy },
     );

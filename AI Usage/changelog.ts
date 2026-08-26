@@ -6,6 +6,14 @@ export type ChangelogEntry = {
 
 export const CHANGELOG = [
   {
+    version: "1.4.8",
+    date: "2026-08-26",
+    changes: [
+      "总用量小组件按尺寸分开展示：Small 文本列表、Medium 圆环、Large 进度条、Extra Large 按账号分组详情。",
+      "小组件总览新增隐私选项：可单独开关账号邮箱、账号 ID、套餐档位徽章显示。",
+    ],
+  },
+  {
     version: "1.4.7",
     date: "2026-08-26",
     changes: [

@@ -7,18 +7,33 @@ const STORAGE_KEYS: Record<DashboardPrefsScope, string> = {
   widget: "ai_usage_widget_dashboard_prefs_v1",
 };
 
+export type WidgetPrivacyPrefs = {
+  showAccountEmail: boolean;
+  showAccountId: boolean;
+  showPlanBadge: boolean;
+};
+
 export type DashboardPrefs = {
-  version: 1;
+  version: 2;
   /** 在总览中隐藏的账号 key：`provider:accountId` */
   hiddenAccountKeys: string[];
   /** 按账号隐藏的额度窗口 id */
   hiddenWindowIdsByAccount: Record<string, string[]>;
+  /** 仅总览小组件使用的隐私显示选项 */
+  privacy: WidgetPrivacyPrefs;
+};
+
+const DEFAULT_PRIVACY: WidgetPrivacyPrefs = {
+  showAccountEmail: false,
+  showAccountId: false,
+  showPlanBadge: true,
 };
 
 const EMPTY: DashboardPrefs = {
-  version: 1,
+  version: 2,
   hiddenAccountKeys: [],
   hiddenWindowIdsByAccount: {},
+  privacy: { ...DEFAULT_PRIVACY },
 };
 
 function asStringArray(value: unknown): string[] {
@@ -27,6 +42,16 @@ function asStringArray(value: unknown): string[] {
     .filter((item): item is string => typeof item === "string")
     .map((item) => item.trim())
     .filter(Boolean);
+}
+
+function sanitizePrivacy(raw: unknown): WidgetPrivacyPrefs {
+  if (!raw || typeof raw !== "object") return { ...DEFAULT_PRIVACY };
+  const value = raw as Record<string, unknown>;
+  return {
+    showAccountEmail: value.showAccountEmail === true,
+    showAccountId: value.showAccountId === true,
+    showPlanBadge: value.showPlanBadge !== false,
+  };
 }
 
 function sanitize(raw: unknown): DashboardPrefs {
@@ -44,9 +69,10 @@ function sanitize(raw: unknown): DashboardPrefs {
     }
   }
   return {
-    version: 1,
+    version: 2,
     hiddenAccountKeys: asStringArray(value.hiddenAccountKeys),
     hiddenWindowIdsByAccount,
+    privacy: sanitizePrivacy(value.privacy),
   };
 }
 
@@ -60,6 +86,10 @@ export function getDashboardPrefs(
   }
 }
 
+export function getWidgetPrivacyPrefs(): WidgetPrivacyPrefs {
+  return getDashboardPrefs("widget").privacy;
+}
+
 export function setDashboardPrefs(
   next: DashboardPrefs,
   scope: DashboardPrefsScope = "app",
@@ -71,6 +101,22 @@ export function setDashboardPrefs(
     /* ignore */
   }
   return cleaned;
+}
+
+export function setWidgetPrivacyPrefs(
+  patch: Partial<WidgetPrivacyPrefs>,
+): DashboardPrefs {
+  const prefs = getDashboardPrefs("widget");
+  return setDashboardPrefs(
+    {
+      ...prefs,
+      privacy: {
+        ...prefs.privacy,
+        ...patch,
+      },
+    },
+    "widget",
+  );
 }
 
 export function isAccountVisibleOnDashboard(

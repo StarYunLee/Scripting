@@ -18,6 +18,7 @@ import {
   resetDashboardPrefs,
   setAccountVisibleOnDashboard,
   setWindowVisibleOnDashboard,
+  setWidgetPrivacyPrefs,
   type DashboardPrefsScope,
 } from "../services/dashboard-prefs";
 import { PageBackground } from "../components/PageBackground";
@@ -109,6 +110,58 @@ export function DashboardPrefsPage(props: {
             </Button>
           </VStack>
         </Section>
+
+        {isWidget ? (
+          <Section
+            listRowBackground={rowBackground}
+            header={<Text foregroundStyle="secondaryLabel">隐私与显示</Text>}
+            footer={
+              <Text font="caption" foregroundStyle="secondaryLabel">
+                默认隐藏邮箱与账号 ID，避免主屏幕泄露隐私。Small 为文本列表，Medium
+                为圆环，Large 为进度条，Extra Large 按账号分组展示详情。
+              </Text>
+            }
+          >
+            <VStack
+              spacing={0}
+              frame={{ maxWidth: "infinity" }}
+              listRowInsets={{ top: 0, bottom: 0, leading: 16, trailing: 16 }}
+            >
+              <Toggle
+                title="显示账号邮箱"
+                value={prefs.privacy.showAccountEmail}
+                onChanged={(visible) => {
+                  setWidgetPrivacyPrefs({ showAccountEmail: visible });
+                  refresh();
+                }}
+                padding={{ vertical: true }}
+                frame={{ minHeight: 44, maxWidth: "infinity" }}
+              />
+              <Divider />
+              <Toggle
+                title="显示账号 ID"
+                value={prefs.privacy.showAccountId}
+                onChanged={(visible) => {
+                  setWidgetPrivacyPrefs({ showAccountId: visible });
+                  refresh();
+                }}
+                padding={{ vertical: true }}
+                frame={{ minHeight: 44, maxWidth: "infinity" }}
+              />
+              <Divider />
+              <Toggle
+                title="显示套餐档位徽章"
+                value={prefs.privacy.showPlanBadge}
+                onChanged={(visible) => {
+                  setWidgetPrivacyPrefs({ showPlanBadge: visible });
+                  refresh();
+                }}
+                padding={{ vertical: true }}
+                frame={{ minHeight: 44, maxWidth: "infinity" }}
+              />
+            </VStack>
+          </Section>
+        ) : null}
 
         {cards.length === 0 ? (
           <Section listRowBackground={rowBackground}>
