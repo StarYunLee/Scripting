@@ -41,6 +41,9 @@ import { LogPage } from "./LogPage";
 import type { AuthSheet } from "../models";
 import { listDemoAccounts } from "../services/demo";
 import { requestWidgetReload } from "../services/widgets";
+import {
+  WIDGET_DASHBOARD_PARAMETER,
+} from "../widget/parameter";
 
 function errorText(error: unknown): string {
   if (error instanceof Error && error.message) return error.message;
@@ -55,7 +58,8 @@ type SelectedDestination =
     }
   | { kind: "log" }
   | { kind: "changelog" }
-  | { kind: "dashboard" };
+  | { kind: "dashboard" }
+  | { kind: "widget-dashboard" };
 
 function SettingsRowBackground() {
   return (
@@ -253,6 +257,16 @@ export function SettingsPage(props: {
                   props.onDashboardPrefsChange?.();
                 }}
               />
+            ) : selectedDestination?.kind === "widget-dashboard" ? (
+              <DashboardPrefsPage
+                backgroundTheme={props.backgroundTheme}
+                demoMode={props.demoMode}
+                scope="widget"
+                onChanged={() => {
+                  refresh();
+                  requestWidgetReload();
+                }}
+              />
             ) : (
               <Text>选择项目</Text>
             ),
@@ -431,6 +445,60 @@ export function SettingsPage(props: {
                   systemName="chevron.right"
                   foregroundStyle="tertiaryLabel"
                 />
+              </HStack>
+            </Button>
+          </SettingsGroup>
+        </Section>
+
+        <Section
+          listRowBackground={settingsRowBackground}
+          header={<Text foregroundStyle="secondaryLabel">小组件总览</Text>}
+          footer={
+            <Text font="caption" foregroundStyle="secondaryLabel">
+              添加 AI Usage 小组件后，将参数粘贴为 dashboard，即可显示多账号总用量。支持小 / 中 / 大三种尺寸。
+            </Text>
+          }
+        >
+          <SettingsGroup>
+            <Button
+              buttonStyle="plain"
+              frame={{ maxWidth: "infinity" }}
+              action={() => setSelectedDestination({ kind: "widget-dashboard" })}
+            >
+              <HStack
+                padding={{ vertical: true }}
+                frame={{ minHeight: 44, maxWidth: "infinity" }}
+                contentShape="rect"
+              >
+                <Text>选择展示内容</Text>
+                <Spacer />
+                <Image
+                  systemName="chevron.right"
+                  foregroundStyle="tertiaryLabel"
+                />
+              </HStack>
+            </Button>
+            <CardDivider />
+            <Button
+              buttonStyle="plain"
+              frame={{ maxWidth: "infinity" }}
+              action={async () => {
+                await Pasteboard.setString(WIDGET_DASHBOARD_PARAMETER);
+                await Dialog.alert({
+                  title: "已复制组件参数",
+                  message:
+                    "请长按主屏幕上的 AI Usage 小组件并选择“编辑小组件”，将内容粘贴到“参数”。参数为 dashboard 时将显示总用量。",
+                  buttonLabel: "知道了",
+                });
+              }}
+            >
+              <HStack
+                padding={{ vertical: true }}
+                frame={{ minHeight: 44, maxWidth: "infinity" }}
+                contentShape="rect"
+              >
+                <Text foregroundStyle="accentColor">复制总览组件参数</Text>
+                <Spacer />
               </HStack>
             </Button>
           </SettingsGroup>

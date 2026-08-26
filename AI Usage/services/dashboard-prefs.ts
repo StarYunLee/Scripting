@@ -1,6 +1,11 @@
 import type { UsageCard } from "../models";
 
-const STORAGE_KEY = "ai_usage_dashboard_prefs_v1";
+export type DashboardPrefsScope = "app" | "widget";
+
+const STORAGE_KEYS: Record<DashboardPrefsScope, string> = {
+  app: "ai_usage_dashboard_prefs_v1",
+  widget: "ai_usage_widget_dashboard_prefs_v1",
+};
 
 export type DashboardPrefs = {
   version: 1;
@@ -45,18 +50,23 @@ function sanitize(raw: unknown): DashboardPrefs {
   };
 }
 
-export function getDashboardPrefs(): DashboardPrefs {
+export function getDashboardPrefs(
+  scope: DashboardPrefsScope = "app",
+): DashboardPrefs {
   try {
-    return sanitize(Storage.get<DashboardPrefs>(STORAGE_KEY));
+    return sanitize(Storage.get<DashboardPrefs>(STORAGE_KEYS[scope]));
   } catch {
     return { ...EMPTY };
   }
 }
 
-export function setDashboardPrefs(next: DashboardPrefs): DashboardPrefs {
+export function setDashboardPrefs(
+  next: DashboardPrefs,
+  scope: DashboardPrefsScope = "app",
+): DashboardPrefs {
   const cleaned = sanitize(next);
   try {
-    Storage.set(STORAGE_KEY, cleaned);
+    Storage.set(STORAGE_KEYS[scope], cleaned);
   } catch {
     /* ignore */
   }
@@ -82,37 +92,47 @@ export function isWindowVisibleOnDashboard(
 export function setAccountVisibleOnDashboard(
   accountKey: string,
   visible: boolean,
+  scope: DashboardPrefsScope = "app",
 ): DashboardPrefs {
-  const prefs = getDashboardPrefs();
+  const prefs = getDashboardPrefs(scope);
   const hidden = new Set(prefs.hiddenAccountKeys);
   if (visible) hidden.delete(accountKey);
   else hidden.add(accountKey);
-  return setDashboardPrefs({
-    ...prefs,
-    hiddenAccountKeys: Array.from(hidden),
-  });
+  return setDashboardPrefs(
+    {
+      ...prefs,
+      hiddenAccountKeys: Array.from(hidden),
+    },
+    scope,
+  );
 }
 
 export function setWindowVisibleOnDashboard(
   accountKey: string,
   windowId: string,
   visible: boolean,
+  scope: DashboardPrefsScope = "app",
 ): DashboardPrefs {
-  const prefs = getDashboardPrefs();
+  const prefs = getDashboardPrefs(scope);
   const hidden = new Set(prefs.hiddenWindowIdsByAccount[accountKey] || []);
   if (visible) hidden.delete(windowId);
   else hidden.add(windowId);
   const nextWindows = { ...prefs.hiddenWindowIdsByAccount };
   if (hidden.size) nextWindows[accountKey] = Array.from(hidden);
   else delete nextWindows[accountKey];
-  return setDashboardPrefs({
-    ...prefs,
-    hiddenWindowIdsByAccount: nextWindows,
-  });
+  return setDashboardPrefs(
+    {
+      ...prefs,
+      hiddenWindowIdsByAccount: nextWindows,
+    },
+    scope,
+  );
 }
 
-export function resetDashboardPrefs(): DashboardPrefs {
-  return setDashboardPrefs({ ...EMPTY });
+export function resetDashboardPrefs(
+  scope: DashboardPrefsScope = "app",
+): DashboardPrefs {
+  return setDashboardPrefs({ ...EMPTY }, scope);
 }
 
 /** 按总览偏好过滤账号与额度条目；默认全部可见。 */

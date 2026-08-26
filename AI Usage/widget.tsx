@@ -1,6 +1,8 @@
 import { Image, Spacer, Text, VStack, Widget } from "scripting";
-import { resolveWidgetAccount } from "./widget/parameter";
+import { resolveWidgetParameter } from "./widget/parameter";
 import { loadWidgetUsage } from "./widget/loader";
+import { loadDashboardWidgetUsage } from "./widget/dashboard-loader";
+import { DashboardWidgetView } from "./widget/dashboard/DashboardWidgetView";
 import { UsageWidgetView as CodexUsageWidgetView } from "./widget/codex/UsageWidgetView";
 import { UsageWidgetView as GrokUsageWidgetView } from "./widget/grok/UsageWidgetView";
 import { UsageWidgetView as ClaudeUsageWidgetView } from "./widget/claude/UsageWidgetView";
@@ -37,7 +39,26 @@ function ErrorWidget({ message }: { message: string }) {
 
 async function run() {
   const family = String(Widget.family || "systemSmall");
-  const resolved = resolveWidgetAccount(Widget.parameter);
+  const resolved = resolveWidgetParameter(Widget.parameter);
+  const reloadMinutes = getAppDisplaySettings().reloadMinutes;
+  const reloadPolicy = {
+    policy: "after" as const,
+    date: new Date(Date.now() + reloadMinutes * 60 * 1000),
+  };
+
+  if (resolved.mode === "dashboard") {
+    const loaded = await loadDashboardWidgetUsage();
+    Widget.present(
+      <DashboardWidgetView
+        cards={loaded.cards}
+        family={family}
+        hasErrors={loaded.hasErrors}
+      />,
+      { reloadPolicy },
+    );
+    return;
+  }
+
   if (!resolved.account) {
     writeLog({
       level: "error",
@@ -52,11 +73,6 @@ async function run() {
   }
 
   const { provider, profileId } = resolved.account;
-  const reloadMinutes = getAppDisplaySettings().reloadMinutes;
-  const reloadPolicy = {
-    policy: "after" as const,
-    date: new Date(Date.now() + reloadMinutes * 60 * 1000),
-  };
   const loaded = await loadWidgetUsage(provider, profileId);
 
   if (loaded.provider === "codex") {

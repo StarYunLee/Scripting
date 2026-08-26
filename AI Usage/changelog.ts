@@ -6,6 +6,14 @@ export type ChangelogEntry = {
 
 export const CHANGELOG = [
   {
+    version: "1.4.6",
+    date: "2026-08-26",
+    changes: [
+      "新增总用量小组件：参数填 dashboard 可展示多账号剩余额度，支持小 / 中 / 大三种尺寸。",
+      "小组件总览可单独选择展示的账号与额度条目，与应用内用量总览互不影响。",
+    ],
+  },
+  {
     version: "1.4.5",
     date: "2026-08-26",
     changes: [

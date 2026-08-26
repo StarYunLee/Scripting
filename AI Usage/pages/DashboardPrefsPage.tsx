@@ -18,6 +18,7 @@ import {
   resetDashboardPrefs,
   setAccountVisibleOnDashboard,
   setWindowVisibleOnDashboard,
+  type DashboardPrefsScope,
 } from "../services/dashboard-prefs";
 import { PageBackground } from "../components/PageBackground";
 import type { BackgroundThemeId } from "../services/settings";
@@ -39,10 +40,13 @@ const rowBackground = <RowBackground />;
 export function DashboardPrefsPage(props: {
   backgroundTheme: BackgroundThemeId;
   demoMode: boolean;
+  scope?: DashboardPrefsScope;
   onChanged?: () => void;
 }) {
+  const scope = props.scope || "app";
+  const isWidget = scope === "widget";
   const [tick, setTick] = useState(0);
-  const prefs = getDashboardPrefs();
+  const prefs = getDashboardPrefs(scope);
   // 必须用未过滤列表，否则已隐藏账号无法再打开。
   const cards = listAllAuthorizedCards();
 
@@ -57,7 +61,7 @@ export function DashboardPrefsPage(props: {
   return (
     <NavigationStack>
       <List
-        navigationTitle="用量总览"
+        navigationTitle={isWidget ? "小组件总览" : "用量总览"}
         navigationBarTitleDisplayMode="inline"
         scrollContentBackground="hidden"
         listStyle="plain"
@@ -74,7 +78,9 @@ export function DashboardPrefsPage(props: {
           listRowBackground={rowBackground}
           footer={
             <Text font="caption" foregroundStyle="secondaryLabel">
-              控制用量页展示哪些账号与额度条目。默认全部显示；关闭后仅影响应用内总览，不影响主屏幕小组件。
+              {isWidget
+                ? "控制总用量小组件展示哪些账号与额度条目。默认全部显示；仅影响参数为 dashboard 的总览小组件，与应用内用量页互不影响。"
+                : "控制用量页展示哪些账号与额度条目。默认全部显示；关闭后仅影响应用内总览，不影响主屏幕小组件。"}
             </Text>
           }
         >
@@ -88,7 +94,7 @@ export function DashboardPrefsPage(props: {
               buttonStyle="plain"
               frame={{ maxWidth: "infinity" }}
               action={() => {
-                resetDashboardPrefs();
+                resetDashboardPrefs(scope);
                 refresh();
               }}
             >
@@ -128,11 +134,11 @@ export function DashboardPrefsPage(props: {
                 prefs.hiddenWindowIdsByAccount[card.key] || []
               }
               onAccountChanged={(visible) => {
-                setAccountVisibleOnDashboard(card.key, visible);
+                setAccountVisibleOnDashboard(card.key, visible, scope);
                 refresh();
               }}
               onWindowChanged={(windowId, visible) => {
-                setWindowVisibleOnDashboard(card.key, windowId, visible);
+                setWindowVisibleOnDashboard(card.key, windowId, visible, scope);
                 refresh();
               }}
             />
