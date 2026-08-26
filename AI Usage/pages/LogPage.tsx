@@ -33,8 +33,10 @@ const providerName = (provider?: ProviderId) =>
             ? "Cursor"
             : provider === "kimi"
               ? "Kimi Code"
-              : provider === "copilot"
-                ? "Copilot"
+            : provider === "copilot"
+              ? "Copilot"
+              : provider === "zai"
+                ? "Z.ai"
                 : "系统";
 
 function recordTime(value: string): string {

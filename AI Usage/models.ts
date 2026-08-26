@@ -8,6 +8,7 @@ export const PROVIDER_IDS = [
   "cursor",
   "kimi",
   "copilot",
+  "zai",
 ] as const;
 
 export type ProviderId = (typeof PROVIDER_IDS)[number];
@@ -131,6 +132,17 @@ export const PROVIDERS: Array<{
     pasteHint:
       "在 github.com/login/device 输入设备码完成授权后返回应用，无需粘贴内容，直接点击“提交并完成授权”。",
     pastePlaceholder: "无需填写，完成浏览器登录后提交",
+    capabilities: { widget: true },
+  },
+  {
+    id: "zai",
+    title: "Z.ai",
+    connectTitle: "连接 Z.ai / 智谱账户",
+    subtitle: "粘贴 API Key，查看 GLM Coding 5 小时 / 每周 / 每月用量。",
+    accent: "#0EA5A8",
+    pasteHint:
+      "在 z.ai 或 open.bigmodel.cn 控制台创建 API Key，复制后粘贴到下方。应用会自动识别国际站或国内站。",
+    pastePlaceholder: "粘贴 Z.ai / 智谱 API Key",
     capabilities: { widget: true },
   },
 ];

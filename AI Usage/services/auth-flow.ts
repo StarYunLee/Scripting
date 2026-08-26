@@ -32,6 +32,11 @@ function pasteStatus(
       return "已在系统 Safari 打开 GitHub 设备授权页，输入设备码后返回并点击提交";
     return "已在系统 Safari 打开 Cursor 登录页，完成后返回并点击提交";
   }
+  if (provider === "zai") {
+    if (mode === "present")
+      return "关闭控制台后，把 API Key 粘贴到下方并提交";
+    return "已打开 API Key 控制台，复制 Key 后粘贴到下方并提交";
+  }
   if (provider === "codex" && mode === "present") {
     return "未能自动捕获回调时，请粘贴地址栏中的 localhost:1455/auth/callback?...";
   }

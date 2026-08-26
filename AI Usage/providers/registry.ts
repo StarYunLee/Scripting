@@ -6,6 +6,7 @@ import * as AntigravityAccounts from "./antigravity/accounts";
 import * as CursorAccounts from "./cursor/accounts";
 import * as KimiAccounts from "./kimi/accounts";
 import * as CopilotAccounts from "./copilot/accounts";
+import * as ZaiAccounts from "./zai/accounts";
 import {
   fetchUsage as fetchCodexUsage,
   getCachedUsage as getCodexCache,
@@ -104,6 +105,20 @@ import {
 } from "./copilot/oauth";
 import { normalizeUsageSnapshot as normalizeCopilotUsage } from "./copilot/normalize";
 import { clearProfileSettings as clearCopilotSettings } from "./copilot/credentials";
+import {
+  fetchUsage as fetchZaiUsage,
+  getCachedUsage as getZaiCache,
+  clearUsageCache as clearZaiCache,
+} from "./zai/api";
+import {
+  startZaiLogin,
+  completeZaiLogin,
+  clearPendingOAuth as clearZaiPending,
+  getPendingOAuthProfileId as getZaiPending,
+  hasPendingOAuth as hasZaiPending,
+} from "./zai/oauth";
+import { normalizeUsageSnapshot as normalizeZaiUsage } from "./zai/normalize";
+import { clearProfileSettings as clearZaiSettings } from "./zai/credentials";
 import type { ProviderId } from "../models";
 import type { ProviderCore } from "./contracts";
 
@@ -261,6 +276,28 @@ export const PROVIDER_REGISTRY = {
       clearCache: clearCopilotCache,
     },
     clearSettings: clearCopilotSettings,
+  },
+  zai: {
+    ...ACCOUNT_PROVIDERS.zai,
+    ensure: ZaiAccounts.ensureAccountMigration,
+    create: ZaiAccounts.createAccount,
+    remove: ZaiAccounts.deleteAccount,
+    auth: {
+      start: startZaiLogin,
+      complete: completeZaiLogin,
+      clearPending: clearZaiPending,
+      pendingId: getZaiPending,
+      hasPending: hasZaiPending,
+    },
+    usage: {
+      fetch: fetchZaiUsage,
+      cache: (profileId: string) => {
+        const snapshot = getZaiCache(profileId);
+        return snapshot ? normalizeZaiUsage(snapshot) : null;
+      },
+      clearCache: clearZaiCache,
+    },
+    clearSettings: clearZaiSettings,
   },
 } satisfies Record<ProviderId, ProviderCore>;
 

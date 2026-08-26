@@ -212,6 +212,14 @@ export const COPILOT_WINDOW = {
   COMPLETIONS: "Completions",
 };
 
+/** Z.ai / 智谱额度窗口应用内标签 */
+export const ZAI_WINDOW = {
+  FIVE_HOUR: PERIOD.FIVE_HOUR.app,
+  WEEKLY: PERIOD.WEEKLY.app,
+  MONTHLY: PERIOD.MONTHLY.app,
+  WEB_SEARCH: "Web Search",
+};
+
 /** Kimi 5 小时窗口标签（支持动态时长） */
 export function kimiFiveHourLabel(seconds: number | null): string {
   if (seconds == null) return PERIOD.FIVE_HOUR.app;

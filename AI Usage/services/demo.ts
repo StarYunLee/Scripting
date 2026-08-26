@@ -33,6 +33,11 @@ import type {
   LimitWindowName as CopilotLimitWindowName,
   UsageResult as CopilotUsageResult,
 } from "../providers/copilot/types";
+import type {
+  LimitWindow as ZaiLimitWindow,
+  LimitWindowName as ZaiLimitWindowName,
+  UsageResult as ZaiUsageResult,
+} from "../providers/zai/types";
 
 const DEMO_KEY = "ai_usage_demo_mode_v1";
 
@@ -582,6 +587,52 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
     ],
     resetCredits: null,
   },
+  {
+    id: "demo_zai_pro",
+    provider: "zai",
+    title: "pro@z.ai.demo",
+    planLabel: "Pro",
+    windows: [
+      {
+        id: "five_hour",
+        name: "five_hour",
+        label: "5 小时",
+        usedPercent: 28,
+        resetOffsetMs: 2 * 3_600_000 + 40 * 60_000,
+      },
+      {
+        id: "weekly",
+        name: "weekly",
+        label: "每周",
+        usedPercent: 46,
+        resetOffsetMs: 3 * 86_400_000 + 8 * 3_600_000,
+      },
+    ],
+    resetCredits: null,
+  },
+  {
+    id: "demo_zai_max",
+    provider: "zai",
+    title: "max@z.ai.demo",
+    planLabel: "Max",
+    windows: [
+      {
+        id: "five_hour",
+        name: "five_hour",
+        label: "5 小时",
+        usedPercent: 12,
+        resetOffsetMs: 4 * 3_600_000 + 10 * 60_000,
+      },
+      {
+        id: "weekly",
+        name: "weekly",
+        label: "每周",
+        usedPercent: 33,
+        resetOffsetMs: 5 * 86_400_000 + 2 * 3_600_000,
+      },
+    ],
+    resetCredits: null,
+  },
 ];
 
 function futureIso(offsetMs: number): string {
@@ -648,6 +699,10 @@ export function getDemoWidgetResult(
   accountId: string,
 ): CopilotUsageResult | null;
 export function getDemoWidgetResult(
+  provider: "zai",
+  accountId: string,
+): ZaiUsageResult | null;
+export function getDemoWidgetResult(
   provider: UsageCard["provider"],
   accountId: string,
 ):
@@ -658,6 +713,7 @@ export function getDemoWidgetResult(
   | CursorUsageResult
   | KimiUsageResult
   | CopilotUsageResult
+  | ZaiUsageResult
   | null {
   const account = DEMO_ACCOUNTS.find(
     (item) => item.provider === provider && item.id === accountId,
@@ -824,6 +880,29 @@ export function getDemoWidgetResult(
         completions: byName("completions"),
         planType: account.planLabel,
         planLabel: account.planLabel,
+        fetchedAt,
+        source: "live",
+      },
+    };
+  }
+
+  if (provider === "zai") {
+    const windows: ZaiLimitWindow[] = account.windows.map((window) => ({
+      ...windowBase(window),
+      name: window.name as ZaiLimitWindowName,
+    }));
+    const byName = (name: ZaiLimitWindowName) =>
+      windows.find((window) => window.name === name) || null;
+    return {
+      ok: true,
+      snapshot: {
+        windows,
+        fiveHour: byName("five_hour"),
+        weekly: byName("weekly"),
+        monthly: byName("monthly"),
+        planType: account.planLabel,
+        planLabel: account.planLabel,
+        region: "intl",
         fetchedAt,
         source: "live",
       },

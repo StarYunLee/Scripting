@@ -26,6 +26,10 @@ import {
   getSettings as getCopilotSettings,
   setReloadMinutes as setCopilotReloadMinutes,
 } from "../providers/copilot/credentials";
+import {
+  getSettings as getZaiSettings,
+  setReloadMinutes as setZaiReloadMinutes,
+} from "../providers/zai/credentials";
 
 const DISPLAY_KEY = "ai_usage_display_settings_v1";
 
@@ -88,6 +92,7 @@ function migrateLegacyWidgetSettings(): void {
   getCursorSettings();
   getKimiSettings();
   getCopilotSettings();
+  getZaiSettings();
 }
 
 export function getAppDisplaySettings(): AppDisplaySettings {
@@ -102,7 +107,8 @@ export function getAppDisplaySettings(): AppDisplaySettings {
         getAntigravitySettings().reloadMinutes ||
         getCursorSettings().reloadMinutes ||
         getKimiSettings().reloadMinutes ||
-        getCopilotSettings().reloadMinutes;
+        getCopilotSettings().reloadMinutes ||
+        getZaiSettings().reloadMinutes;
       return { ...DEFAULT_SETTINGS, reloadMinutes: clampMinutes(fallback) };
     }
     return {
@@ -131,6 +137,7 @@ export function setAppReloadMinutes(reloadMinutes: number): AppDisplaySettings {
   setCursorReloadMinutes(next.reloadMinutes);
   setKimiReloadMinutes(next.reloadMinutes);
   setCopilotReloadMinutes(next.reloadMinutes);
+  setZaiReloadMinutes(next.reloadMinutes);
   return next;
 }
 

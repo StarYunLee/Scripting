@@ -6,6 +6,14 @@ export type ChangelogEntry = {
 
 export const CHANGELOG = [
   {
+    version: "1.7.0",
+    date: "2026-08-26",
+    changes: [
+      "新增 Z.ai / 智谱 AI 用量支持：粘贴 API Key，自动识别国际站（api.z.ai）或国内站（bigmodel.cn）。",
+      "展示 GLM Coding 5 小时 / 每周 / Web Search 额度，支持 Lite / Pro / Max 等套餐徽章与主屏幕小组件。",
+    ],
+  },
+  {
     version: "1.6.0",
     date: "2026-08-26",
     changes: [
