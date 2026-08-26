@@ -19,6 +19,10 @@ import type {
   LimitWindow as AntigravityLimitWindow,
   UsageResult as AntigravityUsageResult,
 } from "../providers/antigravity/types";
+import type {
+  LimitWindow as CursorLimitWindow,
+  UsageResult as CursorUsageResult,
+} from "../providers/cursor/types";
 
 const DEMO_KEY = "ai_usage_demo_mode_v1";
 
@@ -409,6 +413,38 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
     ],
     resetCredits: null,
   },
+  {
+    id: "demo_cursor_pro",
+    provider: "cursor",
+    title: "pro@cursor.demo",
+    planLabel: "Pro",
+    windows: [
+      {
+        id: "billing_cycle",
+        name: "billing_cycle",
+        label: "计费周期",
+        usedPercent: 42,
+        resetOffsetMs: 12 * 86_400_000 + 4 * 3_600_000,
+      },
+    ],
+    resetCredits: null,
+  },
+  {
+    id: "demo_cursor_ultra",
+    provider: "cursor",
+    title: "ultra@cursor.demo",
+    planLabel: "Ultra",
+    windows: [
+      {
+        id: "billing_cycle",
+        name: "billing_cycle",
+        label: "计费周期",
+        usedPercent: 18,
+        resetOffsetMs: 18 * 86_400_000 + 2 * 3_600_000,
+      },
+    ],
+    resetCredits: null,
+  },
 ];
 
 function futureIso(offsetMs: number): string {
@@ -463,6 +499,10 @@ export function getDemoWidgetResult(
   accountId: string,
 ): AntigravityUsageResult | null;
 export function getDemoWidgetResult(
+  provider: "cursor",
+  accountId: string,
+): CursorUsageResult | null;
+export function getDemoWidgetResult(
   provider: UsageCard["provider"],
   accountId: string,
 ):
@@ -470,6 +510,7 @@ export function getDemoWidgetResult(
   | GrokUsageResult
   | ClaudeUsageResult
   | AntigravityUsageResult
+  | CursorUsageResult
   | null {
   const account = DEMO_ACCOUNTS.find(
     (item) => item.provider === provider && item.id === accountId,
@@ -560,6 +601,26 @@ export function getDemoWidgetResult(
         planType: account.planLabel,
         planLabel: account.planLabel,
         projectId: "demo-antigravity-project",
+        fetchedAt,
+        source: "live",
+      },
+    };
+  }
+
+  if (provider === "cursor") {
+    const windows: CursorLimitWindow[] = account.windows.map((window) => ({
+      ...windowBase(window),
+      name: "billing_cycle",
+    }));
+    const billingCycle = windows[0] || null;
+    return {
+      ok: true,
+      snapshot: {
+        windows,
+        billingCycle,
+        weekly: null,
+        planType: account.planLabel,
+        planLabel: account.planLabel,
         fetchedAt,
         source: "live",
       },

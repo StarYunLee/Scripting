@@ -78,6 +78,38 @@ function palette(provider: ProviderId, label: string): BadgePalette {
     };
   }
 
+  if (provider === "cursor") {
+    if (normalized === "ultra")
+      return {
+        text: "ULTRA",
+        background: linear(["#111827", "#7C3AED"], ["#1F2937", "#8B5CF6"]),
+        foreground: "#F5F3FF",
+      };
+    if (normalized === "pro")
+      return {
+        text: "PRO",
+        background: linear(["#1E293B", "#0EA5E9"], ["#334155", "#38BDF8"]),
+        foreground: "#F8FAFC",
+      };
+    if (normalized === "team" || normalized === "business")
+      return {
+        text: normalized.toUpperCase(),
+        background: linear(["#312E81", "#4F46E5"], ["#4338CA", "#6366F1"]),
+        foreground: "#FFFFFF",
+      };
+    if (normalized === "enterprise")
+      return {
+        text: "ENTERPRISE",
+        background: linear(["#0F172A", "#334155"], ["#1E293B", "#475569"]),
+        foreground: "#F8FAFC",
+      };
+    return {
+      text: label.trim().toUpperCase() || "CURSOR",
+      background: linear(["#111827", "#374151"], ["#1F2937", "#4B5563"]),
+      foreground: "#F9FAFB",
+    };
+  }
+
   if (provider === "claude") {
     if (normalized === "max-20x") {
       return {
@@ -191,7 +223,9 @@ export function PlanBadge(props: {
         ? "GROK"
         : props.provider === "claude"
           ? "CLAUDE"
-          : "ANTIGRAVITY";
+          : props.provider === "cursor"
+            ? "CURSOR"
+            : "ANTIGRAVITY";
   const planText = rawPlanText === providerText ? "" : rawPlanText;
   return (
     <HStack

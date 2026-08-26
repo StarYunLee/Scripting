@@ -14,6 +14,10 @@ import {
   getSettings as getAntigravitySettings,
   setReloadMinutes as setAntigravityReloadMinutes,
 } from "../providers/antigravity/credentials";
+import {
+  getSettings as getCursorSettings,
+  setReloadMinutes as setCursorReloadMinutes,
+} from "../providers/cursor/credentials";
 
 const DISPLAY_KEY = "ai_usage_display_settings_v1";
 
@@ -73,6 +77,7 @@ function migrateLegacyWidgetSettings(): void {
   getGrokSettings();
   getClaudeSettings();
   getAntigravitySettings();
+  getCursorSettings();
 }
 
 export function getAppDisplaySettings(): AppDisplaySettings {
@@ -84,7 +89,8 @@ export function getAppDisplaySettings(): AppDisplaySettings {
         getCodexSettings().reloadMinutes ||
         getGrokSettings().reloadMinutes ||
         getClaudeSettings().reloadMinutes ||
-        getAntigravitySettings().reloadMinutes;
+        getAntigravitySettings().reloadMinutes ||
+        getCursorSettings().reloadMinutes;
       return { ...DEFAULT_SETTINGS, reloadMinutes: clampMinutes(fallback) };
     }
     return {
@@ -110,6 +116,7 @@ export function setAppReloadMinutes(reloadMinutes: number): AppDisplaySettings {
   setGrokReloadMinutes(next.reloadMinutes);
   setClaudeReloadMinutes(next.reloadMinutes);
   setAntigravityReloadMinutes(next.reloadMinutes);
+  setCursorReloadMinutes(next.reloadMinutes);
   return next;
 }
 

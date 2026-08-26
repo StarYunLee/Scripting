@@ -6,6 +6,15 @@ export type ChangelogEntry = {
 
 export const CHANGELOG = [
   {
+    version: "1.2.0",
+    date: "2026-08-26",
+    changes: [
+      "新增 Cursor 多账号用量查询，支持 Pro / Ultra / Team / Enterprise 等套餐识别。",
+      "新增 Cursor Small / Medium 主屏幕小组件，固定显示计费周期剩余额度。",
+      "Cursor 使用 PKCE 浏览器登录与轮询授权，无需粘贴回调地址。",
+    ],
+  },
+  {
     version: "1.1.1",
     date: "2026-08-23",
     changes: [

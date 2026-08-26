@@ -2,6 +2,7 @@ import * as CodexAccounts from "./codex/accounts";
 import * as GrokAccounts from "./grok/accounts";
 import * as ClaudeAccounts from "./claude/accounts";
 import * as AntigravityAccounts from "./antigravity/accounts";
+import * as CursorAccounts from "./cursor/accounts";
 import type { ProviderId } from "../models";
 import type { AccountLookupProvider } from "./contracts";
 
@@ -25,6 +26,11 @@ export const ACCOUNT_PROVIDERS = {
     id: "antigravity",
     list: AntigravityAccounts.listAccounts,
     token: AntigravityAccounts.getProfileAccessToken,
+  },
+  cursor: {
+    id: "cursor",
+    list: CursorAccounts.listAccounts,
+    token: CursorAccounts.getProfileAccessToken,
   },
 } satisfies Record<ProviderId, AccountLookupProvider>;
 

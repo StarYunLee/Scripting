@@ -5,6 +5,7 @@ import { UsageWidgetView as CodexUsageWidgetView } from "./widget/codex/UsageWid
 import { UsageWidgetView as GrokUsageWidgetView } from "./widget/grok/UsageWidgetView";
 import { UsageWidgetView as ClaudeUsageWidgetView } from "./widget/claude/UsageWidgetView";
 import { UsageWidgetView as AntigravityUsageWidgetView } from "./widget/antigravity/UsageWidgetView";
+import { UsageWidgetView as CursorUsageWidgetView } from "./widget/cursor/UsageWidgetView";
 import { getAppDisplaySettings } from "./services/settings";
 import { writeLog } from "./services/logger";
 
@@ -87,6 +88,14 @@ async function run() {
         widgetStyle={loaded.settings.widgetStyle}
         dualQuotaPreset={loaded.settings.dualQuotaPreset}
       />,
+      { reloadPolicy },
+    );
+    return;
+  }
+
+  if (loaded.provider === "cursor") {
+    Widget.present(
+      <CursorUsageWidgetView result={loaded.result} family={family} />,
       { reloadPolicy },
     );
     return;

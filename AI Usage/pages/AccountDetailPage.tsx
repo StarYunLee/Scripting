@@ -214,7 +214,7 @@ export function AccountDetailPage(props: {
                 profileId={props.account.id}
                 onChanged={changed}
               />
-            ) : props.provider === "grok" ? null : props.provider ===
+            ) : props.provider === "grok" || props.provider === "cursor" ? null : props.provider ===
               "claude" ? (
               <ClaudeWidgetSettingsView
                 profileId={props.account.id}
@@ -227,7 +227,9 @@ export function AccountDetailPage(props: {
               />
             )}
 
-            {props.provider === "grok" ? null : <DetailDivider />}
+            {props.provider === "grok" || props.provider === "cursor" ? null : (
+              <DetailDivider />
+            )}
             <Picker
               title="组件预览"
               value={previewFamily}

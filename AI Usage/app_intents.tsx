@@ -62,6 +62,12 @@ export const RefreshAIUsageAntigravityIntent = AppIntentManager.register({
   perform: async () => refreshProviderIntent("antigravity"),
 });
 
+export const RefreshAIUsageCursorIntent = AppIntentManager.register({
+  name: "RefreshAIUsageCursorIntent",
+  protocol: AppIntentProtocol.AppIntent,
+  perform: async () => refreshProviderIntent("cursor"),
+});
+
 export const RefreshAIUsageAllIntent = AppIntentManager.register({
   name: "RefreshAIUsageAllIntent",
   protocol: AppIntentProtocol.AppIntent,

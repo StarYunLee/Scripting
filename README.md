@@ -23,7 +23,7 @@
 
 ### AI Usage
 
-统一查看 Codex、Grok、Claude 与 Antigravity 多账号用量的应用，支持 Small / Medium 主屏幕小组件、按账号布局、固定剩余额度显示，以及快捷指令 / App Intent 刷新。
+统一查看 Codex、Grok、Claude、Antigravity 与 Cursor 多账号用量的应用，支持 Small / Medium 主屏幕小组件、按账号布局、固定剩余额度显示，以及快捷指令 / App Intent 刷新。
 
 <table>
   <tr>

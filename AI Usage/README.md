@@ -8,15 +8,15 @@
   </tr>
 </table>
 
-面向 [Scripting App](https://scriptingapp.github.io/) 的非官方多平台用量查看应用。在一个项目里管理 Codex、Grok、Claude 与 Antigravity 的多账号用量、主屏幕小组件和自动化刷新。
+面向 [Scripting App](https://scriptingapp.github.io/) 的非官方多平台用量查看应用。在一个项目里管理 Codex、Grok、Claude、Antigravity 与 Cursor 的多账号用量、主屏幕小组件和自动化刷新。
 
-当前版本：`1.1.1`
+当前版本：`1.2.0`
 
-> 本项目不是 OpenAI、xAI、Anthropic、Google 或 Scripting App 官方产品，与上述平台无隶属或合作关系。
+> 本项目不是 OpenAI、xAI、Anthropic、Google、Cursor 或 Scripting App 官方产品，与上述平台无隶属或合作关系。
 
 ## 功能
 
-- 统一管理 Codex、Grok、Claude、Antigravity 多个账号
+- 统一管理 Codex、Grok、Claude、Antigravity、Cursor 多个账号
 - Access Token、Refresh Token 和相关身份凭据保存在本机 Keychain
 - Token 到期前自动刷新
 - 主屏幕小组件支持 Small、Medium，并按账号独立保存布局
@@ -72,6 +72,11 @@ https://raw.githubusercontent.com/StarYunLee/Scripting/main/AI-Usage.scripting
 
 - 回调：`http://localhost:51121/oauth-callback?...`
 - 复制 Safari 地址栏中的完整回调地址
+
+### Cursor
+
+- 应用会打开 `cursor.com/loginDeepControl` 授权页
+- 在浏览器完成 Cursor 登录后返回应用，无需粘贴内容，直接点击“提交并完成授权”
 
 OAuth 临时状态有效期为 10 分钟。Authorization Code 通常只能交换一次；授权失败或超时后请重新开始。
 
@@ -141,6 +146,10 @@ provider:profileId
 
 - 固定显示每周额度，不再提供账号级显示切换
 
+### Cursor
+
+- 固定显示计费周期额度，不再提供账号级显示切换
+
 ### 刷新频率
 
 - 5 分钟
@@ -159,6 +168,7 @@ iOS WidgetKit 可能根据系统调度延后刷新。所选时间是请求的最
 - Grok：xAI OAuth 与 Grok Build / CLI 订阅额度接口
 - Claude：Anthropic OAuth 与 Claude Code 用量接口
 - Antigravity：Google OAuth 与 Antigravity / Code Assist 用量接口
+- Cursor：Cursor PKCE 登录与 Dashboard 用量接口（`GetCurrentPeriodUsage`，Enterprise 回退 `/auth/usage`）
 
 服务端更新后，路径、字段或访问策略可能变化。
 

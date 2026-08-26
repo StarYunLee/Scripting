@@ -6,13 +6,13 @@
   "permissions": null,
   "runInApp": true,
   "contributors": [],
-  "version": "1.1.1",
+  "version": "1.2.0",
   "intentInputTypes": [],
   "localizedNames": {
     "zh": "AI Usage",
     "en": "AI Usage"
   },
-  "description": "Unified Codex, Grok, Claude, and Antigravity usage app with multi-account Home Screen widgets, remaining-quota display, and per-account layouts.",
+  "description": "Unified Codex, Grok, Claude, Antigravity, and Cursor usage app with multi-account Home Screen widgets, remaining-quota display, and per-account layouts.",
   "remoteResource": {
     "url": "https://raw.githubusercontent.com/StarYunLee/Scripting/main/AI-Usage.scripting",
     "autoUpdateInterval": 86400
@@ -23,8 +23,8 @@
     "homepage": "https://github.com/StarYunLee"
   },
   "localizedDescriptions": {
-    "zh": "整合 Codex / Grok / Claude / Antigravity 用量的应用。支持多账号、按账号设置主屏幕小组件布局，小组件固定显示剩余额度，以及应用内 Safari 授权后粘贴完成登录。",
-    "en": "Unified Codex, Grok, Claude, and Antigravity usage app with multi-account Home Screen widgets, remaining-quota display, and per-account layouts."
+    "zh": "整合 Codex / Grok / Claude / Antigravity / Cursor 用量的应用。支持多账号、按账号设置主屏幕小组件布局，小组件固定显示剩余额度，以及应用内 Safari 授权后粘贴或轮询完成登录。",
+    "en": "Unified Codex, Grok, Claude, Antigravity, and Cursor usage app with multi-account Home Screen widgets, remaining-quota display, and per-account layouts."
   },
   "iconImage": null
 }
