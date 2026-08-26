@@ -45,6 +45,8 @@ function normalizePlanKey(value: string): string {
   return value
     .trim()
     .replace(/glm\s*coding\s*/i, "")
+    .replace(/^plan[\s_-]*/i, "")
+    .replace(/\+/g, " plus")
     .replace(/[\s_]+/g, "-")
     .toLowerCase();
 }
