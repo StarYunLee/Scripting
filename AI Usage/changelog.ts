@@ -6,6 +6,14 @@ export type ChangelogEntry = {
 
 export const CHANGELOG = [
   {
+    version: "1.4.7",
+    date: "2026-08-26",
+    changes: [
+      "总用量小组件改为圆环布局：中心显示剩余百分比，下方展示平台图标与额度类型。",
+      "Small 显示 2 个圆环，Medium 横排最多 5 个，Large 双行网格最多 8 个。",
+    ],
+  },
+  {
     version: "1.4.6",
     date: "2026-08-26",
     changes: [

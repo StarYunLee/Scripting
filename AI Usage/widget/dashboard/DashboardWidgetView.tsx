@@ -1,6 +1,7 @@
 import {
   HStack,
   Image,
+  ProgressView,
   Spacer,
   Text,
   VStack,
@@ -8,8 +9,7 @@ import {
   ZStack,
 } from "scripting";
 import type { Color, DynamicShapeStyle } from "scripting";
-import { PlanBadge } from "../../components/PlanBadge";
-import { formatPercent } from "../../providers/codex/format";
+import { ProviderLogo } from "../../components/ProviderLogo";
 import { providerMeta, type ProviderId, type UsageCard } from "../../models";
 import { usageTint } from "../../services/usage-colors";
 
@@ -37,7 +37,7 @@ const C: Record<string, Color | DynamicShapeStyle> = {
   bg: "systemBackground",
   primary: "label",
   secondary: "secondaryLabel",
-  track: dynamic("#C7C8CC", "#55565C"),
+  track: dynamic("#D9D9DE", "#3A3A3C"),
   warn: "systemOrange",
 };
 
@@ -80,50 +80,108 @@ function flattenCards(cards: UsageCard[]): DashboardRow[] {
   return rows;
 }
 
-function shortAccountTitle(title: string): string {
-  const trimmed = title.trim();
-  if (trimmed.length <= 14) return trimmed;
-  const at = trimmed.indexOf("@");
-  if (at > 0 && at < trimmed.length - 1) {
-    const local = trimmed.slice(0, at);
-    const domain = trimmed.slice(at + 1);
-    if (local.length > 8) return `${local.slice(0, 6)}…@${domain}`;
-  }
-  return `${trimmed.slice(0, 12)}…`;
+function providerShortName(provider: ProviderId): string {
+  if (provider === "codex") return "ChatGPT";
+  if (provider === "antigravity") return "Agy";
+  return providerMeta(provider).title;
 }
 
-function ProgressBar(props: {
-  value: number | null;
-  usedPercent: number | null;
-  remainingPercent: number | null;
-  width: number;
-  height: number;
+function shortWindowLabel(label: string): string {
+  const value = label.trim().toLowerCase();
+  if (value.includes("周") || value.includes("week")) return "Weekly";
+  if (value.includes("5") && (value.includes("时") || value.includes("hour")))
+    return "Session";
+  if (value.includes("session")) return "Session";
+  if (value.includes("auto")) return "Auto";
+  if (value.includes("月") || value.includes("month")) return "Monthly";
+  if (value.includes("api")) return "API";
+  if (value.includes("grok") && value.includes("bot")) return "Grok Bot";
+  if (value.includes("total") || value.includes("总计")) return "Total";
+  if (label.length <= 10) return label;
+  return `${label.slice(0, 9)}…`;
+}
+
+function ringValue(remainingPercent: number | null): number {
+  if (remainingPercent == null || Number.isNaN(remainingPercent)) return 0;
+  return Math.max(0, Math.min(100, remainingPercent));
+}
+
+function ringCenterText(remainingPercent: number | null): string {
+  if (remainingPercent == null || Number.isNaN(remainingPercent)) return "—";
+  return String(Math.round(remainingPercent));
+}
+
+function UsageRing(props: {
+  row: DashboardRow;
+  size: number;
+  compact?: boolean;
+  showAccount?: boolean;
 }) {
-  const shown =
-    props.value == null ? null : Math.max(0, Math.min(100, props.value));
-  const fill = shown == null ? 0 : (props.width * shown) / 100;
+  const value = ringValue(props.row.remainingPercent);
+  const tint = usageTint(props.row.usedPercent, props.row.remainingPercent);
+  const logo = props.compact ? 10 : 12;
+  const titleFont = props.compact ? 9 : 10;
+  const subFont = props.compact ? 8 : 9;
+
   return (
-    <ZStack alignment="leading" frame={{ width: props.width, height: props.height }}>
-      <HStack
-        frame={{ width: props.width, height: props.height }}
-        background={C.track}
-        clipShape={{ type: "capsule", style: "continuous" }}
-      />
-      {fill > 0 ? (
-        <HStack
-          frame={{ width: Math.max(props.height, fill), height: props.height }}
-          background={usageTint(props.usedPercent, props.remainingPercent)}
-          clipShape={{ type: "capsule", style: "continuous" }}
+    <VStack
+      alignment="center"
+      spacing={props.compact ? 3 : 4}
+      frame={{ maxWidth: "infinity" }}
+    >
+      <ZStack frame={{ width: props.size, height: props.size }}>
+        <ProgressView
+          value={100}
+          total={100}
+          progressViewStyle="circular"
+          tint={C.track}
+          scaleEffect={{ x: 1.08, y: 1.08 }}
         />
-      ) : null}
-    </ZStack>
+        <ProgressView
+          value={value}
+          total={100}
+          progressViewStyle="circular"
+          tint={tint}
+          scaleEffect={{ x: 1.08, y: 1.08 }}
+        />
+        <Text
+          font={props.size * 0.3}
+          fontWeight="bold"
+          monospacedDigit
+          foregroundStyle={C.primary}
+          minimumScaleFactor={0.7}
+        >
+          {ringCenterText(props.row.remainingPercent)}
+        </Text>
+      </ZStack>
+      <HStack alignment="center" spacing={3}>
+        <ProviderLogo provider={props.row.provider} size={logo} />
+        <Text
+          font={titleFont}
+          fontWeight="bold"
+          foregroundStyle={C.primary}
+          lineLimit={1}
+          minScaleFactor={0.7}
+        >
+          {providerShortName(props.row.provider)}
+        </Text>
+      </HStack>
+      <Text
+        font={subFont}
+        foregroundStyle={C.secondary}
+        lineLimit={1}
+        minScaleFactor={0.75}
+      >
+        {shortWindowLabel(props.row.windowLabel)}
+      </Text>
+    </VStack>
   );
 }
 
 function EmptyView({ message }: { message: string }) {
   return (
     <VStack
-      alignment="leading"
+      alignment="center"
       spacing={8}
       padding={16}
       frame={{ maxWidth: "infinity", maxHeight: "infinity" }}
@@ -135,142 +193,46 @@ function EmptyView({ message }: { message: string }) {
         foregroundStyle="secondaryLabel"
       />
       <Spacer />
-      <Text font={15} fontWeight="bold">
+      <Text font={13} fontWeight="bold">
         总用量
       </Text>
-      <Text font={11} foregroundStyle="secondaryLabel" lineLimit={4}>
+      <Text
+        font={10}
+        foregroundStyle="secondaryLabel"
+        lineLimit={4}
+        multilineTextAlignment="center"
+      >
         {message}
       </Text>
     </VStack>
   );
 }
 
-function Header(props: {
-  accountCount: number;
-  rowCount: number;
+function RingRow(props: {
+  rows: DashboardRow[];
+  ringSize: number;
+  columns: number;
   compact?: boolean;
-  hasErrors?: boolean;
-}) {
-  return (
-    <HStack alignment="center">
-      <Text
-        font={props.compact ? 12 : 14}
-        fontWeight="bold"
-        foregroundStyle={C.primary}
-      >
-        总用量
-      </Text>
-      <Spacer minLength={0} />
-      <Text
-        font={props.compact ? 8 : 9}
-        fontWeight="medium"
-        foregroundStyle={C.secondary}
-        lineLimit={1}
-      >
-        {props.accountCount} 账号 · {props.rowCount} 条目
-      </Text>
-      {props.hasErrors ? (
-        <Image
-          systemName="exclamationmark.triangle.fill"
-          foregroundStyle={C.warn}
-          font={props.compact ? 8 : 9}
-        />
-      ) : null}
-    </HStack>
-  );
-}
-
-function RowSmall(props: { row: DashboardRow }) {
-  const meta = providerMeta(props.row.provider);
-  const label = `${meta.title} · ${props.row.windowLabel}`;
-  return (
-    <HStack alignment="center" spacing={6}>
-      <Text
-        font={10}
-        fontWeight="semibold"
-        foregroundStyle={C.primary}
-        lineLimit={1}
-        minScaleFactor={0.7}
-        frame={{ maxWidth: 92 }}
-      >
-        {label}
-      </Text>
-      <Spacer minLength={0} />
-      <Text font={10} fontWeight="bold" monospacedDigit foregroundStyle={C.primary}>
-        {formatPercent(props.row.remainingPercent)}
-      </Text>
-    </HStack>
-  );
-}
-
-function RowMedium(props: {
-  row: DashboardRow;
-  width: number;
   showAccount?: boolean;
 }) {
-  const meta = providerMeta(props.row.provider);
+  const visible = props.rows.slice(0, props.columns);
   return (
-    <VStack alignment="leading" spacing={4}>
-      <HStack alignment="center" spacing={6}>
-        <PlanBadge
-          provider={props.row.provider}
-          label={props.row.planLabel || meta.title}
-          small
+    <HStack alignment="top" spacing={props.compact ? 6 : 8}>
+      {visible.map((row) => (
+        <UsageRing
+          key={row.key}
+          row={row}
+          size={props.ringSize}
+          compact={props.compact}
+          showAccount={props.showAccount}
         />
-        <Text
-          font={10}
-          foregroundStyle={C.secondary}
-          lineLimit={1}
-          minScaleFactor={0.75}
-        >
-          {props.showAccount ? shortAccountTitle(props.row.accountTitle) : props.row.windowLabel}
-        </Text>
-        <Spacer minLength={0} />
-        <Text font={11} fontWeight="bold" monospacedDigit foregroundStyle={C.primary}>
-          剩余 {formatPercent(props.row.remainingPercent)}
-        </Text>
-      </HStack>
-      <ProgressBar
-        value={props.row.remainingPercent}
-        usedPercent={props.row.usedPercent}
-        remainingPercent={props.row.remainingPercent}
-        width={props.width}
-        height={5}
-      />
-    </VStack>
-  );
-}
-
-function RowLarge(props: { row: DashboardRow; width: number }) {
-  const meta = providerMeta(props.row.provider);
-  return (
-    <VStack alignment="leading" spacing={5}>
-      <HStack alignment="center" spacing={8}>
-        <PlanBadge
-          provider={props.row.provider}
-          label={props.row.planLabel || meta.title}
-        />
-        <VStack alignment="leading" spacing={1}>
-          <Text font={12} fontWeight="semibold" lineLimit={1} minScaleFactor={0.8}>
-            {shortAccountTitle(props.row.accountTitle)}
-          </Text>
-          <Text font={10} foregroundStyle={C.secondary} lineLimit={1}>
-            {props.row.windowLabel}
-          </Text>
-        </VStack>
-        <Spacer minLength={0} />
-        <Text font={13} fontWeight="bold" monospacedDigit foregroundStyle={C.primary}>
-          {formatPercent(props.row.remainingPercent)}
-        </Text>
-      </HStack>
-      <ProgressBar
-        value={props.row.remainingPercent}
-        usedPercent={props.row.usedPercent}
-        remainingPercent={props.row.remainingPercent}
-        width={props.width}
-        height={6}
-      />
-    </VStack>
+      ))}
+      {visible.length < props.columns
+        ? Array.from({ length: props.columns - visible.length }).map((_, index) => (
+            <Spacer key={`pad-${index}`} minLength={0} />
+          ))
+        : null}
+    </HStack>
   );
 }
 
@@ -293,31 +255,27 @@ export function DashboardWidgetView(props: Props) {
   }
 
   if (size === "small") {
-    const visible = rows.slice(0, 4);
-    const hidden = rows.length - visible.length;
-    const pad = 12;
+    const columns = Math.min(2, rows.length);
+    const ringSize = Math.max(52, Math.floor((width - 24 - (columns - 1) * 8) / columns));
     return (
       <VStack
-        alignment="leading"
-        spacing={8}
-        padding={pad}
+        alignment="center"
+        spacing={0}
+        padding={12}
         frame={{ maxWidth: "infinity", maxHeight: "infinity" }}
         widgetBackground={C.bg}
       >
-        <Header
-          accountCount={accountCount}
-          rowCount={rows.length}
+        <Spacer minLength={0} />
+        <RingRow
+          rows={rows}
+          ringSize={ringSize}
+          columns={columns}
           compact
-          hasErrors={props.hasErrors}
+          showAccount={accountCount > 1}
         />
-        <VStack alignment="leading" spacing={7}>
-          {visible.map((row) => (
-            <RowSmall key={row.key} row={row} />
-          ))}
-        </VStack>
-        {hidden > 0 ? (
-          <Text font={9} foregroundStyle={C.secondary}>
-            另有 {hidden} 条未显示
+        {rows.length > columns ? (
+          <Text font={8} foregroundStyle={C.secondary} padding={{ top: 6 }}>
+            +{rows.length - columns}
           </Text>
         ) : null}
         <Spacer minLength={0} />
@@ -326,67 +284,85 @@ export function DashboardWidgetView(props: Props) {
   }
 
   if (size === "medium") {
-    const visible = rows.slice(0, 5);
-    const hidden = rows.length - visible.length;
-    const contentWidth = Math.max(220, width - 32);
+    const columns = Math.min(5, rows.length);
+    const ringSize = Math.max(
+      48,
+      Math.floor((width - 24 - (columns - 1) * 10) / columns),
+    );
     return (
       <VStack
-        alignment="leading"
-        spacing={10}
-        padding={16}
+        alignment="center"
+        spacing={0}
+        padding={{ horizontal: 12, vertical: 14 }}
         frame={{ maxWidth: "infinity", maxHeight: "infinity" }}
         widgetBackground={C.bg}
       >
-        <Header
-          accountCount={accountCount}
-          rowCount={rows.length}
-          hasErrors={props.hasErrors}
+        <Spacer minLength={0} />
+        <RingRow
+          rows={rows}
+          ringSize={ringSize}
+          columns={columns}
+          showAccount={accountCount > 1}
         />
-        <VStack alignment="leading" spacing={10}>
-          {visible.map((row) => (
-            <RowMedium
-              key={row.key}
-              row={row}
-              width={contentWidth}
-              showAccount={accountCount > 1}
-            />
-          ))}
-        </VStack>
-        {hidden > 0 ? (
-          <Text font={10} foregroundStyle={C.secondary}>
-            另有 {hidden} 条未显示 · 可添加大尺寸小组件查看更多
+        {rows.length > columns ? (
+          <Text font={9} foregroundStyle={C.secondary} padding={{ top: 8 }}>
+            另有 {rows.length - columns} 条 · 可添加大尺寸查看更多
           </Text>
+        ) : props.hasErrors ? (
+          <Image
+            systemName="exclamationmark.triangle.fill"
+            foregroundStyle={C.warn}
+            font={9}
+            padding={{ top: 6 }}
+          />
         ) : null}
         <Spacer minLength={0} />
       </VStack>
     );
   }
 
-  const visible = rows.slice(0, 8);
-  const hidden = rows.length - visible.length;
-  const contentWidth = Math.max(250, width - 40);
+  const columns = 4;
+  const ringSize = Math.max(
+    56,
+    Math.floor((width - 32 - (columns - 1) * 12) / columns),
+  );
+  const firstRow = rows.slice(0, columns);
+  const secondRow = rows.slice(columns, columns * 2);
+  const hidden = Math.max(0, rows.length - columns * 2);
+
   return (
     <VStack
-      alignment="leading"
-      spacing={12}
-      padding={20}
+      alignment="center"
+      spacing={14}
+      padding={16}
       frame={{ maxWidth: "infinity", maxHeight: "infinity" }}
       widgetBackground={C.bg}
     >
-      <Header
-        accountCount={accountCount}
-        rowCount={rows.length}
-        hasErrors={props.hasErrors}
+      <Spacer minLength={0} />
+      <RingRow
+        rows={firstRow}
+        ringSize={ringSize}
+        columns={columns}
+        showAccount={accountCount > 1}
       />
-      <VStack alignment="leading" spacing={12}>
-        {visible.map((row) => (
-          <RowLarge key={row.key} row={row} width={contentWidth} />
-        ))}
-      </VStack>
+      {secondRow.length > 0 ? (
+        <RingRow
+          rows={secondRow}
+          ringSize={ringSize}
+          columns={columns}
+          showAccount={accountCount > 1}
+        />
+      ) : null}
       {hidden > 0 ? (
-        <Text font={11} foregroundStyle={C.secondary}>
+        <Text font={10} foregroundStyle={C.secondary}>
           另有 {hidden} 条未显示
         </Text>
+      ) : props.hasErrors ? (
+        <Image
+          systemName="exclamationmark.triangle.fill"
+          foregroundStyle={C.warn}
+          font={10}
+        />
       ) : null}
       <Spacer minLength={0} />
     </VStack>
