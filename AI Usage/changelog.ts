@@ -6,6 +6,14 @@ export type ChangelogEntry = {
 
 export const CHANGELOG = [
   {
+    version: "1.9.1",
+    date: "2026-08-27",
+    changes: [
+      "修复 Z.ai Pro+ 套餐名带词缀（如「年付 Pro+」「Pro+ Plan」）时被降级显示为 Pro。",
+      "修复 Claude / Codex 单额度小尺寸小组件不显示窗口名的问题：恢复「5 小时 / 每周 / 每月」标题行，同一账号配多个小组件时能分清显示的是哪个额度。",
+    ],
+  },
+  {
     version: "1.9.0",
     date: "2026-08-27",
     changes: [
