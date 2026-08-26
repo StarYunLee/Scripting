@@ -6,6 +6,14 @@ export type ChangelogEntry = {
 
 export const CHANGELOG = [
   {
+    version: "1.1.2",
+    date: "2026-08-26",
+    changes: [
+      "优化 Antigravity Small 双额度概览：套餐名去掉 Google 前缀，避免长标签被裁切。",
+      "收紧该布局的标题和剩余百分比，使 Claude/GPT 5 小时额度也能完整显示。",
+    ],
+  },
+  {
     version: "1.1.1",
     date: "2026-08-23",
     changes: [

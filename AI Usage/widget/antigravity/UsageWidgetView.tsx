@@ -223,14 +223,26 @@ function badgePalette(label: string): BadgePalette {
     foreground: "#FFFFFF",
   };
 }
+function compactBadgeLabel(label: string): string {
+  return (
+    label
+      .replace(/^Antigravity\s+/i, "")
+      .replace(/^Google\s+/i, "")
+      .trim()
+      .toUpperCase() || "ANTIGRAVITY"
+  );
+}
 function PlanBadge({
   label,
   small = false,
+  compact = false,
 }: {
   label: string;
   small?: boolean;
+  compact?: boolean;
 }) {
   const p = badgePalette(label);
+  const text = compact ? compactBadgeLabel(label) : p.text;
   return (
     <HStack
       spacing={small ? 5 : 6}
@@ -248,7 +260,7 @@ function PlanBadge({
         lineLimit={1}
         minScaleFactor={1}
       >
-        {p.text}
+        {text}
       </Text>
     </HStack>
   );
@@ -317,7 +329,7 @@ function SmallWindow({
         <Text
           fontDesign="default"
           fontWidth="standard"
-          font={12}
+          font={11}
           fontWeight="bold"
           foregroundStyle={C.primary}
         >
@@ -336,11 +348,11 @@ function SmallWindow({
           <Text
             fontDesign="default"
             fontWidth="standard"
-            font={11}
+            font={10}
             fontWeight="bold"
             foregroundStyle={C.primary}
           >
-            {modeLabel()} {shownPercent(window)}
+            {shownPercent(window)}
           </Text>
         </HStack>
       </HStack>
@@ -857,7 +869,7 @@ export function UsageWidgetView({
     secondWindow = model.thirdPartyWeekly;
     firstTitle = "Claude and GPT 5 小时";
     secondTitle = "Claude and GPT 每周";
-    smallFirstTitle = "Claude/GPT 5H";
+    smallFirstTitle = "Claude/GPT5H";
     smallSecondTitle = "Claude/GPT 周";
   } else if (dualQuotaPreset === "weekly_both") {
     firstWindow = model.geminiWeekly;
@@ -902,7 +914,7 @@ export function UsageWidgetView({
           }}
           padding={{ leading: 12, trailing: 12, top: 18 }}
         >
-          <PlanBadge label={model.planLabel} small />
+          <PlanBadge label={model.planLabel} small compact />
           <Spacer minLength={0} />
           <Text
             fontDesign="default"
