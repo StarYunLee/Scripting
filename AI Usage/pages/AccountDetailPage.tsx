@@ -17,6 +17,12 @@ import {
 import { CodexWidgetSettingsView } from "../providers/codex/WidgetSettingsView";
 import { ClaudeWidgetSettingsView } from "../providers/claude/WidgetSettingsView";
 import { AntigravityWidgetSettingsView } from "../providers/antigravity/WidgetSettingsView";
+import { CursorWidgetSettingsView } from "../providers/cursor/WidgetSettingsView";
+import { KimiWidgetSettingsView } from "../providers/kimi/WidgetSettingsView";
+import { CopilotWidgetSettingsView } from "../providers/copilot/WidgetSettingsView";
+import { ZaiWidgetSettingsView } from "../providers/zai/WidgetSettingsView";
+import { MinimaxWidgetSettingsView } from "../providers/minimax/WidgetSettingsView";
+import { GrokWidgetSettingsView } from "../providers/grok/WidgetSettingsView";
 import { providerMeta, type ProviderId } from "../models";
 import { accountTitle } from "../services/hub";
 import { widgetParameter } from "../widget/parameter";
@@ -215,14 +221,38 @@ export function AccountDetailPage(props: {
                 profileId={props.account.id}
                 onChanged={changed}
               />
-            ) : props.provider === "grok" ||
-              props.provider === "cursor" ||
-              props.provider === "kimi" ||
-              props.provider === "copilot" ||
-              props.provider === "zai" ||
-              props.provider === "minimax" ? null : props.provider ===
-              "claude" ? (
+            ) : props.provider === "claude" ? (
               <ClaudeWidgetSettingsView
+                profileId={props.account.id}
+                onChanged={changed}
+              />
+            ) : props.provider === "cursor" ? (
+              <CursorWidgetSettingsView
+                profileId={props.account.id}
+                onChanged={changed}
+              />
+            ) : props.provider === "kimi" ? (
+              <KimiWidgetSettingsView
+                profileId={props.account.id}
+                onChanged={changed}
+              />
+            ) : props.provider === "copilot" ? (
+              <CopilotWidgetSettingsView
+                profileId={props.account.id}
+                onChanged={changed}
+              />
+            ) : props.provider === "zai" ? (
+              <ZaiWidgetSettingsView
+                profileId={props.account.id}
+                onChanged={changed}
+              />
+            ) : props.provider === "minimax" ? (
+              <MinimaxWidgetSettingsView
+                profileId={props.account.id}
+                onChanged={changed}
+              />
+            ) : props.provider === "grok" ? (
+              <GrokWidgetSettingsView
                 profileId={props.account.id}
                 onChanged={changed}
               />
@@ -233,14 +263,7 @@ export function AccountDetailPage(props: {
               />
             )}
 
-            {props.provider === "grok" ||
-            props.provider === "cursor" ||
-            props.provider === "kimi" ||
-            props.provider === "copilot" ||
-            props.provider === "zai" ||
-            props.provider === "minimax" ? null : (
-              <DetailDivider />
-            )}
+            <DetailDivider />
             <Picker
               title="组件预览"
               value={previewFamily}

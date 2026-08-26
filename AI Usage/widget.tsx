@@ -95,7 +95,11 @@ async function run() {
 
   if (loaded.provider === "grok") {
     Widget.present(
-      <GrokUsageWidgetView result={loaded.result} family={family} />,
+      <GrokUsageWidgetView
+        result={loaded.result}
+        family={family}
+        focusWindow={loaded.settings.focusWindow}
+      />,
       { reloadPolicy },
     );
     return;
@@ -117,7 +121,11 @@ async function run() {
 
   if (loaded.provider === "cursor") {
     Widget.present(
-      <CursorUsageWidgetView result={loaded.result} family={family} />,
+      <CursorUsageWidgetView
+        result={loaded.result}
+        family={family}
+        hiddenWindows={loaded.settings.hiddenWindows}
+      />,
       { reloadPolicy },
     );
     return;
@@ -125,7 +133,12 @@ async function run() {
 
   if (loaded.provider === "kimi") {
     Widget.present(
-      <KimiUsageWidgetView result={loaded.result} family={family} />,
+      <KimiUsageWidgetView
+        result={loaded.result}
+        family={family}
+        focusWindow={loaded.settings.focusWindow}
+        widgetStyle={loaded.settings.widgetStyle}
+      />,
       { reloadPolicy },
     );
     return;
@@ -133,7 +146,13 @@ async function run() {
 
   if (loaded.provider === "copilot") {
     Widget.present(
-      <CopilotUsageWidgetView result={loaded.result} family={family} />,
+      <CopilotUsageWidgetView
+        result={loaded.result}
+        family={family}
+        focusWindow={loaded.settings.focusWindow}
+        widgetStyle={loaded.settings.widgetStyle}
+        dualQuotaPreset={loaded.settings.dualQuotaPreset}
+      />,
       { reloadPolicy },
     );
     return;
@@ -141,7 +160,13 @@ async function run() {
 
   if (loaded.provider === "zai") {
     Widget.present(
-      <ZaiUsageWidgetView result={loaded.result} family={family} />,
+      <ZaiUsageWidgetView
+        result={loaded.result}
+        family={family}
+        focusWindow={loaded.settings.focusWindow}
+        widgetStyle={loaded.settings.widgetStyle}
+        dualQuotaPreset={loaded.settings.dualQuotaPreset}
+      />,
       { reloadPolicy },
     );
     return;
@@ -149,7 +174,12 @@ async function run() {
 
   if (loaded.provider === "minimax") {
     Widget.present(
-      <MinimaxUsageWidgetView result={loaded.result} family={family} />,
+      <MinimaxUsageWidgetView
+        result={loaded.result}
+        family={family}
+        focusWindow={loaded.settings.focusWindow}
+        widgetStyle={loaded.settings.widgetStyle}
+      />,
       { reloadPolicy },
     );
     return;
