@@ -42,7 +42,7 @@
 https://raw.githubusercontent.com/StarYunLee/Scripting/main/AI-Usage.scripting
 ```
 
-> Codex Usage、Claude Usage、Grok Usage 不再更新，请改用 AI Usage。旧项目仍可安装，仅作兼容保留。
+> Codex Usage、Claude Usage、Grok Usage 不再更新，请改用 AI Usage。旧项目已移至 [Deprecated/](./Deprecated/)，仍可安装，仅作兼容保留。
 
 ### Surge Metrics
 
@@ -63,9 +63,9 @@ https://raw.githubusercontent.com/StarYunLee/Scripting/main/Surge-Metrics.script
 
 OpenAI Codex 用量小组件，支持 OpenAI OAuth、多账号、账号级显示设置、额度窗口、用量限额重置权益及最近到期时间，以及双额度概览和单额度详情布局。
 
-![Codex Usage 小组件预览](./Codex%20Usage/assets/codex-usage-preview.png)
+![Codex Usage 小组件预览](./Deprecated/Codex%20Usage/assets/codex-usage-preview.png)
 
-- [查看源码与使用说明](./Codex%20Usage/)
+- [查看源码与使用说明](./Deprecated/Codex%20Usage/)
 - [直接安装 Codex-Usage.scripting](https://raw.githubusercontent.com/StarYunLee/Scripting/main/Codex-Usage.scripting)
 
 远程导入地址：
@@ -78,9 +78,9 @@ https://raw.githubusercontent.com/StarYunLee/Scripting/main/Codex-Usage.scriptin
 
 Claude Code 用量小组件，支持 Anthropic OAuth、多账号、账号级显示设置、5 小时/周限/Fable 周限、双额度概览和单额度详情布局，以及可复制的脱敏诊断报告（便于反馈 429 / 空窗）。
 
-![Claude Usage 小组件预览](./Claude%20Usage/assets/claude-usage-preview.png)
+![Claude Usage 小组件预览](./Deprecated/Claude%20Usage/assets/claude-usage-preview.png)
 
-- [查看源码与使用说明](./Claude%20Usage/)
+- [查看源码与使用说明](./Deprecated/Claude%20Usage/)
 - [直接安装 Claude-Usage.scripting](https://raw.githubusercontent.com/StarYunLee/Scripting/main/Claude-Usage.scripting)
 
 远程导入地址：
@@ -93,9 +93,9 @@ https://raw.githubusercontent.com/StarYunLee/Scripting/main/Claude-Usage.scripti
 
 Grok Build 额度小组件，支持 xAI OAuth、多账号、账号级显示设置、统一每周额度、用量限额重置权益，以及 Small、Medium 两种尺寸。
 
-![Grok Usage 小组件预览](./Grok%20Usage/assets/grok-usage-preview.png)
+![Grok Usage 小组件预览](./Deprecated/Grok%20Usage/assets/grok-usage-preview.png)
 
-- [查看源码与使用说明](./Grok%20Usage/)
+- [查看源码与使用说明](./Deprecated/Grok%20Usage/)
 - [直接安装 Grok-Usage.scripting](https://raw.githubusercontent.com/StarYunLee/Scripting/main/Grok-Usage.scripting)
 
 远程导入地址：
