@@ -180,6 +180,10 @@ export function getProfileAccessToken(
   const p = resolveProfile(profileId);
   return p ? getSecretRaw(secretKey(p.id, "access_token")) : null;
 }
+export function getProfileIdToken(profileId?: string | null): string | null {
+  const p = resolveProfile(profileId);
+  return p ? getSecretRaw(secretKey(p.id, "id_token")) : null;
+}
 export function getProfileRefreshToken(
   profileId?: string | null,
 ): string | null {

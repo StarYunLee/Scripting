@@ -6,6 +6,13 @@ export type ChangelogEntry = {
 
 export const CHANGELOG = [
   {
+    version: "1.4.3",
+    date: "2026-08-26",
+    changes: [
+      "修复 Codex / ChatGPT 订阅档位：usage 缺 plan_type 时优先从 id_token 读取 chatgpt_plan_type（对齐官方 Codex），再回退 access_token。",
+    ],
+  },
+  {
     version: "1.4.2",
     date: "2026-08-26",
     changes: [

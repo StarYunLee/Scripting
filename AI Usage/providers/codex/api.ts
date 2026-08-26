@@ -2,6 +2,7 @@ import { fetch } from "scripting";
 import {
   getProfileAccountId,
   getProfileAccessToken,
+  getProfileIdToken,
   resolveProfile,
 } from "./accounts";
 import { refreshOAuthToken } from "./oauth";
@@ -217,8 +218,11 @@ function planLabel(rawPlanType: string | null): string | null {
   );
 }
 
-/** JWT https://api.openai.com/auth.chatgpt_plan_type，usage 缺 plan_type 时回退。 */
-function planTypeFromAccessToken(token: string | null): string | null {
+/**
+ * 从 JWT 读取 chatgpt_plan_type。
+ * 官方 Codex 从 id_token 的 https://api.openai.com/auth 解析；access_token 仅作次级回退。
+ */
+function planTypeFromJwt(token: string | null): string | null {
   if (!token) return null;
   try {
     let raw = token.split(".")[1]?.replace(/-/g, "+").replace(/_/g, "/");
@@ -232,14 +236,25 @@ function planTypeFromAccessToken(token: string | null): string | null {
     const payload = asObject(JSON.parse(json));
     if (!payload) return null;
     const auth = asObject(payload["https://api.openai.com/auth"]);
-    const value =
-      toStringValue(payload.chatgpt_plan_type) ||
+    return (
       toStringValue(auth?.chatgpt_plan_type) ||
-      toStringValue(auth?.plan_type);
-    return value;
+      toStringValue(payload.chatgpt_plan_type) ||
+      toStringValue(auth?.plan_type)
+    );
   } catch {
     return null;
   }
+}
+
+/** usage 缺 plan_type 时：id_token → access_token。 */
+function planTypeFromStoredTokens(
+  profileId: string,
+  accessToken: string | null,
+): string | null {
+  return (
+    planTypeFromJwt(getProfileIdToken(profileId)) ||
+    planTypeFromJwt(accessToken)
+  );
 }
 function parseCreditStatus(
   payload: Record<string, unknown>,
@@ -528,7 +543,8 @@ export async function fetchUsage(options?: {
       };
     }
     const rawPlanType =
-      toStringValue(payload.plan_type) || planTypeFromAccessToken(token);
+      toStringValue(payload.plan_type) ||
+      planTypeFromStoredTokens(profile.id, token);
     const creditStatus = parseCreditStatus(payload);
     const spendControl = parseSpendControl(payload);
     const status = rateLimitStatus(payload);
