@@ -164,6 +164,78 @@ export function privacySubtitle(
   return parts.length ? parts.join(" · ") : null;
 }
 
+export function hasPrivacyDetails(privacy: WidgetPrivacyPrefs): boolean {
+  return privacy.showAccountEmail || privacy.showAccountId;
+}
+
+/** Small 去掉标题后的可见条数。 */
+export function smallVisibleLimit(privacy: WidgetPrivacyPrefs): number {
+  if (hasPrivacyDetails(privacy)) return 5;
+  if (privacy.showPlanBadge) return 5;
+  return 6;
+}
+
+export type MediumRingPlan = {
+  rowCount: 1 | 2;
+  columns: number;
+  ringSize: number;
+  maxVisible: number;
+};
+
+/** Medium 圆环：优先单行，超出则最多两行、每行最多 5 个。 */
+export function planMediumRings(
+  count: number,
+  width: number,
+  height: number,
+  privacy: WidgetPrivacyPrefs,
+): MediumRingPlan {
+  const dense = hasPrivacyDetails(privacy);
+  const padH = 24;
+  const footer = dense ? 12 : 14;
+  const padV = dense ? 8 : 10;
+  const availH = width - padH;
+  const availV = height - padV * 2 - footer;
+  const labelH = dense ? 34 : 26;
+  const gap = dense ? 6 : 8;
+
+  if (count <= 5) {
+    const columns = Math.max(1, count);
+    const ringByWidth = Math.floor((availH - (columns - 1) * gap) / columns);
+    const ringByHeight = Math.max(34, availV - labelH);
+    const ringSize = Math.min(52, ringByWidth, ringByHeight);
+    if (ringSize >= 34) {
+      return { rowCount: 1, columns, ringSize, maxVisible: count };
+    }
+  }
+
+  const maxVisible = Math.min(10, count);
+  const columns = Math.min(5, Math.ceil(maxVisible / 2));
+  const rowGap = 6;
+  const ringByWidth = Math.floor((availH - (columns - 1) * gap) / columns);
+  const ringByHeight = Math.floor((availV - rowGap) / 2 - labelH);
+  const ringSize = Math.max(
+    34,
+    Math.min(dense ? 42 : 46, ringByWidth, ringByHeight),
+  );
+  return { rowCount: 2, columns, ringSize, maxVisible };
+}
+
+/** Large 进度条列表可见条数。 */
+export function largeVisibleLimit(
+  privacy: WidgetPrivacyPrefs,
+  height: number,
+): number {
+  const dense = hasPrivacyDetails(privacy) || privacy.showPlanBadge;
+  const pad = 32;
+  const header = 22;
+  const footer = 14;
+  const rowBlock = dense ? 36 : 30;
+  const available = height - pad - header - footer;
+  const fit = Math.floor(available / rowBlock);
+  const cap = dense ? 8 : 9;
+  return Math.min(cap, Math.max(6, fit));
+}
+
 export function multipleAccounts(rows: DashboardRow[]): boolean {
   return new Set(rows.map((row) => row.accountKey)).size > 1;
 }

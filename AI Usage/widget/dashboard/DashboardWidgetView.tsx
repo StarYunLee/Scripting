@@ -17,12 +17,15 @@ import type { UsageCard } from "../../models";
 import {
   flattenCards,
   groupRowsByAccount,
+  largeVisibleLimit,
+  planMediumRings,
   privacySubtitle,
   providerShortName,
   remainingLabel,
   ringCenterText,
   ringValue,
   shortWindowLabel,
+  smallVisibleLimit,
   widgetDisplaySize,
   widgetLayoutSize,
   type DashboardRow,
@@ -286,16 +289,15 @@ function BarRow(props: {
 }
 
 function RingRow(props: {
-  rows: DashboardRow[];
-  ringSize: number;
+  items: DashboardRow[];
   columns: number;
+  ringSize: number;
   privacy: WidgetPrivacyPrefs;
   compact?: boolean;
 }) {
-  const visible = props.rows.slice(0, props.columns);
   return (
     <HStack alignment="top" spacing={props.compact ? 6 : 8}>
-      {visible.map((row) => (
+      {props.items.map((row) => (
         <UsageRing
           key={row.key}
           row={row}
@@ -304,10 +306,10 @@ function RingRow(props: {
           compact={props.compact}
         />
       ))}
-      {visible.length < props.columns
-        ? Array.from({ length: props.columns - visible.length }).map((_, index) => (
-            <Spacer key={`pad-${index}`} minLength={0} />
-          ))
+      {props.items.length < props.columns
+        ? Array.from({ length: props.columns - props.items.length }).map(
+            (_, index) => <Spacer key={`pad-${index}`} minLength={0} />,
+          )
         : null}
     </HStack>
   );
@@ -318,34 +320,33 @@ function SmallTextLayout(props: {
   hasErrors?: boolean;
   privacy: WidgetPrivacyPrefs;
 }) {
-  const visible = props.rows.slice(0, 5);
+  const limit = smallVisibleLimit(props.privacy);
+  const visible = props.rows.slice(0, limit);
   const hidden = props.rows.length - visible.length;
   return (
     <VStack
       alignment="leading"
-      spacing={8}
+      spacing={7}
       padding={12}
       frame={{ maxWidth: "infinity", maxHeight: "infinity" }}
       widgetBackground={C.bg}
     >
-      <HStack alignment="center">
-        <Text font={12} fontWeight="bold">
-          总用量
-        </Text>
-        <Spacer minLength={0} />
-        <ErrorHint show={props.hasErrors} />
-      </HStack>
-      <VStack alignment="leading" spacing={7}>
+      <VStack alignment="leading" spacing={6}>
         {visible.map((row) => (
           <TextRow key={row.key} row={row} privacy={props.privacy} />
         ))}
       </VStack>
-      {hidden > 0 ? (
-        <Text font={8} foregroundStyle={C.secondary}>
-          +{hidden} 条
-        </Text>
-      ) : null}
-      <Spacer minLength={0} />
+      <HStack alignment="center">
+        {hidden > 0 ? (
+          <Text font={8} foregroundStyle={C.secondary}>
+            +{hidden} 条
+          </Text>
+        ) : (
+          <Spacer minLength={0} />
+        )}
+        <Spacer minLength={0} />
+        <ErrorHint show={props.hasErrors} />
+      </HStack>
     </VStack>
   );
 }
@@ -353,36 +354,56 @@ function SmallTextLayout(props: {
 function MediumRingLayout(props: {
   rows: DashboardRow[];
   width: number;
+  height: number;
   hasErrors?: boolean;
   privacy: WidgetPrivacyPrefs;
 }) {
-  const columns = Math.min(5, props.rows.length);
-  const ringSize = Math.max(
-    48,
-    Math.floor((props.width - 24 - (columns - 1) * 10) / columns),
+  const plan = planMediumRings(
+    props.rows.length,
+    props.width,
+    props.height,
+    props.privacy,
   );
-  const hidden = props.rows.length - columns;
+  const visible = props.rows.slice(0, plan.maxVisible);
+  const hidden = props.rows.length - visible.length;
+  const firstRow = visible.slice(0, plan.columns);
+  const secondRow =
+    plan.rowCount === 2 ? visible.slice(plan.columns, plan.maxVisible) : [];
+
   return (
     <VStack
       alignment="center"
-      spacing={0}
-      padding={{ horizontal: 12, vertical: 14 }}
+      spacing={plan.rowCount === 2 ? 6 : 0}
+      padding={{
+        horizontal: 12,
+        vertical: props.privacy.showAccountEmail || props.privacy.showAccountId ? 8 : 10,
+      }}
       frame={{ maxWidth: "infinity", maxHeight: "infinity" }}
       widgetBackground={C.bg}
     >
       <Spacer minLength={0} />
       <RingRow
-        rows={props.rows}
-        ringSize={ringSize}
-        columns={columns}
+        items={firstRow}
+        columns={plan.columns}
+        ringSize={plan.ringSize}
         privacy={props.privacy}
+        compact={plan.rowCount === 2}
       />
+      {secondRow.length > 0 ? (
+        <RingRow
+          items={secondRow}
+          columns={plan.columns}
+          ringSize={plan.ringSize}
+          privacy={props.privacy}
+          compact
+        />
+      ) : null}
       {hidden > 0 ? (
-        <Text font={9} foregroundStyle={C.secondary} padding={{ top: 8 }}>
+        <Text font={9} foregroundStyle={C.secondary} padding={{ top: 4 }}>
           另有 {hidden} 条 · 可换大尺寸查看详情
         </Text>
       ) : (
-        <HStack padding={{ top: 6 }}>
+        <HStack padding={{ top: 4 }}>
           <ErrorHint show={props.hasErrors} />
         </HStack>
       )}
@@ -394,16 +415,22 @@ function MediumRingLayout(props: {
 function LargeBarLayout(props: {
   rows: DashboardRow[];
   width: number;
+  height: number;
   hasErrors?: boolean;
   privacy: WidgetPrivacyPrefs;
 }) {
-  const visible = props.rows.slice(0, 6);
+  const limit = largeVisibleLimit(props.privacy, props.height);
+  const visible = props.rows.slice(0, limit);
   const hidden = props.rows.length - visible.length;
   const contentWidth = Math.max(220, props.width - 32);
+  const dense =
+    props.privacy.showAccountEmail ||
+    props.privacy.showAccountId ||
+    props.privacy.showPlanBadge;
   return (
     <VStack
       alignment="leading"
-      spacing={10}
+      spacing={dense ? 8 : 9}
       padding={16}
       frame={{ maxWidth: "infinity", maxHeight: "infinity" }}
       widgetBackground={C.bg}
@@ -418,7 +445,7 @@ function LargeBarLayout(props: {
         </Text>
         <ErrorHint show={props.hasErrors} />
       </HStack>
-      <VStack alignment="leading" spacing={10}>
+      <VStack alignment="leading" spacing={dense ? 8 : 9}>
         {visible.map((row) => (
           <BarRow
             key={row.key}
@@ -565,6 +592,7 @@ export function DashboardWidgetView(props: Props) {
       <MediumRingLayout
         rows={rows}
         width={display.width}
+        height={display.height}
         hasErrors={props.hasErrors}
         privacy={privacy}
       />
@@ -576,6 +604,7 @@ export function DashboardWidgetView(props: Props) {
       <LargeBarLayout
         rows={rows}
         width={display.width}
+        height={display.height}
         hasErrors={props.hasErrors}
         privacy={privacy}
       />

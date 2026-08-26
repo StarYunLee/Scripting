@@ -6,6 +6,13 @@ export type ChangelogEntry = {
 
 export const CHANGELOG = [
   {
+    version: "1.4.9",
+    date: "2026-08-26",
+    changes: [
+      "总用量 Small 去掉标题，隐私全开时展示 5 条；Medium 自适应最多两行圆环（最多 10 个）；Large 按高度最多展示 8–9 条进度条。",
+    ],
+  },
+  {
     version: "1.4.8",
     date: "2026-08-26",
     changes: [
