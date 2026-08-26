@@ -26,8 +26,6 @@ export type KimiBadgePalette = {
   text: string;
   background: DynamicShapeStyle;
   foreground: Color;
-  /** 是否在徽章上保留 Logo 原色（高档位更醒目） */
-  logoTint?: Color;
 };
 
 function normalizeTier(label: string): string {

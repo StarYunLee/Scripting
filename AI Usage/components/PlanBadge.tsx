@@ -40,8 +40,6 @@ type BadgePalette = {
   text: string;
   background: DynamicShapeStyle;
   foreground: Color;
-  /** 是否在徽章上保留 Logo 原色（高档位更醒目） */
-  logoTint?: Color;
 };
 
 function palette(provider: ProviderId, label: string): BadgePalette {
@@ -122,7 +120,6 @@ function palette(provider: ProviderId, label: string): BadgePalette {
       text: p.text,
       background: p.background,
       foreground: p.foreground,
-      logoTint: p.logoTint,
     };
   }
 
@@ -308,7 +305,7 @@ export function PlanBadge(props: {
       <ProviderLogo
         provider={providerId}
         size={props.small ? 10 : 11}
-        tint={p.logoTint ?? (providerId === "antigravity" ? undefined : p.foreground)}
+        tint={providerId === "antigravity" ? undefined : p.foreground}
       />
       {planText ? (
         <Text

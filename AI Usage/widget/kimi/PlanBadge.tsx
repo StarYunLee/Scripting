@@ -21,7 +21,7 @@ export function PlanBadge({
       <ProviderLogo
         provider="kimi"
         size={small ? 9 : 11}
-        tint={p.logoTint ?? p.foreground}
+        tint={p.foreground}
       />
       {showTier ? (
         <Text
