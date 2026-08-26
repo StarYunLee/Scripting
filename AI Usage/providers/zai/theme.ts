@@ -113,7 +113,11 @@ export const ZAI_WIDGET = {
   fiveHourTitle: "5 小时额度",
   weeklyTitle: "每周额度",
   monthlyTitle: "每月额度",
+  webSearchTitle: "Web Search 额度",
   shortFiveHour: "5h",
   shortWeekly: "Weekly",
   shortMonthly: "Monthly",
+  dualFiveHourWeekly: "5 小时 + 每周",
+  dualFiveHourMonthly: "5 小时 + 每月",
+  dualWeeklyMonthly: "每周 + 每月",
 };
