@@ -25,7 +25,10 @@ import { launchProviderAuthorization } from "../services/auth-flow";
 import { applyDashboardPrefs } from "../services/dashboard-prefs";
 import { refreshAccounts } from "../services/refresh";
 import { requestWidgetReload } from "../services/widgets";
-import { type BackgroundThemeId } from "../services/settings";
+import {
+  getAppDisplaySettings,
+  type BackgroundThemeId,
+} from "../services/settings";
 
 function errorText(error: unknown): string {
   if (error instanceof Error && error.message) return error.message;
@@ -109,10 +112,17 @@ export function StatusPage(props: {
   useEffect(() => {
     const authorized = listAllAuthorizedCards();
     if (!authorized.length || props.demoMode) return;
+    // 启动刷新尊重用户设置的刷新间隔：缓存未超期的账号不发请求。
+    // provider 内部的 MIN_LIVE_INTERVAL_MS 是防连点下限，这层闸门在它之上。
+    const reloadMs = getAppDisplaySettings().reloadMinutes * 60_000;
     let cancelled = false;
     (async () => {
       for (const card of authorized) {
         if (cancelled) return;
+        if (card.fetchedAt) {
+          const age = Date.now() - new Date(card.fetchedAt).getTime();
+          if (Number.isFinite(age) && age < reloadMs) continue;
+        }
         try {
           const next = await refreshCard(card.provider, card.accountId, false);
           if (!cancelled) {
