@@ -6,6 +6,13 @@ export type ChangelogEntry = {
 
 export const CHANGELOG = [
   {
+    version: "1.8.3",
+    date: "2026-08-26",
+    changes: [
+      "修复设置页无法打开：v1.8.2 的 changelog 数据多了一个闭合括号导致语法错误，设置页与更新日志页构建失败。",
+    ],
+  },
+  {
     version: "1.8.2",
     date: "2026-08-26",
     changes: [
@@ -32,7 +39,6 @@ export const CHANGELOG = [
       "演示模式补齐各平台订阅档位示例（新增 18 个演示账号）。",
       "修复 Z.ai Pro+ 套餐徽章落入默认配色的问题；Antigravity 小组件徽章紧凑模式去除 Google 等前缀（移植上游 v1.1.2）。",
     ],
-  },
   },
   {
     version: "1.8.0",
