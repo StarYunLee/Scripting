@@ -16,6 +16,7 @@ export const CHANGELOG = [
       "设置页新增总用量小组件预览（Small / Medium / Large）。",
       "修复 Cursor Ultra 等套餐徽章不显示：GetPlanInfo 无结果时回退 Stripe profile 的 membershipType，并兼容 ultra_yearly 等变体写法。",
       "GitHub Copilot 图标修正为 GitHub Copilot 官方标志（原误用 Microsoft Copilot 素材）。",
+      "修复 GitHub Copilot 授权不显示设备码的问题：授权弹窗现在展示设备码并支持点击复制。",
     ],
   },
   {
