@@ -11,7 +11,7 @@ const linear = (light: Color[], dark: Color[] = light): DynamicShapeStyle => ({
   light: {
     gradient: light.map((color, index) => ({
       color,
-      location: index / (light.length - 1),
+      location: light.length > 1 ? index / (light.length - 1) : 0,
     })),
     startPoint: "leading" as const,
     endPoint: "trailing" as const,
@@ -19,7 +19,7 @@ const linear = (light: Color[], dark: Color[] = light): DynamicShapeStyle => ({
   dark: {
     gradient: dark.map((color, index) => ({
       color,
-      location: index / (dark.length - 1),
+      location: dark.length > 1 ? index / (dark.length - 1) : 0,
     })),
     startPoint: "leading" as const,
     endPoint: "trailing" as const,
@@ -40,6 +40,8 @@ type BadgePalette = {
   text: string;
   background: DynamicShapeStyle;
   foreground: Color;
+  /** 是否在徽章上保留 Logo 原色（高档位更醒目） */
+  logoTint?: Color;
 };
 
 function palette(provider: ProviderId, label: string): BadgePalette {
@@ -120,6 +122,7 @@ function palette(provider: ProviderId, label: string): BadgePalette {
       text: p.text,
       background: p.background,
       foreground: p.foreground,
+      logoTint: p.logoTint,
     };
   }
 
@@ -305,7 +308,7 @@ export function PlanBadge(props: {
       <ProviderLogo
         provider={providerId}
         size={props.small ? 10 : 11}
-        tint={providerId === "antigravity" ? undefined : p.foreground}
+        tint={p.logoTint ?? (providerId === "antigravity" ? undefined : p.foreground)}
       />
       {planText ? (
         <Text
@@ -313,9 +316,10 @@ export function PlanBadge(props: {
           fontWidth="standard"
           font={props.small ? 9 : 10}
           fontWeight="bold"
+          kerning={0.5}
           foregroundStyle={p.foreground}
           lineLimit={1}
-          minScaleFactor={0.65}
+          minScaleFactor={0.8}
         >
           {planText}
         </Text>

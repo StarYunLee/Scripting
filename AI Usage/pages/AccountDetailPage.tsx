@@ -18,6 +18,7 @@ import { CodexWidgetSettingsView } from "../providers/codex/WidgetSettingsView";
 import { ClaudeWidgetSettingsView } from "../providers/claude/WidgetSettingsView";
 import { AntigravityWidgetSettingsView } from "../providers/antigravity/WidgetSettingsView";
 import { providerMeta, type ProviderId } from "../models";
+import { accountTitle } from "../services/hub";
 import { widgetParameter } from "../widget/parameter";
 import { PageBackground } from "../components/PageBackground";
 import type { BackgroundThemeId } from "../services/settings";
@@ -106,7 +107,7 @@ export function AccountDetailPage(props: {
     "choose" | "systemSmall" | "systemMedium"
   >("choose");
   const meta = providerMeta(props.provider);
-  const title = props.account.email || props.account.name;
+  const title = accountTitle(props.account);
 
   function changed() {
     requestWidgetReload();
@@ -153,7 +154,7 @@ export function AccountDetailPage(props: {
     >
       <Section
         listRowBackground={detailRowBackground}
-        header={<Text foregroundStyle="secondaryLabel">账号信息</Text>}
+        header={<Text font="footnote" foregroundStyle="secondaryLabel">账号信息</Text>}
         footer={
           props.demo ? (
             <DetailFooter>
@@ -200,7 +201,7 @@ export function AccountDetailPage(props: {
       {meta.capabilities.widget ? (
         <Section
           listRowBackground={detailRowBackground}
-          header={<Text foregroundStyle="secondaryLabel">小组件设置</Text>}
+          header={<Text font="footnote" foregroundStyle="secondaryLabel">小组件设置</Text>}
           footer={
             <DetailFooter>
               长按主屏幕上的 AI Usage 小组件 →

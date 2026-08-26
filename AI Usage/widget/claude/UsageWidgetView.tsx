@@ -725,7 +725,7 @@ function SingleWindowView({
           clipShape={{ type: "capsule", style: "continuous" }}
         >
           <Text font={12} fontWeight="semibold" foregroundStyle={C.bg}>
-            剩余 {formatPercent(focus?.remainingPercent)}
+            已用 {formatPercent(focus?.usedPercent)}
           </Text>
         </HStack>
       </HStack>

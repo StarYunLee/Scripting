@@ -17,29 +17,11 @@ import {
   readRunRecords,
   type RunRecord,
 } from "../services/logger";
-import type { ProviderId } from "../models";
+import { providerMeta, type ProviderId } from "../models";
 import type { BackgroundThemeId } from "../services/settings";
 
 const providerName = (provider?: ProviderId) =>
-  provider === "codex"
-    ? "Codex"
-    : provider === "grok"
-      ? "Grok"
-      : provider === "claude"
-        ? "Claude"
-        : provider === "antigravity"
-          ? "Antigravity"
-          : provider === "cursor"
-            ? "Cursor"
-            : provider === "kimi"
-              ? "Kimi Code"
-            : provider === "copilot"
-              ? "Copilot"
-              : provider === "zai"
-                ? "Z.ai"
-                : provider === "minimax"
-                  ? "MiniMax"
-                  : "系统";
+  provider ? providerMeta(provider).title : "系统";
 
 function recordTime(value: string): string {
   const date = new Date(value);
@@ -121,7 +103,7 @@ function RecordContent({ item }: { item: RunRecord }) {
       contentShape="rect"
     >
       <Text
-        font={12}
+        font="caption"
         foregroundStyle="secondaryLabel"
         frame={{ width: 36, alignment: "leading" }}
       >
@@ -143,12 +125,12 @@ function RecordContent({ item }: { item: RunRecord }) {
         spacing={2}
         frame={{ maxWidth: "infinity", alignment: "leading" }}
       >
-        <Text font={14} fontWeight="semibold" lineLimit={1}>
+        <Text font="subheadline" fontWeight="semibold" lineLimit={1}>
           {providerName(item.provider)}
           {item.accountLabel ? ` · ${item.accountLabel}` : ""}
         </Text>
         <Text
-          font={13}
+          font="footnote"
           foregroundStyle={statusColor(item.status)}
           lineLimit={2}
         >
@@ -272,7 +254,7 @@ export function LogPage(props: { backgroundTheme: BackgroundThemeId }) {
         Object.entries(grouped).map(([date, list]) => (
           <Section
             key={date}
-            header={<Text foregroundStyle="secondaryLabel">{date}</Text>}
+            header={<Text font="footnote" foregroundStyle="secondaryLabel">{date}</Text>}
             listRowBackground={logRowBackground}
           >
             <RecordGroup>

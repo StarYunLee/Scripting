@@ -1,6 +1,6 @@
 export function formatPercent(value: number | null | undefined): string {
   if (value == null || Number.isNaN(value)) return "—";
-  const rounded = Math.round(value);
+  const rounded = Math.round(Math.max(0, Math.min(100, value)));
   return `${rounded}%`;
 }
 

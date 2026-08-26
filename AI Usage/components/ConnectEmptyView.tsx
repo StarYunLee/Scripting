@@ -57,35 +57,37 @@ export function ConnectEmptyView(props: {
     >
       <Spacer />
       <VStack
-        spacing={16}
+        spacing={24}
         padding={{ horizontal: 12, vertical: 24 }}
         frame={{ maxWidth: "infinity" }}
       >
-        <Text font={28} fontWeight="bold" multilineTextAlignment="center">
-          连接 {meta.title}
-        </Text>
-        <Text
-          font={15}
-          foregroundStyle="secondaryLabel"
-          multilineTextAlignment="center"
-          lineLimit={2}
-          minScaleFactor={0.9}
-          frame={{ minHeight: 44, maxWidth: "infinity" }}
-        >
-          {meta.subtitle}
-        </Text>
+        <VStack spacing={8} frame={{ maxWidth: "infinity" }}>
+          <Text font="title" fontWeight="bold" multilineTextAlignment="center">
+            连接 {meta.title}
+          </Text>
+          <Text
+            font="subheadline"
+            foregroundStyle="secondaryLabel"
+            multilineTextAlignment="center"
+            lineLimit={2}
+            minScaleFactor={0.9}
+            frame={{ minHeight: 44, maxWidth: "infinity" }}
+          >
+            {meta.subtitle}
+          </Text>
+        </VStack>
         <Button
           action={props.onConnect}
           controlSize="large"
           buttonStyle="glassProminent"
           buttonBorderShape="capsule"
-          tint={meta.accent === "#111111" ? "label" : meta.accent}
+          tint={meta.accentIsDark ? "label" : meta.accent}
         >
           <Text
             font={17}
             fontWeight="semibold"
             multilineTextAlignment="center"
-            frame={{ width: 300, height: 28 }}
+            frame={{ maxWidth: 300, height: 28 }}
           >
             {meta.connectTitle}
           </Text>

@@ -238,7 +238,7 @@ function PlanBadge({
       background={p.background}
       clipShape={{ type: "capsule", style: "continuous" }}
     >
-      <ProviderLogo provider="antigravity" size={small ? 9 : 11} />
+      <ProviderLogo provider="antigravity" size={small ? 9 : 11} tint={p.foreground} />
       <Text
         fontDesign="default"
         fontWidth="standard"
@@ -732,7 +732,7 @@ function SingleWindowView({
           clipShape={{ type: "capsule", style: "continuous" }}
         >
           <Text font={12} fontWeight="semibold" foregroundStyle={C.bg}>
-            剩余 {formatPercent(focus?.remainingPercent)}
+            已用 {formatPercent(focus?.usedPercent)}
           </Text>
         </HStack>
       </HStack>

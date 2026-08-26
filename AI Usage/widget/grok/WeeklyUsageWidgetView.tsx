@@ -9,7 +9,7 @@ import {
   ZStack,
 } from "scripting";
 import type { Color, DynamicShapeStyle } from "scripting";
-import { CLAUDE_WIDGET } from "../../copy/labels";
+import { GROK_WIDGET } from "../../copy/labels";
 import { usageTint } from "../../services/usage-colors";
 import {
   formatPercent,
@@ -81,7 +81,7 @@ function modelFor(result: UsageResult): Model {
     fetched: snapshot ? formatResetDate(snapshot.fetchedAt) : "—",
     planLabel: snapshot?.planLabel || snapshot?.planType || "—",
     resetLabel:
-      resets.available == null ? "重置 —" : `重置 ${resets.available} 次`,
+      resets.available == null ? "重置—" : `重置${resets.available}次`,
     resetExpiration: formatResetDate(resets.nearestExpiration),
     resetExpirationAt: resets.nearestExpiration,
     live: result.ok,
@@ -261,7 +261,7 @@ function MetaColumn({
   );
 }
 function focusTitle(small = false): string {
-  return small ? CLAUDE_WIDGET.shortWeekly : CLAUDE_WIDGET.weeklyQuota;
+  return small ? GROK_WIDGET.shortWeekly : GROK_WIDGET.weeklyQuota;
 }
 
 export function WeeklyUsageWidgetView({ result, family }: Props) {

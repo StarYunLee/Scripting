@@ -36,6 +36,16 @@ export function AuthSheetView(props: {
   onCancel: () => void;
 }) {
   const meta = providerMeta(props.authSheet.provider);
+  const status = props.authSheet.status;
+  const statusFailed = status.includes("失败");
+  const statusInProgress = status.includes("正在验证");
+  // cursor / kimi / copilot 免粘贴，其余平台需粘贴回调地址、授权码或 API Key
+  const pasteFree =
+    props.authSheet.provider === "cursor" ||
+    props.authSheet.provider === "kimi" ||
+    props.authSheet.provider === "copilot";
+  const submitDisabled =
+    !pasteFree && props.authSheet.authorizationInput.trim().length === 0;
   return (
     <NavigationStack>
       <List
@@ -68,16 +78,27 @@ export function AuthSheetView(props: {
             frame={{ maxWidth: "infinity" }}
             listRowInsets={{ top: 0, bottom: 0, leading: 16, trailing: 16 }}
           >
-            {props.authSheet.status ? (
+            {status ? (
               <HStack
                 padding={{ vertical: true }}
                 frame={{ minHeight: 44, maxWidth: "infinity" }}
               >
-                <Text>{props.authSheet.status}</Text>
+                <Text
+                  font="subheadline"
+                  foregroundStyle={
+                    statusFailed
+                      ? "systemRed"
+                      : statusInProgress
+                        ? "secondaryLabel"
+                        : undefined
+                  }
+                >
+                  {status}
+                </Text>
                 <Spacer />
               </HStack>
             ) : null}
-            {props.authSheet.status ? <Divider /> : null}
+            {status ? <Divider /> : null}
             <TextField
               title="授权内容"
               value={props.authSheet.authorizationInput}
@@ -90,6 +111,7 @@ export function AuthSheetView(props: {
             <Button
               buttonStyle="plain"
               frame={{ maxWidth: "infinity" }}
+              disabled={submitDisabled}
               action={props.onSubmit}
             >
               <HStack
@@ -97,7 +119,9 @@ export function AuthSheetView(props: {
                 frame={{ minHeight: 44, maxWidth: "infinity" }}
                 contentShape="rect"
               >
-                <Text foregroundStyle="accentColor">提交并完成授权</Text>
+                <Text foregroundStyle="accentColor" fontWeight="semibold">
+                  提交并完成授权
+                </Text>
                 <Spacer />
               </HStack>
             </Button>

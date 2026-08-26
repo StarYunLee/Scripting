@@ -40,9 +40,11 @@ function formatReleaseDate(value: string): string {
 function VersionHeader(props: { version: string; date: string }) {
   return (
     <HStack frame={{ maxWidth: "infinity" }}>
-      <Text foregroundStyle="secondaryLabel">v{props.version}</Text>
+      <Text font="headline" foregroundStyle="secondaryLabel">
+        v{props.version}
+      </Text>
       <Spacer />
-      <Text foregroundStyle="secondaryLabel">
+      <Text font="footnote" foregroundStyle="secondaryLabel">
         {formatReleaseDate(props.date)}
       </Text>
     </HStack>
@@ -73,7 +75,7 @@ export function ChangelogPage(props: { backgroundTheme: BackgroundThemeId }) {
         >
           <ChangelogGroup>
             {entry.changes.map((change) => (
-              <Text key={change} font={14} lineSpacing={3}>
+              <Text key={change} font="subheadline" lineSpacing={3}>
                 • {change}
               </Text>
             ))}

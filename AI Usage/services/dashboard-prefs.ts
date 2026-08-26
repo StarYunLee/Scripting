@@ -82,7 +82,7 @@ export function getDashboardPrefs(
   try {
     return sanitize(Storage.get<DashboardPrefs>(STORAGE_KEYS[scope]));
   } catch {
-    return { ...EMPTY };
+    return { ...EMPTY, privacy: { ...DEFAULT_PRIVACY } };
   }
 }
 
@@ -178,7 +178,9 @@ export function setWindowVisibleOnDashboard(
 export function resetDashboardPrefs(
   scope: DashboardPrefsScope = "app",
 ): DashboardPrefs {
-  return setDashboardPrefs({ ...EMPTY }, scope);
+  // 重置显示开关时保留已有的隐私设置，避免小组件隐私开关被恢复默认。
+  const privacy = { ...getDashboardPrefs(scope).privacy };
+  return setDashboardPrefs({ ...EMPTY, privacy }, scope);
 }
 
 /** 按总览偏好过滤账号与额度条目；默认全部可见。 */

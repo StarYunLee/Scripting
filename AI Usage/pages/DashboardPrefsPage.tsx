@@ -95,7 +95,6 @@ export function DashboardPrefsPage(props: {
             listRowInsets={{ top: 0, bottom: 0, leading: 16, trailing: 16 }}
           >
             <Button
-              title="恢复全部显示"
               buttonStyle="plain"
               frame={{ maxWidth: "infinity" }}
               action={() => {
@@ -118,7 +117,7 @@ export function DashboardPrefsPage(props: {
         {isWidget ? (
           <Section
             listRowBackground={rowBackground}
-            header={<Text foregroundStyle="secondaryLabel">隐私与显示</Text>}
+            header={<Text font="footnote" foregroundStyle="secondaryLabel">隐私与显示</Text>}
             footer={
               <Text font="caption" foregroundStyle="secondaryLabel">
                 {DASHBOARD_PREFS_WIDGET_PRIVACY_FOOTER}
@@ -213,13 +212,15 @@ function AccountPrefSection(props: {
   onWindowChanged: (windowId: string, visible: boolean) => void;
 }) {
   const meta = providerMeta(props.card.provider);
-  const plan = props.card.planLabel || meta.title;
+  const header = props.card.planLabel
+    ? `${meta.title} · ${props.card.planLabel}`
+    : meta.title;
   return (
     <Section
       listRowBackground={rowBackground}
       header={
-        <Text foregroundStyle="secondaryLabel">
-          {meta.title} · {plan}
+        <Text font="footnote" foregroundStyle="secondaryLabel">
+          {header}
         </Text>
       }
     >

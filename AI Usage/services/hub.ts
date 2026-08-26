@@ -30,7 +30,11 @@ export function findPendingAuth(): {
   return null;
 }
 
-function accountTitle(account: AccountLike): string {
+export function accountTitle(account: {
+  id: string;
+  name: string;
+  email: string | null;
+}): string {
   if (account.email && account.email.includes("@")) return account.email;
   const name = String(account.name || "").trim();
   if (name && name !== account.id && !/^acct_/i.test(name)) return name;

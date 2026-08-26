@@ -56,7 +56,8 @@ const C: Record<string, Color | DynamicShapeStyle> = {
   bg: "systemBackground",
   primary: "label",
   secondary: "secondaryLabel",
-  track: dynamic("#D9D9DE", "#3A3A3C"),
+  track: dynamic("#C7C8CC", "#55565C"),
+  trackBorder: dynamic("rgba(0,0,0,0.07)", "rgba(255,255,255,0.10)"),
   warn: "systemOrange",
 };
 
@@ -75,6 +76,7 @@ function ProgressBar(props: {
       <HStack
         frame={{ width: props.width, height: props.height }}
         background={C.track}
+        border={{ style: C.trackBorder, width: 0.5 }}
         clipShape={{ type: "capsule", style: "continuous" }}
       />
       {fill > 0 ? (
@@ -202,7 +204,7 @@ function UsageRing(props: {
           fontWeight="bold"
           monospacedDigit
           foregroundStyle={C.primary}
-          minimumScaleFactor={0.7}
+          minScaleFactor={0.7}
         >
           {ringCenterText(props.row.remainingPercent)}
         </Text>
@@ -408,15 +410,14 @@ function MediumRingLayout(props: {
           compact
         />
       ) : null}
-      {hidden > 0 ? (
-        <Text font={9} foregroundStyle={C.secondary} padding={{ top: 4 }}>
-          {widgetOverflowMedium(hidden)}
-        </Text>
-      ) : (
-        <HStack padding={{ top: 4 }}>
-          <ErrorHint show={props.hasErrors} />
-        </HStack>
-      )}
+      <HStack alignment="center" spacing={4} padding={{ top: 4 }}>
+        {hidden > 0 ? (
+          <Text font={9} foregroundStyle={C.secondary}>
+            {widgetOverflowMedium(hidden)}
+          </Text>
+        ) : null}
+        <ErrorHint show={props.hasErrors} />
+      </HStack>
       <Spacer minLength={0} />
     </VStack>
   );
