@@ -12,6 +12,7 @@ import {
   Text,
   Toggle,
   VStack,
+  Widget,
   useState,
 } from "scripting";
 import { PROVIDERS, type ProviderId } from "../models";
@@ -116,10 +117,40 @@ export function SettingsPage(props: {
   const [selectedDestination, setSelectedDestination] =
     useState<SelectedDestination | null>(null);
   const [busy, setBusy] = useState(false);
+  const [dashboardPreviewFamily, setDashboardPreviewFamily] = useState<
+    "choose" | "systemSmall" | "systemMedium" | "systemLarge"
+  >("choose");
   const settings = getAppDisplaySettings();
 
   function refresh() {
     setTick((value) => value + 1);
+  }
+
+  async function previewDashboardWidget(
+    family: "systemSmall" | "systemMedium" | "systemLarge",
+  ): Promise<void> {
+    try {
+      await Widget.preview({
+        family,
+        parameters: {
+          options: {
+            [WIDGET_DASHBOARD_PARAMETER]: JSON.stringify(
+              WIDGET_DASHBOARD_PARAMETER,
+            ),
+          },
+          default: WIDGET_DASHBOARD_PARAMETER,
+        },
+      });
+    } catch (error) {
+      await Dialog.alert({
+        title: "无法预览小组件",
+        message:
+          error instanceof Error && error.message
+            ? error.message
+            : "请稍后重试，或通过 Scripting 调试页面预览。",
+        buttonLabel: "关闭",
+      });
+    }
   }
 
   async function reloadHomeScreenWidgets() {
@@ -494,6 +525,32 @@ export function SettingsPage(props: {
                 />
               </HStack>
             </Button>
+            <CardDivider />
+            <Picker
+              title="预览总览小组件"
+              value={dashboardPreviewFamily}
+              onChanged={(value: string) => {
+                if (
+                  value !== "systemSmall" &&
+                  value !== "systemMedium" &&
+                  value !== "systemLarge"
+                ) {
+                  return;
+                }
+                setDashboardPreviewFamily(value);
+                void previewDashboardWidget(value).finally(() => {
+                  setDashboardPreviewFamily("choose");
+                });
+              }}
+              pickerStyle="menu"
+              padding={{ vertical: true }}
+              frame={{ minHeight: 44, maxWidth: "infinity" }}
+            >
+              <Text tag="choose">选择尺寸</Text>
+              <Text tag="systemSmall">Small 小组件</Text>
+              <Text tag="systemMedium">Medium 小组件</Text>
+              <Text tag="systemLarge">Large 小组件</Text>
+            </Picker>
             <CardDivider />
             <Button
               buttonStyle="plain"
