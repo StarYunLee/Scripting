@@ -1,4 +1,5 @@
 import { fetch } from "scripting";
+import { PERIOD, kimiFiveHourLabel } from "../../copy/labels";
 import {
   getProfileAccessToken,
   resolveProfile,
@@ -105,14 +106,7 @@ function windowSecondsFromDescriptor(window: Record<string, unknown> | null): nu
 }
 
 function fiveHourLabel(window: Record<string, unknown> | null): string {
-  const seconds = windowSecondsFromDescriptor(window);
-  if (seconds == null) return "5 小时";
-  if (seconds % 3600 === 0) {
-    const hours = seconds / 3600;
-    return hours === 5 ? "5 小时" : `${hours} 小时`;
-  }
-  if (seconds % 60 === 0) return `${seconds / 60} 分钟`;
-  return "5 小时";
+  return kimiFiveHourLabel(windowSecondsFromDescriptor(window));
 }
 
 function firstString(...values: unknown[]): string | null {
@@ -185,7 +179,7 @@ function parseUsages(payload: Record<string, unknown>): {
       weekly = {
         id: "kimi:weekly",
         name: "weekly",
-        label: "每周",
+        label: PERIOD.WEEKLY.app,
         usedPercent: percents.usedPercent,
         remainingPercent: percents.remainingPercent,
         resetAt: reset.iso,

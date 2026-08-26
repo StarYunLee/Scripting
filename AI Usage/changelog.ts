@@ -6,6 +6,22 @@ export type ChangelogEntry = {
 
 export const CHANGELOG = [
   {
+    version: "1.5.2",
+    date: "2026-08-26",
+    changes: [
+      "修复总用量小组件 SyntaxError: unexpected )：移除 Scripting 不兼容的 TS 语法（类型谓词、re-export、as const 等）。",
+    ],
+  },
+  {
+    version: "1.5.1",
+    date: "2026-08-26",
+    changes: [
+      "删除总用量 Extra Large 布局代码（Scripting 不支持该尺寸）。",
+      "README 更新至 v1.5.x，补充 dashboard 总用量小组件与术语表说明。",
+      "labels.ts 扩展至 Codex / Grok / Kimi / Cursor / Antigravity 各 provider 额度标签。",
+    ],
+  },
+  {
     version: "1.5.0",
     date: "2026-08-26",
     changes: [

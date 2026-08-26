@@ -10,17 +10,20 @@
 
 面向 [Scripting App](https://scriptingapp.github.io/) 的非官方多平台用量查看应用。在一个项目里管理 Codex、Grok、Claude、Antigravity、Cursor 与 Kimi Code 的多账号用量、主屏幕小组件和自动化刷新。
 
-当前版本：`1.4.5`
+当前版本：`1.5.1`
 
 > 本项目不是 OpenAI、xAI、Anthropic、Google、Cursor、Moonshot / Kimi 或 Scripting App 官方产品，与上述平台无隶属或合作关系。
 
 ## 功能
 
 - 统一管理 Codex、Grok、Claude、Antigravity、Cursor、Kimi Code 多个账号
-- 用量总览可手动选择要展示的账号与额度条目
+- **用量总览**与**小组件总览**可分别选择要展示的账号与额度条目
+- **总用量小组件**（参数 `dashboard`）：Small 列表 / Medium 圆环 / Large 进度条，多账号一览
+- 小组件隐私选项：可单独开关账号邮箱、账号 ID、套餐档位徽章
+- 统一文案术语表（`copy/labels.ts`）：应用内中文 + 小组件英文缩写（如 5h / Weekly / API）
 - Access Token、Refresh Token 和相关身份凭据保存在本机 Keychain
 - Token 到期前自动刷新
-- 主屏幕小组件支持 Small、Medium，并按账号独立保存布局
+- 主屏幕小组件支持 Small、Medium、Large，单账号布局按账号独立保存
 - 小组件主数值和进度条固定显示剩余额度
 - 统一绿 / 橙 / 红风险配色：剩余不高于 40% 显示橙色，不高于 15% 显示红色
 - 网络失败或接口限流时回退最近一次成功缓存
@@ -97,7 +100,9 @@ OAuth 临时状态有效期为 10 分钟。Authorization Code 通常只能交换
 - 多账号时请填写对应参数，每个主屏幕小组件可以绑定不同账号
 - 布局按账号独立保存；刷新频率对所有账号生效
 
-绑定账号的方法：
+### 单账号小组件
+
+绑定某个账号的用量小组件：
 
 1. 打开目标账号详情页，点击“复制组件参数”
 2. 长按主屏幕小组件，选择“编辑小组件”
@@ -109,6 +114,21 @@ OAuth 临时状态有效期为 10 分钟。Authorization Code 通常只能交换
 provider:profileId
 ```
 
+### 总用量小组件（dashboard）
+
+在设置 → **小组件总览** 中选择要展示的账号与额度条目，然后：
+
+1. 点击“复制总览组件参数”
+2. 编辑主屏幕 AI Usage 小组件，将参数粘贴为 `dashboard`
+
+| 尺寸 | 布局 | 说明 |
+|------|------|------|
+| Small | 文本列表 | 无标题，紧凑显示剩余百分比 |
+| Medium | 圆环 | 中心为剩余整数，超出时最多双行 |
+| Large | 进度条 | 显示「总用量」标题与完整条目 |
+
+应用内 **用量总览** 与 **小组件总览** 的展示偏好**互不影响**，分别存储。
+
 ## 小组件显示
 
 小组件不再提供“已用 / 剩余”切换。主数值、概览数值和进度条长度都固定为剩余额度；颜色仍按已用比例判断风险。
@@ -117,15 +137,20 @@ provider:profileId
 - 橙色：剩余不高于 40%、高于 15%
 - 红色：剩余不高于 15%
 
-### Small
+### 总用量（dashboard）
+
+- 各尺寸共用统一缩写：5h / Weekly / Monthly / Auto / Total / API 等
+- Antigravity 复合标签显示为 `Agy · Gemini · 5h` 等形式
+- 默认隐藏邮箱与账号 ID；可在小组件总览 → 隐私与显示 中开启
+
+### Small（单账号）
 
 - Codex / Claude / Antigravity：可按账号选择单额度详情或双额度概览
 - Grok：固定展示每周额度
-- Cursor：固定展示 Auto / 所有 / 第三方模型，有资格时附带 Grok Bot 周额度
+- Cursor：固定展示 Auto / 总计 / 第三方 API，有资格时附带 Grok Bot 周额度
 - Kimi Code：固定展示 5 小时与每周额度
-- 单额度详情同时列出已用和剩余百分比，主数字与进度条仍表示剩余
 
-### Medium
+### Medium（单账号）
 
 - 单额度详情用大数字突出剩余额度，右上角显示已用百分比
 - 双额度概览同时展示两个额度窗口的剩余百分比、进度条和重置时间
@@ -157,7 +182,7 @@ provider:profileId
 
 ### Cursor
 
-- 固定展示 Auto、所有、第三方模型三个计费周期额度窗口的剩余百分比
+- 固定展示 Auto、总计、第三方 API 三个计费周期额度窗口的剩余百分比
 - 有 Grok Bot 包含额度时，额外展示独立的 **Grok Bot** 周额度（`GetSandUsageStatus`）
 - 无 Bot 资格或接口失败时不影响前三个窗口
 
@@ -217,7 +242,7 @@ iOS WidgetKit 可能根据系统调度延后刷新。所选时间是请求的最
 - OAuth 成功不代表所有账号都具有对应用量查询资格
 - 账号实际拥有的额度窗口由服务端决定，缺失窗口显示 `—`
 - WidgetKit 不保证严格按照所选分钟数刷新
-- Small 和 Medium 以外的组件尺寸未专门适配
+- Scripting 目前不支持注册 Extra Large 小组件；总用量仅适配 Small / Medium / Large
 - 演示模式只用于预览界面，不会写入真实账号或发起授权请求
 
 ## 项目结构
@@ -226,10 +251,12 @@ iOS WidgetKit 可能根据系统调度延后刷新。所选时间是请求的最
 AI Usage/
 ├── assets/                   平台 Logo、水印与展示图
 ├── components/               共享 UI 与用量卡片
+├── copy/                     统一文案术语表（labels.ts）
 ├── pages/                    用量、设置、账号详情、日志页
-├── providers/                Codex / Grok / Claude / Antigravity 适配
+├── providers/                各平台 OAuth 与用量适配
 ├── services/                 刷新编排、配色、设置、演示与存储
 ├── widget/                   小组件分发、Loader 与平台布局
+│   └── dashboard/            总用量小组件（dashboard 参数）
 ├── app_intents.tsx           系统 App Intent
 ├── index.tsx                 应用入口
 ├── intent.tsx                快捷指令刷新入口

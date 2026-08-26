@@ -1,3 +1,4 @@
+import { antigravityWindowLabel } from "../../copy/labels";
 import type { AntigravityProjectInfo, LimitWindow } from "./types";
 
 export type JsonObject = Record<string, unknown>;
@@ -86,29 +87,12 @@ function windowName(seconds: number | null): LimitWindow["name"] {
   return "unknown";
 }
 
-function localWindowLabel(seconds: number | null, fallback: string): string {
-  if (seconds === 5 * 3600) return "5 小时";
-  if (seconds === 7 * 86400) return "每周";
-  if (seconds === 30 * 86400) return "每月";
-  if (seconds === 86400) return "每天";
-  return fallback || "额度";
-}
-
-function displayGroupName(groupName: string, bucketId: string): string {
-  const bucket = bucketId.toLowerCase();
-  if (bucket.startsWith("gemini-")) return "Gemini Model";
-  if (bucket.startsWith("3p-")) return "Claude and GPT";
-  return groupName;
-}
-
 function windowLabel(
   groupName: string,
   bucketId: string,
   seconds: number | null,
 ): string {
-  const local = localWindowLabel(seconds, bucketId);
-  const group = displayGroupName(groupName, bucketId);
-  return group ? `${group} ${local}` : local;
+  return antigravityWindowLabel(groupName, bucketId, seconds);
 }
 
 function sortWindows(left: LimitWindow, right: LimitWindow): number {

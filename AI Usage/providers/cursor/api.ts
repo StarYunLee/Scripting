@@ -1,5 +1,5 @@
 import { fetch, Response } from "scripting";
-import { PERIOD } from "../../copy/labels";
+import { CURSOR_WINDOW } from "../../copy/labels";
 import {
   getProfileAccessToken,
   needsEmailBackfill,
@@ -197,19 +197,19 @@ function parsePlanUsageWindows(
   const spendPercent = planSpendPercent(planUsage, plan, payload.displayMessage);
 
   if (autoPercent != null)
-    windows.push(makeWindow("auto", "Auto", autoPercent, reset));
+    windows.push(makeWindow("auto", CURSOR_WINDOW.AUTO, autoPercent, reset));
 
   // 「所有」优先用 totalPercentUsed；缺失时回退套餐花费占比。
   const allPercent = totalPercent ?? spendPercent;
   if (allPercent != null)
-    windows.push(makeWindow("total", PERIOD.TOTAL.app, allPercent, reset));
+    windows.push(makeWindow("total", CURSOR_WINDOW.TOTAL, allPercent, reset));
 
   if (apiPercent != null)
-    windows.push(makeWindow("api", PERIOD.API.app, apiPercent, reset));
+    windows.push(makeWindow("api", CURSOR_WINDOW.API, apiPercent, reset));
 
   // 若三个百分比都缺失，至少保留套餐花费窗口。
   if (!windows.length && spendPercent != null)
-    windows.push(makeWindow("plan", "套餐额度", spendPercent, reset));
+    windows.push(makeWindow("plan", CURSOR_WINDOW.PLAN, spendPercent, reset));
 
   if (!windows.length) return null;
   return { windows, planLabel: plan.planLabel };
@@ -268,7 +268,7 @@ function parseSandUsageWindow(
   if (start.ms != null && reset.ms != null && reset.ms > start.ms)
     windowSeconds = Math.round((reset.ms - start.ms) / 1000);
 
-  return makeWindow("grok_bot", "Grok Bot", used, reset, windowSeconds);
+  return makeWindow("grok_bot", CURSOR_WINDOW.GROK_BOT, used, reset, windowSeconds);
 }
 
 async function requestSandUsage(token: string): Promise<LimitWindow | null> {
@@ -318,7 +318,7 @@ function parseSpendLimit(
     usedPercent = clamp(((limit - remaining) / limit) * 100);
   if (usedPercent == null) return null;
   return {
-    windows: [makeWindow("plan", "按需额度", usedPercent, reset)],
+    windows: [makeWindow("plan", CURSOR_WINDOW.ON_DEMAND, usedPercent, reset)],
     planLabel,
   };
 }
@@ -350,7 +350,7 @@ function parseLegacyUsage(payload: Record<string, unknown>): ParsedBilling | nul
       {
         id: "cursor:requests",
         name: "weekly",
-        label: "请求额度",
+        label: CURSOR_WINDOW.REQUEST,
         usedPercent,
         remainingPercent: clamp(100 - usedPercent),
         resetAt: reset.iso,

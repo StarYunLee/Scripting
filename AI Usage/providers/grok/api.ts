@@ -1,4 +1,5 @@
 import { fetch, Response } from "scripting";
+import { GROK_WINDOW } from "../../copy/labels";
 import {
   getProfileAccessToken,
   getProfileAccountId,
@@ -249,7 +250,7 @@ function parseWeekly(payload: Record<string, unknown>): ParsedWeekly | null {
   const weekly: LimitWindow = {
     id: "grok:weekly",
     name: "weekly",
-    label: "每周",
+    label: GROK_WINDOW.WEEKLY,
     usedPercent,
     remainingPercent: clamp(100 - usedPercent),
     resetAt: reset.iso,
@@ -262,7 +263,7 @@ function parseWeekly(payload: Record<string, unknown>): ParsedWeekly | null {
       : {
           id: "grok:weekly-build",
           name: "weekly_build" as const,
-          label: "Grok Build",
+          label: GROK_WINDOW.BUILD,
           usedPercent: clamp(productUsagePercent),
           remainingPercent: clamp(100 - productUsagePercent),
           resetAt: reset.iso,

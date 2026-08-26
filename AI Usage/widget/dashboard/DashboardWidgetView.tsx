@@ -18,9 +18,7 @@ import {
   WIDGET_EMPTY_NO_ACCOUNTS,
   WIDGET_EMPTY_NO_ROWS,
   WIDGET_TITLE,
-  widgetAccountEntryCount,
   widgetEntryCount,
-  widgetOverflowAccount,
   widgetOverflowLarge,
   widgetOverflowMedium,
   widgetOverflowSmall,
@@ -29,7 +27,6 @@ import {
 } from "../../copy/labels";
 import {
   flattenCards,
-  groupRowsByAccount,
   largeVisibleLimit,
   planMediumRings,
   privacySubtitle,
@@ -41,8 +38,8 @@ import {
   smallVisibleLimit,
   widgetDisplaySize,
   widgetLayoutSize,
-  type DashboardRow,
 } from "./model";
+import type { DashboardRow } from "./model";
 
 type Props = {
   cards: UsageCard[];
@@ -479,94 +476,6 @@ function LargeBarLayout(props: {
   );
 }
 
-function ExtraLargeGroupedLayout(props: {
-  rows: DashboardRow[];
-  width: number;
-  hasErrors?: boolean;
-  privacy: WidgetPrivacyPrefs;
-}) {
-  const groups = groupRowsByAccount(props.rows).slice(0, 4);
-  const shownRows = groups.reduce((sum, group) => sum + group.rows.length, 0);
-  const hidden = props.rows.length - shownRows;
-  const contentWidth = Math.max(250, props.width - 40);
-
-  return (
-    <VStack
-      alignment="leading"
-      spacing={12}
-      padding={20}
-      frame={{ maxWidth: "infinity", maxHeight: "infinity" }}
-      widgetBackground={C.bg}
-    >
-      <HStack alignment="center">
-        <Text font={16} fontWeight="bold">
-          {WIDGET_TITLE}
-        </Text>
-        <Spacer minLength={0} />
-        <Text font={10} foregroundStyle={C.secondary}>
-          {widgetAccountEntryCount(groups.length, props.rows.length)}
-        </Text>
-        <ErrorHint show={props.hasErrors} />
-      </HStack>
-
-      <VStack alignment="leading" spacing={14}>
-        {groups.map((group) => {
-          const meta = providerMeta(group.provider);
-          const subtitle = privacySubtitle(group, props.privacy);
-          const visibleRows = group.rows.slice(0, 3);
-          const extra = group.rows.length - visibleRows.length;
-          return (
-            <VStack key={group.accountKey} alignment="leading" spacing={8}>
-              <HStack alignment="center" spacing={8}>
-                {props.privacy.showPlanBadge ? (
-                  <PlanBadge
-                    provider={group.provider}
-                    label={group.planLabel || meta.title}
-                  />
-                ) : (
-                  <ProviderLogo provider={group.provider} size={16} />
-                )}
-                <VStack alignment="leading" spacing={2}>
-                  <Text font={13} fontWeight="semibold" lineLimit={1}>
-                    {providerShortName(group.provider)}
-                  </Text>
-                  {subtitle ? (
-                    <Text font={10} foregroundStyle={C.secondary} lineLimit={1}>
-                      {subtitle}
-                    </Text>
-                  ) : null}
-                </VStack>
-              </HStack>
-              <VStack alignment="leading" spacing={8}>
-                {visibleRows.map((row) => (
-                  <BarRow
-                    key={row.key}
-                    row={row}
-                    width={contentWidth}
-                    privacy={props.privacy}
-                  />
-                ))}
-              </VStack>
-              {extra > 0 ? (
-                <Text font={9} foregroundStyle={C.secondary}>
-                  {widgetOverflowAccount(extra)}
-                </Text>
-              ) : null}
-            </VStack>
-          );
-        })}
-      </VStack>
-
-      {hidden > 0 ? (
-        <Text font={10} foregroundStyle={C.secondary}>
-          {widgetOverflowLarge(hidden)}
-        </Text>
-      ) : null}
-      <Spacer minLength={0} />
-    </VStack>
-  );
-}
-
 export function DashboardWidgetView(props: Props) {
   const privacy = props.privacy || {
     showAccountEmail: false,
@@ -612,22 +521,11 @@ export function DashboardWidgetView(props: Props) {
     );
   }
 
-  if (layout === "large") {
-    return (
-      <LargeBarLayout
-        rows={rows}
-        width={display.width}
-        height={display.height}
-        hasErrors={props.hasErrors}
-        privacy={privacy}
-      />
-    );
-  }
-
   return (
-    <ExtraLargeGroupedLayout
+    <LargeBarLayout
       rows={rows}
       width={display.width}
+      height={display.height}
       hasErrors={props.hasErrors}
       privacy={privacy}
     />

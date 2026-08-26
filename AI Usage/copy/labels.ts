@@ -12,7 +12,7 @@ export const PERIOD = {
   API: { app: "第三方 API", widget: "API" },
   GROK_BOT: { app: "Grok Bot", widget: "Grok Bot" },
   QUOTA: { app: "额度", widget: "Quota" },
-} as const;
+};
 
 /** 小组件平台短名（与 PlanBadge 平台缩写对齐） */
 export function widgetProviderShortName(provider: ProviderId): string {
@@ -32,11 +32,11 @@ export function normalizeAppWindowLabel(label: string): string {
   const trimmed = label.trim();
   if (!trimmed) return trimmed;
 
-  const exact: Record<string, string> = {
-    所有: PERIOD.TOTAL.app,
-    第三方模型: PERIOD.API.app,
-    周限: PERIOD.WEEKLY.app,
-    模型周限: "模型每周",
+  const exact: { [key: string]: string } = {
+    "所有": PERIOD.TOTAL.app,
+    "第三方模型": PERIOD.API.app,
+    "周限": PERIOD.WEEKLY.app,
+    "模型周限": "模型每周",
   };
   if (exact[trimmed]) return exact[trimmed];
 
@@ -77,13 +77,10 @@ export function widgetWindowLabel(label: string): string {
   return `${label.slice(0, 9)}…`;
 }
 
-export type ParsedWidgetWindow = {
+export function parseWidgetWindowParts(label: string): {
   group: string | null;
   periodWidget: string;
-};
-
-/** 解析 Antigravity 等复合标签，供小组件分行/缩写 */
-export function parseWidgetWindowParts(label: string): ParsedWidgetWindow {
+} {
   const normalized = normalizeAppWindowLabel(label);
   const lower = normalized.toLowerCase();
 
@@ -117,7 +114,7 @@ export const CLAUDE_WIDGET = {
   shortFiveHour: "5H",
   shortWeekly: "每周",
   shortFableWeekly: "Fable 每周",
-} as const;
+};
 
 /** 总用量小组件固定文案 */
 export const WIDGET_TITLE = "总用量";
@@ -134,16 +131,8 @@ export function widgetOverflowLarge(hidden: number): string {
   return `还有 ${hidden} 条未显示`;
 }
 
-export function widgetOverflowAccount(hidden: number): string {
-  return `该账号还有 ${hidden} 条`;
-}
-
 export function widgetEntryCount(count: number): string {
   return `${count} 条目`;
-}
-
-export function widgetAccountEntryCount(accounts: number, entries: number): string {
-  return `${accounts} 账号 · ${entries} 条目`;
 }
 
 export function widgetRemainingLabel(percent: string): string {
@@ -167,3 +156,80 @@ export const DASHBOARD_PREFS_WIDGET_PRIVACY_FOOTER =
 
 export const APP_DASHBOARD_SETTINGS_FOOTER =
   "选择用量页要展示的账号与额度条目（5 小时 / 每周等）。";
+
+/** Cursor 额度窗口应用内标签 */
+export const CURSOR_WINDOW = {
+  AUTO: PERIOD.AUTO.app,
+  TOTAL: PERIOD.TOTAL.app,
+  API: PERIOD.API.app,
+  GROK_BOT: PERIOD.GROK_BOT.app,
+  PLAN: "套餐额度",
+  ON_DEMAND: "按需额度",
+  REQUEST: "请求额度",
+};
+
+/** Grok 额度窗口应用内标签 */
+export const GROK_WINDOW = {
+  WEEKLY: PERIOD.WEEKLY.app,
+  BUILD: "Grok Build",
+};
+
+/** Antigravity 模型分组名 */
+export const ANTIGRAVITY_GROUP = {
+  GEMINI_MODEL: "Gemini Model",
+  CLAUDE_AND_GPT: "Claude and GPT",
+};
+
+/** 按窗口秒数返回标准周期中文标签 */
+export function periodLabelForSeconds(
+  seconds: number | null,
+  fallback?: string,
+): string {
+  const fb = fallback || PERIOD.QUOTA.app;
+  if (seconds === 5 * 3600) return PERIOD.FIVE_HOUR.app;
+  if (seconds === 7 * 86400) return PERIOD.WEEKLY.app;
+  if (seconds === 30 * 86400) return PERIOD.MONTHLY.app;
+  if (seconds === 86400) return PERIOD.DAILY.app;
+  return fb;
+}
+
+/** Codex 额度窗口标签 */
+export function codexWindowLabel(
+  name: string,
+  seconds: number | null,
+): string {
+  if (name === "five_hour") return PERIOD.FIVE_HOUR.app;
+  if (name === "weekly") return PERIOD.WEEKLY.app;
+  if (name === "monthly") return PERIOD.MONTHLY.app;
+  if (seconds && seconds >= 86400) return `${Math.round(seconds / 86400)} 天`;
+  return "限额";
+}
+
+/** Kimi 5 小时窗口标签（支持动态时长） */
+export function kimiFiveHourLabel(seconds: number | null): string {
+  if (seconds == null) return PERIOD.FIVE_HOUR.app;
+  if (seconds % 3600 === 0) {
+    const hours = seconds / 3600;
+    return hours === 5 ? PERIOD.FIVE_HOUR.app : `${hours} 小时`;
+  }
+  if (seconds % 60 === 0) return `${seconds / 60} 分钟`;
+  return PERIOD.FIVE_HOUR.app;
+}
+
+function antigravityGroupName(groupName: string, bucketId: string): string {
+  const bucket = bucketId.toLowerCase();
+  if (bucket.startsWith("gemini-")) return ANTIGRAVITY_GROUP.GEMINI_MODEL;
+  if (bucket.startsWith("3p-")) return ANTIGRAVITY_GROUP.CLAUDE_AND_GPT;
+  return groupName;
+}
+
+/** Antigravity 复合额度窗口标签 */
+export function antigravityWindowLabel(
+  groupName: string,
+  bucketId: string,
+  seconds: number | null,
+): string {
+  const local = periodLabelForSeconds(seconds, bucketId);
+  const group = antigravityGroupName(groupName, bucketId);
+  return group ? `${group} ${local}` : local;
+}

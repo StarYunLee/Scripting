@@ -1,4 +1,5 @@
 import { fetch } from "scripting";
+import { codexWindowLabel } from "../../copy/labels";
 import {
   getProfileAccountId,
   getProfileAccessToken,
@@ -78,11 +79,7 @@ function inferName(seconds: number | null, text = ""): LimitWindowName {
   return "unknown";
 }
 function label(name: LimitWindowName, seconds: number | null): string {
-  if (name === "five_hour") return "5 小时";
-  if (name === "weekly") return "每周";
-  if (name === "monthly") return "每月";
-  if (seconds && seconds >= 86400) return `${Math.round(seconds / 86400)} 天`;
-  return "限额";
+  return codexWindowLabel(name, seconds);
 }
 function parseWindow(
   value: unknown,
