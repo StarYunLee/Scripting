@@ -13,7 +13,13 @@ export type AccountRegistry = {
   accounts: CursorAccountProfile[];
 };
 
-export type LimitWindowName = "billing_cycle" | "weekly" | "unknown";
+export type LimitWindowName =
+  | "auto"
+  | "total"
+  | "api"
+  | "plan"
+  | "weekly"
+  | "unknown";
 
 export type LimitWindow = {
   id: string;
@@ -28,7 +34,10 @@ export type LimitWindow = {
 
 export type UsageSnapshot = {
   windows: LimitWindow[];
-  billingCycle: LimitWindow | null;
+  auto: LimitWindow | null;
+  total: LimitWindow | null;
+  api: LimitWindow | null;
+  plan: LimitWindow | null;
   weekly: LimitWindow | null;
   planType: string | null;
   planLabel: string | null;
@@ -56,31 +65,6 @@ export type UsageResult =
       };
       cache?: UsageSnapshot | null;
     };
-
-export type MediumWidgetLayout = {
-  left: number;
-  right: number;
-  topY: number;
-  chipFont: number;
-  chipHorizontal: number;
-  chipVertical: number;
-  titleY: number;
-  titleFont: number;
-  mainY: number;
-  mainFont: number;
-  suffixFont: number;
-  progressY: number;
-  progressHeight: number;
-  footerY: number;
-  footerIcon: number;
-  footerLabelFont: number;
-  footerValueFont: number;
-  planY: number;
-  planVertical: number;
-  watermarkSize: number;
-  watermarkRight: number;
-  watermarkBottom: number;
-};
 
 export type WidgetSettings = {
   reloadMinutes: number;

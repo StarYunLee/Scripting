@@ -420,10 +420,24 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
     planLabel: "Pro",
     windows: [
       {
-        id: "billing_cycle",
-        name: "billing_cycle",
-        label: "计费周期",
+        id: "auto",
+        name: "auto",
+        label: "Auto",
+        usedPercent: 28,
+        resetOffsetMs: 12 * 86_400_000 + 4 * 3_600_000,
+      },
+      {
+        id: "total",
+        name: "total",
+        label: "所有",
         usedPercent: 42,
+        resetOffsetMs: 12 * 86_400_000 + 4 * 3_600_000,
+      },
+      {
+        id: "api",
+        name: "api",
+        label: "第三方模型",
+        usedPercent: 61,
         resetOffsetMs: 12 * 86_400_000 + 4 * 3_600_000,
       },
     ],
@@ -436,10 +450,24 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
     planLabel: "Ultra",
     windows: [
       {
-        id: "billing_cycle",
-        name: "billing_cycle",
-        label: "计费周期",
+        id: "auto",
+        name: "auto",
+        label: "Auto",
+        usedPercent: 12,
+        resetOffsetMs: 18 * 86_400_000 + 2 * 3_600_000,
+      },
+      {
+        id: "total",
+        name: "total",
+        label: "所有",
         usedPercent: 18,
+        resetOffsetMs: 18 * 86_400_000 + 2 * 3_600_000,
+      },
+      {
+        id: "api",
+        name: "api",
+        label: "第三方模型",
+        usedPercent: 33,
         resetOffsetMs: 18 * 86_400_000 + 2 * 3_600_000,
       },
     ],
@@ -610,15 +638,26 @@ export function getDemoWidgetResult(
   if (provider === "cursor") {
     const windows: CursorLimitWindow[] = account.windows.map((window) => ({
       ...windowBase(window),
-      name: "billing_cycle",
+      name:
+        window.name === "auto" ||
+        window.name === "total" ||
+        window.name === "api" ||
+        window.name === "plan" ||
+        window.name === "weekly"
+          ? window.name
+          : "unknown",
     }));
-    const billingCycle = windows[0] || null;
+    const byName = (name: CursorLimitWindow["name"]) =>
+      windows.find((window) => window.name === name) || null;
     return {
       ok: true,
       snapshot: {
         windows,
-        billingCycle,
-        weekly: null,
+        auto: byName("auto"),
+        total: byName("total"),
+        api: byName("api"),
+        plan: byName("plan"),
+        weekly: byName("weekly"),
         planType: account.planLabel,
         planLabel: account.planLabel,
         fetchedAt,

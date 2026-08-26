@@ -6,6 +6,14 @@ export type ChangelogEntry = {
 
 export const CHANGELOG = [
   {
+    version: "1.2.2",
+    date: "2026-08-26",
+    changes: [
+      "Cursor 用量改为展示 Auto、所有、第三方模型三个额度窗口，对齐仪表盘语义。",
+      "应用用量卡与 Small / Medium 小组件同步显示多窗口剩余额度。",
+    ],
+  },
+  {
     version: "1.2.1",
     date: "2026-08-26",
     changes: [

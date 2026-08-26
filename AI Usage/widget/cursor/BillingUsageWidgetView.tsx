@@ -18,7 +18,6 @@ import {
 import { PlanBadge } from "./PlanBadge";
 import type {
   LimitWindow,
-  MediumWidgetLayout,
   UsageResult,
   UsageSnapshot,
 } from "../../providers/cursor/types";
@@ -39,42 +38,47 @@ const C: Record<string, Color | DynamicShapeStyle> = {
   secondary: "secondaryLabel",
   track: dynamic("#C7C8CC", "#55565C"),
   trackBorder: dynamic("rgba(0,0,0,0.07)", "rgba(255,255,255,0.10)"),
-  chip: "label",
-  chipText: "systemBackground",
   warn: "systemOrange",
   watermark: dynamic("rgba(35,35,38,0.09)", "rgba(245,245,247,0.075)"),
 };
 
 type Model = {
   snapshot: UsageSnapshot | null;
-  focus: LimitWindow | null;
-  progress: number | null;
-  main: string;
-  suffix: string;
-  fetched: string;
+  windows: LimitWindow[];
   planLabel: string;
+  fetched: string;
+  resetAt: string | null;
   live: boolean;
   detail: string;
 };
 
 function modelFor(result: UsageResult): Model {
   const snapshot = result.ok ? result.snapshot : result.cache || null;
-  const focus =
-    snapshot?.billingCycle ||
-    snapshot?.windows.find((window) => window.name === "billing_cycle") ||
-    snapshot?.windows[0] ||
-    null;
-  const remaining =
-    focus?.remainingPercent ??
-    (focus?.usedPercent == null ? null : 100 - focus.usedPercent);
+  const preferred = ["auto", "total", "api", "plan", "weekly"] as const;
+  const windows: LimitWindow[] = [];
+  if (snapshot) {
+    for (const name of preferred) {
+      const found =
+        (name === "auto" && snapshot.auto) ||
+        (name === "total" && snapshot.total) ||
+        (name === "api" && snapshot.api) ||
+        (name === "plan" && snapshot.plan) ||
+        (name === "weekly" && snapshot.weekly) ||
+        snapshot.windows.find((window) => window.name === name) ||
+        null;
+      if (found && !windows.some((item) => item.id === found.id))
+        windows.push(found);
+    }
+    for (const window of snapshot.windows) {
+      if (!windows.some((item) => item.id === window.id)) windows.push(window);
+    }
+  }
   return {
     snapshot,
-    focus,
-    progress: remaining,
-    main: formatPercent(remaining),
-    suffix: "剩余",
-    fetched: snapshot ? formatResetDate(snapshot.fetchedAt) : "—",
+    windows,
     planLabel: snapshot?.planLabel || snapshot?.planType || "—",
+    fetched: snapshot ? formatResetDate(snapshot.fetchedAt) : "—",
+    resetAt: windows[0]?.resetAt || null,
     live: result.ok,
     detail: result.ok ? "" : result.error.message,
   };
@@ -144,168 +148,54 @@ function Progress({
   );
 }
 
-function focusTitle(small = false): string {
-  return small ? "周期" : "计费周期";
+function WindowRow({
+  window,
+  width,
+  compact,
+}: {
+  window: LimitWindow;
+  width: number;
+  compact: boolean;
+}) {
+  const remaining = window.remainingPercent;
+  return (
+    <VStack spacing={compact ? 2 : 3} alignment="leading" frame={{ width }}>
+      <HStack frame={{ width }}>
+        <Text
+          font={compact ? 11 : 13}
+          fontWeight="bold"
+          foregroundStyle={C.primary}
+          lineLimit={1}
+        >
+          {window.label}
+        </Text>
+        <Spacer />
+        <Text
+          font={compact ? 11 : 13}
+          fontWeight="bold"
+          foregroundStyle={C.primary}
+          monospacedDigit
+        >
+          {`剩余 ${formatPercent(remaining)}`}
+        </Text>
+      </HStack>
+      <Progress
+        displayValue={remaining}
+        usedPercent={window.usedPercent}
+        remainingPercent={window.remainingPercent}
+        width={width}
+        height={compact ? 5 : 6}
+      />
+    </VStack>
+  );
 }
 
 export function BillingUsageWidgetView({ result, family }: Props) {
   const model = modelFor(result);
   const small = isSmall(family);
-  const pad = small ? 13 : 16;
-  const layout: MediumWidgetLayout = {
-    left: 20,
-    right: 20,
-    topY: 10,
-    chipFont: 12,
-    chipHorizontal: 10,
-    chipVertical: 6,
-    titleY: 35,
-    titleFont: 17,
-    mainY: 56,
-    mainFont: 40,
-    suffixFont: 12,
-    progressY: 110,
-    progressHeight: 7,
-    footerY: 124,
-    footerIcon: 10,
-    footerLabelFont: 10,
-    footerValueFont: 12,
-    planY: 9,
-    planVertical: 4,
-    watermarkSize: 140,
-    watermarkRight: -8,
-    watermarkBottom: -12,
-  };
-  const barWidth = Math.max(90, displayWidth(family) - pad * 2);
-  const mediumContentWidth = Math.max(
-    180,
-    displayWidth(family) - layout.left - layout.right,
-  );
-
-  if (small)
-    return (
-      <ZStack
-        frame={{ maxWidth: "infinity", maxHeight: "infinity" }}
-        widgetBackground={C.bg}
-      >
-        <HStack
-          frame={{
-            maxWidth: "infinity",
-            maxHeight: "infinity",
-            alignment: "bottomTrailing",
-          }}
-          padding={{ trailing: -6, bottom: -6 }}
-        >
-          <Watermark size={96} />
-        </HStack>
-        <ZStack frame={{ maxWidth: "infinity", maxHeight: "infinity" }}>
-          <HStack
-            alignment="center"
-            frame={{
-              maxWidth: "infinity",
-              maxHeight: "infinity",
-              alignment: "topLeading",
-            }}
-            padding={{ leading: 12, trailing: 12, top: 19 }}
-          >
-            <Text font={16} fontWeight="bold" foregroundStyle={C.primary}>
-              {focusTitle(true)}
-            </Text>
-            <Spacer />
-            <PlanBadge label={model.planLabel} small />
-          </HStack>
-
-          <HStack
-            frame={{
-              maxWidth: "infinity",
-              maxHeight: "infinity",
-              alignment: "topLeading",
-            }}
-            padding={{ leading: 12, trailing: 12, top: 48 }}
-          >
-            <VStack spacing={1} alignment="leading">
-              <Text font={9} fontWeight="bold" foregroundStyle={C.secondary}>
-                已用
-              </Text>
-              <Text font={16} fontWeight="bold" foregroundStyle={C.primary}>
-                {formatPercent(model.focus?.usedPercent)}
-              </Text>
-            </VStack>
-            <Spacer />
-            <VStack spacing={1} alignment="trailing">
-              <Text font={9} fontWeight="bold" foregroundStyle={C.secondary}>
-                剩余
-              </Text>
-              <Text font={16} fontWeight="bold" foregroundStyle={C.primary}>
-                {formatPercent(model.focus?.remainingPercent)}
-              </Text>
-            </VStack>
-          </HStack>
-
-          <HStack
-            frame={{
-              maxWidth: "infinity",
-              maxHeight: "infinity",
-              alignment: "topLeading",
-            }}
-            padding={{ leading: 12, top: 87 }}
-          >
-            <Progress
-              displayValue={model.progress}
-              usedPercent={model.focus?.usedPercent}
-              remainingPercent={model.focus?.remainingPercent}
-              width={barWidth}
-              height={7}
-            />
-          </HStack>
-
-          <VStack
-            spacing={3}
-            alignment="leading"
-            frame={{
-              maxWidth: "infinity",
-              maxHeight: "infinity",
-              alignment: "topLeading",
-            }}
-            padding={{ leading: 12, trailing: 12, top: 100 }}
-          >
-            <HStack spacing={4} frame={{ width: barWidth }}>
-              <Text font={9} fontWeight="bold" foregroundStyle={C.secondary}>
-                更新时间
-              </Text>
-              <Spacer />
-              <Text font={9} fontWeight="bold" foregroundStyle={C.primary}>
-                {formatSmallDate(model.snapshot?.fetchedAt)}
-              </Text>
-            </HStack>
-            <HStack spacing={4} frame={{ width: barWidth }}>
-              <Text font={9} fontWeight="bold" foregroundStyle={C.secondary}>
-                重置时间
-              </Text>
-              <Spacer />
-              <Text font={9} fontWeight="bold" foregroundStyle={C.primary}>
-                {formatSmallDate(model.focus?.resetAt)}
-              </Text>
-            </HStack>
-          </VStack>
-
-          {!model.live && model.detail ? (
-            <HStack
-              frame={{
-                maxWidth: "infinity",
-                maxHeight: "infinity",
-                alignment: "bottomLeading",
-              }}
-              padding={{ horizontal: 12, bottom: 2 }}
-            >
-              <Text font={7} foregroundStyle={C.warn} lineLimit={1}>
-                {model.detail}
-              </Text>
-            </HStack>
-          ) : null}
-        </ZStack>
-      </ZStack>
-    );
+  const pad = small ? 12 : 16;
+  const contentWidth = Math.max(90, displayWidth(family) - pad * 2);
+  const rows = model.windows.slice(0, 3);
 
   return (
     <ZStack
@@ -318,165 +208,65 @@ export function BillingUsageWidgetView({ result, family }: Props) {
           maxHeight: "infinity",
           alignment: "bottomTrailing",
         }}
-        padding={{
-          trailing: layout.watermarkRight + 1,
-          bottom: layout.watermarkBottom + 1,
-        }}
+        padding={{ trailing: small ? -6 : -8, bottom: small ? -6 : -10 }}
       >
-        <Watermark size={layout.watermarkSize} />
+        <Watermark size={small ? 88 : 130} />
       </HStack>
-      <ZStack frame={{ maxWidth: "infinity", maxHeight: "infinity" }}>
-        <HStack
-          spacing={6}
-          frame={{
-            maxWidth: "infinity",
-            maxHeight: "infinity",
-            alignment: "topLeading",
-          }}
-          padding={{ leading: layout.left, top: layout.planY }}
-        >
-          <PlanBadge label={model.planLabel} />
-        </HStack>
 
-        <HStack
-          frame={{
-            maxWidth: "infinity",
-            maxHeight: "infinity",
-            alignment: "topTrailing",
-          }}
-          padding={{ trailing: layout.right, top: layout.topY }}
-        >
-          <HStack
-            padding={{
-              horizontal: layout.chipHorizontal,
-              vertical: layout.chipVertical,
-            }}
-            background={C.chip}
-            clipShape={{ type: "capsule", style: "continuous" }}
-          >
-            <Text
-              font={layout.chipFont}
-              fontWeight="semibold"
-              foregroundStyle={C.chipText}
-            >
-              {`已用 ${formatPercent(model.focus?.usedPercent)}`}
-            </Text>
-          </HStack>
-        </HStack>
-
-        <HStack
-          frame={{
-            maxWidth: "infinity",
-            maxHeight: "infinity",
-            alignment: "topLeading",
-          }}
-          padding={{
-            leading: layout.left,
-            trailing: layout.right,
-            top: layout.titleY,
-          }}
-        >
-          <Text font={layout.titleFont} fontWeight="bold" foregroundStyle={C.primary}>
-            {focusTitle()}
-          </Text>
+      <VStack
+        spacing={small ? 8 : 10}
+        alignment="leading"
+        padding={pad}
+        frame={{ maxWidth: "infinity", maxHeight: "infinity", alignment: "topLeading" }}
+      >
+        <HStack frame={{ width: contentWidth }}>
+          <PlanBadge label={model.planLabel} small={small} />
           <Spacer />
-        </HStack>
-
-        <HStack
-          alignment="lastTextBaseline"
-          spacing={7}
-          frame={{
-            maxWidth: "infinity",
-            maxHeight: "infinity",
-            alignment: "topLeading",
-          }}
-          padding={{
-            leading: layout.left,
-            trailing: layout.right,
-            top: layout.mainY,
-          }}
-        >
           <Text
-            font={layout.mainFont}
-            fontWeight="bold"
-            foregroundStyle={C.primary}
-            minScaleFactor={0.4}
-          >
-            {model.main}
-          </Text>
-          <Text
-            font={layout.suffixFont}
+            font={small ? 9 : 11}
             fontWeight="medium"
             foregroundStyle={C.secondary}
+            lineLimit={1}
           >
-            {model.suffix}
+            {small
+              ? formatSmallDate(model.resetAt)
+              : `重置 ${formatResetDate(model.resetAt)}`}
           </Text>
-          <Spacer />
         </HStack>
 
-        <HStack
-          frame={{
-            maxWidth: "infinity",
-            maxHeight: "infinity",
-            alignment: "topLeading",
-          }}
-          padding={{ leading: layout.left, top: layout.progressY }}
-        >
-          <Progress
-            displayValue={model.progress}
-            usedPercent={model.focus?.usedPercent}
-            remainingPercent={model.focus?.remainingPercent}
-            width={mediumContentWidth}
-            height={layout.progressHeight}
-          />
-        </HStack>
+        {rows.length === 0 ? (
+          <Text font={12} foregroundStyle={C.secondary}>
+            暂无用量窗口
+          </Text>
+        ) : (
+          rows.map((window) => (
+            <WindowRow
+              key={window.id}
+              window={window}
+              width={contentWidth}
+              compact={small}
+            />
+          ))
+        )}
 
-        <HStack
-          spacing={8}
-          frame={{
-            maxWidth: "infinity",
-            maxHeight: "infinity",
-            alignment: "topLeading",
-          }}
-          padding={{
-            leading: layout.left,
-            trailing: layout.right,
-            top: layout.footerY + 2,
-          }}
-        >
-          <VStack spacing={1} alignment="leading" frame={{ width: mediumContentWidth / 2 }}>
-            <Text font={layout.footerLabelFont} foregroundStyle={C.secondary}>
-              更新时间
+        {!small ? (
+          <HStack frame={{ width: contentWidth }}>
+            <Text font={10} foregroundStyle={C.secondary}>
+              更新 {model.fetched}
             </Text>
-            <Text font={layout.footerValueFont} fontWeight="bold" foregroundStyle={C.primary}>
-              {model.fetched}
-            </Text>
-          </VStack>
-          <VStack spacing={1} alignment="trailing" frame={{ width: mediumContentWidth / 2 }}>
-            <Text font={layout.footerLabelFont} foregroundStyle={C.secondary}>
-              重置时间
-            </Text>
-            <Text font={layout.footerValueFont} fontWeight="bold" foregroundStyle={C.primary}>
-              {formatResetDate(model.focus?.resetAt)}
-            </Text>
-          </VStack>
-        </HStack>
-
-        {!model.live && model.detail ? (
-          <HStack
-            frame={{
-              maxWidth: "infinity",
-              maxHeight: "infinity",
-              alignment: "bottomLeading",
-            }}
-            padding={{ horizontal: 16, bottom: 3 }}
-          >
-            <Text font={9} foregroundStyle={C.warn} lineLimit={1}>
-              {model.detail}
-            </Text>
+            <Spacer />
+            {!model.live && model.detail ? (
+              <Text font={9} foregroundStyle={C.warn} lineLimit={1}>
+                {model.detail}
+              </Text>
+            ) : null}
           </HStack>
+        ) : !model.live && model.detail ? (
+          <Text font={7} foregroundStyle={C.warn} lineLimit={1}>
+            {model.detail}
+          </Text>
         ) : null}
-      </ZStack>
+      </VStack>
     </ZStack>
   );
 }

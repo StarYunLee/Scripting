@@ -102,7 +102,7 @@ export const PROVIDERS: Array<{
     id: "cursor",
     title: "Cursor",
     connectTitle: "连接 Cursor 账户",
-    subtitle: "连接 Cursor 账户，查看计费周期额度与重置时间。",
+    subtitle: "连接 Cursor 账户，查看 Auto / 所有 / 第三方模型用量。",
     accent: "#111827",
     pasteHint:
       "在浏览器完成 Cursor 登录后返回应用，无需粘贴内容，直接点击“提交并完成授权”。",

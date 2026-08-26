@@ -10,7 +10,7 @@
 
 面向 [Scripting App](https://scriptingapp.github.io/) 的非官方多平台用量查看应用。在一个项目里管理 Codex、Grok、Claude、Antigravity 与 Cursor 的多账号用量、主屏幕小组件和自动化刷新。
 
-当前版本：`1.2.1`
+当前版本：`1.2.2`
 
 > 本项目不是 OpenAI、xAI、Anthropic、Google、Cursor 或 Scripting App 官方产品，与上述平台无隶属或合作关系。
 
@@ -148,7 +148,8 @@ provider:profileId
 
 ### Cursor
 
-- 固定显示计费周期额度，不再提供账号级显示切换
+- 固定展示 Auto、所有、第三方模型三个额度窗口的剩余百分比
+- 三个窗口共享计费周期重置时间；缺失字段时跳过对应窗口
 
 ### 刷新频率
 

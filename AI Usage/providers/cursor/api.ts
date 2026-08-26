@@ -8,7 +8,7 @@ import { formatPlanLabel } from "./format";
 import type { LimitWindow, UsageResult, UsageSnapshot } from "./types";
 
 const API_BASE = "https://api2.cursor.sh";
-const CACHE_KEY = "ai_usage_cursor_cache_v1";
+const CACHE_KEY = "ai_usage_cursor_cache_v2";
 const MIN_LIVE_INTERVAL_MS = 3 * 60_000;
 const INCLUDED_MODEL_KEY = "gpt-4";
 
@@ -124,59 +124,91 @@ function percentFromDisplayMessage(value: unknown): number | null {
 }
 
 type ParsedBilling = {
-  window: LimitWindow;
+  windows: LimitWindow[];
   planLabel: string | null;
 };
 
-function parseBillingCycle(
+function makeWindow(
+  name: LimitWindow["name"],
+  label: string,
+  usedPercent: number,
+  reset: { iso: string | null; ms: number | null },
+): LimitWindow {
+  const used = clamp(usedPercent);
+  return {
+    id: `cursor:${name}`,
+    name,
+    label,
+    usedPercent: used,
+    remainingPercent: clamp(100 - used),
+    resetAt: reset.iso,
+    resetAtMs: reset.ms,
+    windowSeconds: null,
+  };
+}
+
+function planSpendPercent(
+  planUsage: Record<string, unknown> | null,
+  plan: PlanInfo,
+  displayMessage: unknown,
+): number | null {
+  if (!planUsage) return percentFromDisplayMessage(displayMessage);
+  const limitCents =
+    (toNumber(planUsage.limit) != null && toNumber(planUsage.limit)! > 0
+      ? toNumber(planUsage.limit)
+      : null) ??
+    (plan.includedAmountCents != null && plan.includedAmountCents > 0
+      ? plan.includedAmountCents
+      : null);
+  const includedSpend = toNumber(planUsage.includedSpend);
+  const totalSpend = toNumber(planUsage.totalSpend);
+  const remainingCents = toNumber(planUsage.remaining);
+  if (limitCents != null && limitCents > 0) {
+    const spend = includedSpend ?? totalSpend;
+    if (spend != null) return clamp((spend / limitCents) * 100);
+    if (remainingCents != null)
+      return clamp(((limitCents - remainingCents) / limitCents) * 100);
+  }
+  return percentFromDisplayMessage(displayMessage);
+}
+
+/**
+ * 解析 Cursor 仪表盘用量：
+ * - Auto → autoPercentUsed
+ * - 所有 → totalPercentUsed（回退套餐花费占比）
+ * - 第三方模型 → apiPercentUsed
+ */
+function parsePlanUsageWindows(
   payload: Record<string, unknown>,
   plan: PlanInfo,
 ): ParsedBilling | null {
   const planUsage = asObject(payload.planUsage);
   const usageReset = isoDate(payload.billingCycleEnd);
   const reset = usageReset.iso != null ? usageReset : plan.billingCycleEnd;
-  if (!planUsage && percentFromDisplayMessage(payload.displayMessage) == null) {
-    return null;
-  }
+  const windows: LimitWindow[] = [];
 
-  const limitCents =
-    (toNumber(planUsage?.limit) != null && toNumber(planUsage?.limit)! > 0
-      ? toNumber(planUsage?.limit)
-      : null) ??
-    (plan.includedAmountCents != null && plan.includedAmountCents > 0
-      ? plan.includedAmountCents
-      : null);
-  const includedSpend = toNumber(planUsage?.includedSpend);
-  const totalSpend = toNumber(planUsage?.totalSpend);
-  const remainingCents = toNumber(planUsage?.remaining);
-  const totalPercentUsed = toNumber(planUsage?.totalPercentUsed);
-  const displayPercent = percentFromDisplayMessage(payload.displayMessage);
+  const autoPercent = toNumber(planUsage?.autoPercentUsed);
+  const totalPercent = toNumber(planUsage?.totalPercentUsed);
+  const apiPercent = toNumber(planUsage?.apiPercentUsed);
+  const spendPercent = planSpendPercent(planUsage, plan, payload.displayMessage);
 
-  let usedPercent: number | null = null;
-  // 优先用 includedSpend / limit（与 Cursor 仪表盘 displayMessage 一致）。
-  if (limitCents != null && limitCents > 0) {
-    const spend = includedSpend ?? totalSpend;
-    if (spend != null) usedPercent = clamp((spend / limitCents) * 100);
-    else if (remainingCents != null)
-      usedPercent = clamp(((limitCents - remainingCents) / limitCents) * 100);
-  }
-  if (usedPercent == null && displayPercent != null) usedPercent = displayPercent;
-  // totalPercentUsed 是另一套内部指标，仅作最后回退。
-  if (usedPercent == null && totalPercentUsed != null)
-    usedPercent = clamp(totalPercentUsed);
-  if (usedPercent == null) return null;
+  if (autoPercent != null)
+    windows.push(makeWindow("auto", "Auto", autoPercent, reset));
 
-  const window: LimitWindow = {
-    id: "cursor:billing_cycle",
-    name: "billing_cycle",
-    label: "计费周期",
-    usedPercent,
-    remainingPercent: clamp(100 - usedPercent),
-    resetAt: reset.iso,
-    resetAtMs: reset.ms,
-    windowSeconds: null,
-  };
-  return { window, planLabel: plan.planLabel };
+  // 「所有」优先用 totalPercentUsed；缺失时回退套餐花费占比。
+  const allPercent = totalPercent ?? spendPercent;
+  if (allPercent != null)
+    windows.push(makeWindow("total", "所有", allPercent, reset));
+
+  if (apiPercent != null)
+    windows.push(makeWindow("api", "第三方模型", apiPercent, reset));
+
+  // 若三个百分比都缺失，至少保留套餐花费窗口。
+  if (!windows.length && spendPercent != null)
+    windows.push(makeWindow("plan", "套餐额度", spendPercent, reset));
+
+  if (!windows.length) return null;
+  return { windows, planLabel: plan.planLabel };
 }
 
 function parseSpendLimit(
@@ -199,16 +231,7 @@ function parseSpendLimit(
     usedPercent = clamp(((limit - remaining) / limit) * 100);
   if (usedPercent == null) return null;
   return {
-    window: {
-      id: "cursor:spend_limit",
-      name: "billing_cycle",
-      label: "计费周期",
-      usedPercent,
-      remainingPercent: clamp(100 - usedPercent),
-      resetAt: reset.iso,
-      resetAtMs: reset.ms,
-      windowSeconds: null,
-    },
+    windows: [makeWindow("plan", "按需额度", usedPercent, reset)],
     planLabel,
   };
 }
@@ -235,17 +258,42 @@ function parseLegacyUsage(payload: Record<string, unknown>): ParsedBilling | nul
       }
     : { iso: null, ms: null };
 
-  const window: LimitWindow = {
-    id: "cursor:requests",
-    name: "weekly",
-    label: "请求额度",
-    usedPercent,
-    remainingPercent: clamp(100 - usedPercent),
-    resetAt: reset.iso,
-    resetAtMs: reset.ms,
-    windowSeconds: 30 * 86_400,
+  return {
+    windows: [
+      {
+        id: "cursor:requests",
+        name: "weekly",
+        label: "请求额度",
+        usedPercent,
+        remainingPercent: clamp(100 - usedPercent),
+        resetAt: reset.iso,
+        resetAtMs: reset.ms,
+        windowSeconds: 30 * 86_400,
+      },
+    ],
+    planLabel: "Enterprise",
   };
-  return { window, planLabel: "Enterprise" };
+}
+
+function toSnapshot(
+  parsed: ParsedBilling,
+  fetchedAt: string,
+  source: "live" | "cache",
+): UsageSnapshot {
+  const byName = (name: LimitWindow["name"]) =>
+    parsed.windows.find((window) => window.name === name) || null;
+  return {
+    windows: parsed.windows,
+    auto: byName("auto"),
+    total: byName("total"),
+    api: byName("api"),
+    plan: byName("plan"),
+    weekly: byName("weekly"),
+    planType: parsed.planLabel,
+    planLabel: parsed.planLabel,
+    fetchedAt,
+    source,
+  };
 }
 
 function cacheKey(profileId: string): string {
@@ -327,7 +375,7 @@ async function fetchUsagePayload(token: string): Promise<FetchPayloadOutcome> {
       const usageReset = isoDate(payload.billingCycleEnd);
       const reset = usageReset.iso != null ? usageReset : plan.billingCycleEnd;
       const parsed =
-        parseBillingCycle(payload, plan) ||
+        parsePlanUsageWindows(payload, plan) ||
         parseSpendLimit(payload, plan.planLabel, reset);
       if (parsed) return { ok: true, parsed };
       return {
@@ -446,15 +494,7 @@ export async function fetchUsage(options?: {
     }
 
     const parsed = outcome.parsed;
-    const snapshot: UsageSnapshot = {
-      windows: [parsed.window],
-      billingCycle: parsed.window,
-      weekly: parsed.window.name === "weekly" ? parsed.window : null,
-      planType: parsed.planLabel,
-      planLabel: parsed.planLabel,
-      fetchedAt: new Date().toISOString(),
-      source: "live",
-    };
+    const snapshot = toSnapshot(parsed, new Date().toISOString(), "live");
     writeCache(profile.id, snapshot);
     return { ok: true, snapshot };
   } catch (error) {
