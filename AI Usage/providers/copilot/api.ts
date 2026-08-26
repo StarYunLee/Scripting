@@ -2,7 +2,7 @@ import { fetch } from "scripting";
 import { COPILOT_WINDOW } from "../../copy/labels";
 import { getProfileAccessToken, resolveProfile } from "./accounts";
 import { formatPlanLabel } from "./format";
-import { copilotRequestHeaders, refreshOAuthToken } from "./oauth";
+import { copilotRequestHeaders, ensureAccountEmail, refreshOAuthToken } from "./oauth";
 import type { LimitWindow, LimitWindowName, UsageResult, UsageSnapshot } from "./types";
 
 const USAGE_URL = "https://api.github.com/copilot_internal/user";
@@ -95,12 +95,16 @@ function parseUsages(payload: Record<string, unknown>): {
 
   const planRaw =
     typeof payload.copilot_plan === "string" ? payload.copilot_plan : null;
+  const skuRaw =
+    typeof payload.access_type_sku === "string"
+      ? payload.access_type_sku
+      : null;
   return {
     windows,
     credits,
     chat,
     completions,
-    planLabel: formatPlanLabel(planRaw),
+    planLabel: formatPlanLabel(planRaw, skuRaw),
   };
 }
 
@@ -183,6 +187,9 @@ export async function fetchUsage(options?: {
       },
       cache,
     };
+
+  // 老账号缺邮箱时顺带回填一次（不阻塞主流程）
+  if (!profile.email) void ensureAccountEmail(profile.id);
 
   try {
     const response = await fetch(USAGE_URL, {
