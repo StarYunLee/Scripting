@@ -6,6 +6,15 @@ export type ChangelogEntry = {
 
 export const CHANGELOG = [
   {
+    version: "1.2.1",
+    date: "2026-08-26",
+    changes: [
+      "修复 Cursor 用量解析失败：正确识别 Dashboard 返回的 unix 毫秒时间戳。",
+      "补齐套餐额度回退（GetPlanInfo.includedAmountCents）与 displayMessage 百分比解析。",
+      "区分授权失效、HTTP 失败与字段缺失的错误提示。",
+    ],
+  },
+  {
     version: "1.2.0",
     date: "2026-08-26",
     changes: [
