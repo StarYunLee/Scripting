@@ -1,8 +1,8 @@
 import {
+  Circle,
   EmptyView as BuiltinEmptyView,
   HStack,
   Image,
-  ProgressView,
   Spacer,
   Text,
   VStack,
@@ -178,6 +178,10 @@ function UsageRing(props: {
   const titleFont = props.compact ? 9 : 10;
   const subFont = props.compact ? 8 : 9;
   const subtitle = privacySubtitle(props.row, props.privacy);
+  // 圆环改为 Circle + trim 手绘：iOS 上 circular ProgressView 会渲染成
+  // 不确定状态的转圈指示器（官方文档注明），无法用作确定性环形仪表。
+  const thickness = Math.max(3, Math.round(props.size * 0.09));
+  const circleSize = props.size - thickness;
 
   return (
     <VStack
@@ -186,20 +190,28 @@ function UsageRing(props: {
       frame={{ maxWidth: "infinity" }}
     >
       <ZStack frame={{ width: props.size, height: props.size }}>
-        <ProgressView
-          value={100}
-          total={100}
-          progressViewStyle="circular"
-          tint={C.track}
-          scaleEffect={{ x: 1.08, y: 1.08 }}
+        <Circle
+          fill="clear"
+          stroke={{
+            shapeStyle: C.track,
+            strokeStyle: { lineWidth: thickness },
+          }}
+          frame={{ width: circleSize, height: circleSize }}
         />
-        <ProgressView
-          value={value}
-          total={100}
-          progressViewStyle="circular"
-          tint={tint}
-          scaleEffect={{ x: 1.08, y: 1.08 }}
-        />
+        {value > 0 ? (
+          <Circle
+            fill="clear"
+            trim={{ from: 0, to: value / 100 }}
+            stroke={{
+              shapeStyle: tint,
+              strokeStyle: { lineWidth: thickness, lineCap: "round" },
+            }}
+            rotationEffect={{ degrees: -90, anchor: "center" }}
+            frame={{ width: circleSize, height: circleSize }}
+          />
+        ) : (
+          <BuiltinEmptyView />
+        )}
         <Text
           font={props.size * 0.3}
           fontWeight="bold"
