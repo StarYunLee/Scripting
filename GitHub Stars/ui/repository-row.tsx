@@ -7,6 +7,7 @@ import {
   Text,
   VStack,
   type Color,
+  type VirtualNode,
 } from "scripting";
 import { languageColor } from "../data/language-colors";
 import type { GitHubRepository, RepositoryMembership } from "../types";
@@ -97,7 +98,11 @@ function RepositoryCardChrome(props: {
       glass: UIGlass.regular().interactive(true),
       shape: { type: "rect" as const, cornerRadius: 20, style: "continuous" as const },
     },
-    shadow: { color: "rgba(72,88,120,0.16)", radius: 12, y: 5 },
+    shadow: {
+      color: "rgba(72,88,120,0.16)" as Color,
+      radius: 12,
+      y: 5,
+    },
     listRowBackground: <></>,
     listRowSeparator: "hidden" as const,
     listRowInsets: { top: 8, bottom: 8, leading: 0, trailing: 0 },

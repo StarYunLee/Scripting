@@ -8,6 +8,7 @@ import {
 } from "scripting";
 import { AllStarsPage } from "./pages/all-stars-page";
 import { ListsPage } from "./pages/lists-page";
+import { RepositoriesPage } from "./pages/repositories-page";
 import { SettingsPage } from "./pages/settings-page";
 import { GitHubDataStore } from "./services/data-store";
 
@@ -28,6 +29,9 @@ function App() {
       </Tab>
       <Tab title="列表" systemImage="folder.fill" value="lists">
         <ListsPage store={store} />
+      </Tab>
+      <Tab title="仓库" systemImage="shippingbox.fill" value="repositories">
+        <RepositoriesPage store={store} />
       </Tab>
       <Tab title="设置" systemImage="gearshape.fill" value="settings">
         <SettingsPage store={store} />

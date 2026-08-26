@@ -4,6 +4,7 @@ import type {
   GitHubListSummary,
   GitHubRepository,
   GitHubUser,
+  OwnedRepository,
 } from "../types";
 import type { RestStarredRepository, RestUser } from "./github-rest";
 import type { fetchListItems } from "./github-graphql";
@@ -78,6 +79,40 @@ export function normalizeRestRepository(
       login: stringValue(raw.owner?.login) ?? loginFromName ?? "未知用户",
       avatarUrl: stringValue(raw.owner?.avatar_url) ?? "",
     },
+  };
+}
+
+function booleanValue(value: unknown): boolean {
+  return value === true;
+}
+
+function stringArrayValue(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter(
+    (item): item is string => typeof item === "string" && item.length > 0,
+  );
+}
+
+function repositoryVisibility(
+  raw: RestStarredRepository,
+): "public" | "private" | "internal" {
+  if (raw.visibility === "internal") return "internal";
+  return raw.private === true ? "private" : "public";
+}
+
+export function normalizeOwnedRepository(
+  raw: RestStarredRepository,
+): OwnedRepository {
+  return {
+    ...normalizeRestRepository(raw),
+    isPrivate: raw.private === true,
+    visibility: repositoryVisibility(raw),
+    isFork: booleanValue(raw.fork),
+    isArchived: booleanValue(raw.archived),
+    hasIssues: booleanValue(raw.has_issues),
+    homepage: stringValue(raw.homepage),
+    topics: stringArrayValue(raw.topics),
+    defaultBranch: stringValue(raw.default_branch) ?? "main",
   };
 }
 

@@ -47,13 +47,14 @@ https://raw.githubusercontent.com/StarYunLee/Scripting/main/AI-Usage.scripting
 
 ### GitHub Stars
 
-浏览已加星仓库，支持搜索、按语言或列表筛选、多种排序，以及粘贴链接加星、长按取消 Star。可维护自定义列表与仓库归属，并在资料卡查看贡献热力图、钉选仓库和常用语言。
+浏览已加星仓库，支持搜索、按语言或列表筛选、多种排序，以及粘贴链接加星、长按取消 Star。可维护自定义列表与仓库归属；也可浏览本人公开仓库，编辑描述、Homepage、Topics 与 Issues，并将已设置为 GitHub Pinned 的仓库置顶显示。资料卡提供贡献热力图与常用语言。
 
 <table>
   <tr>
-    <td align="center" width="33%"><img src="./GitHub%20Stars/assets/github-stars-preview-stars.jpeg" alt="GitHub Stars 收藏仓库页预览" /></td>
-    <td align="center" width="33%"><img src="./GitHub%20Stars/assets/github-stars-preview-lists.jpeg" alt="GitHub Stars 列表页预览" /></td>
-    <td align="center" width="33%"><img src="./GitHub%20Stars/assets/github-stars-preview-settings.jpeg" alt="GitHub Stars 设置页预览" /></td>
+    <td align="center" width="25%"><img src="./GitHub%20Stars/assets/github-stars-preview-stars.jpeg" alt="GitHub Stars 收藏仓库页预览" /></td>
+    <td align="center" width="25%"><img src="./GitHub%20Stars/assets/github-stars-preview-lists.jpeg" alt="GitHub Stars 列表页预览" /></td>
+    <td align="center" width="25%"><img src="./GitHub%20Stars/assets/github-stars-preview-repositories.jpeg" alt="GitHub Stars 仓库页预览" /></td>
+    <td align="center" width="25%"><img src="./GitHub%20Stars/assets/github-stars-preview-settings.jpeg" alt="GitHub Stars 设置页预览" /></td>
   </tr>
 </table>
 

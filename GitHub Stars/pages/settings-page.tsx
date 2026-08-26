@@ -6,6 +6,7 @@ import {
   Section,
   Text,
   TextField,
+  Toggle,
   VStack,
   useEffect,
   useState,
@@ -13,7 +14,6 @@ import {
 import { CURRENT_VERSION } from "../changelog";
 import { ChangelogPage } from "./changelog-page";
 import { ContributionGraph } from "../ui/contribution-graph";
-import { PinnedRepositories } from "../ui/pinned-repositories";
 import { TopLanguagesBar } from "../ui/top-languages-bar";
 import {
   hasToken,
@@ -60,7 +60,9 @@ export function SettingsPage(props: { store: GitHubDataStore }) {
     const confirmed = await Dialog.confirm({
       title: hasToken() ? "更换个人访问令牌" : "保存个人访问令牌",
       message:
-        "需要 Personal access token (classic) 的 user 与 public_repo 权限。令牌只保存在本机 Keychain。",
+        state.includePrivateRepositories
+          ? "需要 Personal access token (classic) 的 user 与 repo 权限。repo 用于私有仓库访问，也覆盖公开仓库管理和 Star 写入。令牌只保存在本机 Keychain。"
+          : "需要 Personal access token (classic) 的 user 与 public_repo 权限。public_repo 用于公开仓库管理和 Star 写入，令牌只保存在本机 Keychain。",
       cancelLabel: "取消",
       confirmLabel: "保存并验证",
     });
@@ -72,9 +74,14 @@ export function SettingsPage(props: { store: GitHubDataStore }) {
       setTokenDraft("");
       store.refreshTokenState();
       await store.refreshAll(true);
+      if (state.includePrivateRepositories) {
+        await store.refreshOwnedRepositories();
+      }
       await Dialog.alert({
         title: "令牌有效并已保存",
-        message: "之后将使用这份 Classic PAT 管理 Stars 和 Lists。",
+        message: state.includePrivateRepositories
+          ? "之后将使用这份 Classic PAT 管理 Stars、Lists，以及本人公开和私有仓库。"
+          : "之后将使用这份 Classic PAT 管理 Stars、Lists 和本人公开仓库。",
       });
     } catch (error) {
       await Dialog.alert({
@@ -91,6 +98,41 @@ export function SettingsPage(props: { store: GitHubDataStore }) {
       setBusy(false);
     }
   }
+  async function togglePrivateRepositories(enabled: boolean) {
+    if (!enabled) {
+      setBusy(true);
+      try {
+        await store.setIncludePrivateRepositories(false);
+      } finally {
+        setBusy(false);
+      }
+      return;
+    }
+    const confirmed = await Dialog.confirm({
+      title: "显示私有仓库",
+      message:
+        "此功能需要 Personal access token (classic) 的 repo 权限。repo 是高权限授权；应用只读取和缓存本机仓库元数据，不读取源码、Issues、Actions 或 Secrets。请先确认当前令牌已勾选 repo。",
+      cancelLabel: "取消",
+      confirmLabel: "确认开启",
+    });
+    if (!confirmed) return;
+    setBusy(true);
+    try {
+      await store.setIncludePrivateRepositories(true);
+    } catch (error) {
+      await Dialog.alert({
+        title: "无法加载私有仓库",
+        message:
+          "请确认 Classic PAT 已勾选 repo 权限后重试。" +
+          (typeof error === "object" && error !== null && "message" in error
+            ? `\n\n${String(error.message)}`
+            : ""),
+      });
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function clearToken() {
     const confirmed = await Dialog.confirm({
       title: "移除 Token",
@@ -258,15 +300,6 @@ export function SettingsPage(props: { store: GitHubDataStore }) {
                     <ContributionGraph user={user} store={store} />
                   </>
                 ) : null}
-                {user.pinnedRepositories &&
-                user.pinnedRepositories.length > 0 ? (
-                  <>
-                    <GlassDivider />
-                    <PinnedRepositories
-                      repositories={user.pinnedRepositories}
-                    />
-                  </>
-                ) : null}
                 {user.topLanguages && user.topLanguages.length > 0 ? (
                   <>
                     <GlassDivider />
@@ -280,6 +313,35 @@ export function SettingsPage(props: { store: GitHubDataStore }) {
                 detail="配置 Token 后加载账户信息"
               />
             )}
+          </GlassGroup>
+        </Section>
+        <Section
+          header={<GlassSectionHeader title="仓库" />}
+          listRowBackground={glassRowBackground}
+        >
+          <GlassGroup>
+            <Toggle
+              value={state.includePrivateRepositories}
+              title="显示私有仓库"
+              systemImage="lock.fill"
+              disabled={busy}
+              onChanged={(enabled: boolean) => {
+                void togglePrivateRepositories(enabled);
+              }}
+              padding={{ vertical: true }}
+              frame={{ minHeight: 44, maxWidth: "infinity" }}
+            />
+            <GlassDivider />
+            <Text
+              font={12}
+              foregroundStyle="tertiaryLabel"
+              padding={{ vertical: true }}
+              frame={{ maxWidth: "infinity" }}
+            >
+              默认只加载公开仓库。开启需要 Classic PAT 的 repo 权限；私有仓库
+              仅缓存名称、描述、Topics、语言、默认分支与状态等元数据。关闭后会
+              立即从内存和本机缓存移除私有仓库元数据。
+            </Text>
           </GlassGroup>
         </Section>
         <Section
@@ -328,8 +390,9 @@ export function SettingsPage(props: { store: GitHubDataStore }) {
               frame={{ maxWidth: "infinity" }}
             >
               在 GitHub 创建 Personal access token (classic)，勾选 user 与
-              public_repo。取消私有仓库 Star 还需 repo。令牌保存在本机
-              Keychain，不会写入仓库、缓存或应用源码。
+              public_repo，用于公开仓库管理和 Star 写入。若开启显示私有仓库，
+              请改用带 repo 权限的 Classic PAT；repo 也覆盖公开仓库权限。
+              令牌保存在本机 Keychain，不会写入仓库、缓存或应用源码。
             </Text>
             {state.viewerError ? (
               <>

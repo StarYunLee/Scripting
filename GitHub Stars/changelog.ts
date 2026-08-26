@@ -6,6 +6,16 @@ export type ChangelogEntry = {
 
 export const CHANGELOG = [
   {
+    version: "1.0.0",
+    date: "2026-08-26",
+    changes: [
+      "新增仓库 Tab，可浏览、搜索、筛选和排序本人公开仓库；已设置为 GitHub Pinned 的仓库会优先显示，并维护描述、Homepage、Topics 与 Issues。",
+      "Fork 仓库支持将默认分支同步到上游最新状态，发生冲突时不会强制覆盖。",
+      "设置页可按需显示本人私有仓库；开启需 Classic PAT 的 repo 权限，关闭后立即清除私有仓库元数据缓存。",
+      "归档仓库前需要输入仓库名称确认，避免误触高影响操作。",
+    ],
+  },
+  {
     version: "0.9.0",
     date: "2026-08-25",
     changes: [
