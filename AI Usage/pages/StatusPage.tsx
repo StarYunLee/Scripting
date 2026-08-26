@@ -1,4 +1,4 @@
-import { List, NavigationStack, Text, useEffect, useState } from "scripting";
+import { List, NavigationStack, Text, useEffect, useMemo, useState } from "scripting";
 import { AccountDetailPage } from "./AccountDetailPage";
 import {
   deleteAuthorizedAccount,
@@ -22,7 +22,7 @@ import { usePageToolbar } from "../components/PageToolbar";
 import { UsageCardView } from "../components/UsageCardView";
 import { type AuthSheet, type ProviderId, type UsageCard } from "../models";
 import { launchProviderAuthorization } from "../services/auth-flow";
-import { applyDashboardPrefs } from "../services/dashboard-prefs";
+import { applyDashboardPrefs, getDashboardPrefs } from "../services/dashboard-prefs";
 import { inBatches, refreshAccounts } from "../services/refresh";
 import { requestWidgetReload } from "../services/widgets";
 import {
@@ -49,11 +49,20 @@ export function StatusPage(props: {
 
   // 所有卡片 state 写入的唯一入口：刷新路径返回的是未过滤卡片，
   // 这里统一套用总览偏好，保证「隐藏的账号/额度行」刷新后不复活。
+  // prefs 随 dashboardEpoch 重取，避免每次写入都同步读 Storage。
+  const dashboardPrefs = useMemo(
+    () => getDashboardPrefs(),
+    [props.dashboardEpoch, props.demoMode],
+  );
+
   function setCards(
     next: UsageCard[] | ((current: UsageCard[]) => UsageCard[]),
   ) {
     setCardsRaw((current) =>
-      applyDashboardPrefs(typeof next === "function" ? next(current) : next),
+      applyDashboardPrefs(
+        typeof next === "function" ? next(current) : next,
+        dashboardPrefs,
+      ),
     );
   }
 

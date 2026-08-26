@@ -13,6 +13,7 @@ import {
   Toggle,
   VStack,
   Widget,
+  useMemo,
   useState,
 } from "scripting";
 import { PROVIDERS, type ProviderId } from "../models";
@@ -119,7 +120,8 @@ export function SettingsPage(props: {
   const [dashboardPreviewFamily, setDashboardPreviewFamily] = useState<
     "choose" | "systemSmall" | "systemMedium" | "systemLarge"
   >("choose");
-  const settings = getAppDisplaySettings();
+  // tick 变化（refresh()）时重读 Storage，其余重渲染复用
+  const settings = useMemo(() => getAppDisplaySettings(), [tick]);
 
   function refresh() {
     setTick((value) => value + 1);

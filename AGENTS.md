@@ -44,6 +44,21 @@
 - `progressViewStyle="circular"` 的 ProgressView 在 iOS 上是不确定加载指示器（转圈），**不能**用作确定性圆环；画圆环用 `Circle + trim + stroke`
 - **内存与求值预算**：iOS 对小组件有约 30MB 内存限制，渲染失败/空白通常是内存问题；`Widget.present(...)` 后当前执行上下文立即销毁；小组件是一次性渲染，`widget.tsx` 的整个 import 图每次 timeline reload 都会重新解析求值。新增 widget 代码前先掂量 import 图的增量（参考：v1.9.0 设置面板功能让 import 图涨了 1832 行/52KB，抵消了同期 perf 重构的减量）
 
+## 性能约束
+
+- `index.tsx` / `widget.tsx` 都是全静态 import，Scripting **没有动态 `import()`**（官方文档全文 0 命中）——import 图 = 每次启动/渲染的成本，新增视图前先掂量增量
+- 网络刷新一律用有界并发（`services/refresh.ts` 的 `inBatches`）：应用侧每批 3~4，小组件 2~3；不要 `for + await` 串行，也不要无上限 `Promise.all(全部)`；错误隔离必须保持（单个账号失败不影响其它）
+- App 启动的刷新必须尊重 `settings.reloadMinutes`（默认 30 分钟）；provider 内部的 `MIN_LIVE_INTERVAL_MS`（3 分钟）只是防连点下限，不是启动闸门的依据
+- 迁移不挡首帧：9 家 provider 的读取路径（`getAccountRegistry`）各自惰性触发 `ensure`，顶层 `ensureAllMigrations` 只需尽早、无需最先
+- 渲染路径避免每次重渲染都同步读 Storage：用 `useMemo`/`useState` 初值 + 变更信号（tick/epoch）重取
+
+参考数字（import 图体积）：
+
+```
+index.tsx  图: v1.1.2 286.5 KB -> v1.9.0 594.0 KB
+widget.tsx 图: v1.1.2 308.7 KB -> v1.9.0 710.8 KB
+```
+
 ## 验证
 
 - 语法检查（仓库根目录可跑，只查语法不做类型检查，不需要 dts）：`npx --yes -p typescript@5 node tools/check-syntax.js "AI Usage"`；release 前必跑
