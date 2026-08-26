@@ -109,16 +109,6 @@ function filterAndSortStars(
   return sorted;
 }
 
-function sortLabel(sortKey: SortKey): string {
-  return SORT_OPTIONS.find((item) => item.key === sortKey)?.label ?? "按 Star 时间";
-}
-
-function languageLabel(language: string | null): string {
-  if (language === null) return "全部语言";
-  if (language === "") return "未标注语言";
-  return language;
-}
-
 export function AllStarsPage(props: { store: GitHubDataStore }) {
   const { store } = props;
   const [state, setState] = useState<AppState>(() => store.getState());

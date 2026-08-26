@@ -19,6 +19,28 @@ export type GitHubRepository = {
   };
 };
 
+export type OwnedRepository = GitHubRepository & {
+  isPrivate: boolean;
+  visibility: "public" | "private" | "internal";
+  isFork: boolean;
+  isArchived: boolean;
+  hasIssues: boolean;
+  homepage: string | null;
+  topics: string[];
+  defaultBranch: string;
+};
+
+export type OwnedRepositoriesCache = {
+  version: 1;
+  repositories: OwnedRepository[];
+  savedAt: string;
+};
+
+export type RepositoryPreferences = {
+  version: 1;
+  includePrivateRepositories: boolean;
+};
+
 export type GitHubListSummary = {
   id: string;
   name: string;
@@ -116,18 +138,22 @@ export type GitHubError = {
 
 export type AppState = {
   tokenConfigured: boolean;
+  includePrivateRepositories: boolean;
   viewer: GitHubUser | null;
   stars: GitHubRepository[];
   lists: GitHubListSummary[];
+  ownedRepositories: OwnedRepository[];
   memberships: MembershipSnapshot | null;
   listDetails: Record<string, GitHubListDetail>;
   viewerState: LoadState;
   starsState: LoadState;
   listsState: LoadState;
+  ownedRepositoriesState: LoadState;
   detailStates: Record<string, LoadState>;
   viewerError: GitHubError | null;
   starsError: GitHubError | null;
   listsError: GitHubError | null;
+  ownedRepositoriesError: GitHubError | null;
   detailErrors: Record<string, GitHubError | null>;
   lastSyncedAt: string | null;
 };

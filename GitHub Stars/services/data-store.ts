@@ -7,19 +7,26 @@ import type {
   GitHubRepository,
   GitHubUser,
   MembershipSnapshot,
+  OwnedRepository,
   RepositoryMembership,
 } from "../types";
 import {
   clearCache,
   clearDetailCaches,
   clearMembershipCache,
+  clearOwnedRepositoriesCache,
+  clearRepositoryPreferences,
   loadCache,
   loadDetailCache,
   loadMembershipCache,
+  loadOwnedRepositoriesCache,
+  loadRepositoryPreferences,
   removeDetailCache,
   saveCache,
   saveDetailCache,
   saveMembershipCache,
+  saveOwnedRepositoriesCache,
+  saveRepositoryPreferences,
 } from "./cache";
 import { normalizeThrownError } from "./errors";
 import {
@@ -33,38 +40,60 @@ import {
   updateUserListsForItem,
 } from "./github-graphql";
 import {
+  archiveOwnedRepository as archiveOwnedRepositoryRequest,
+  fetchOwnedRepositories,
   fetchRepository,
   fetchStarredRepositories,
   fetchViewer,
   starRepository,
+  syncOwnedFork as syncOwnedForkRequest,
   unstarRepository,
+  updateOwnedRepository as updateOwnedRepositoryRequest,
+  type UpdateOwnedRepositoryInput,
 } from "./github-rest";
 import {
   normalizeListDetail,
   normalizeListSummary,
+  normalizeOwnedRepository,
   normalizeRestRepository,
   normalizeViewer,
 } from "./normalizer";
 
 type Listener = (state: AppState) => void;
-type StoreScope = "stars" | "lists" | "settings" | `detail:${string}`;
+type StoreScope =
+  | "stars"
+  | "lists"
+  | "repositories"
+  | "settings"
+  | `detail:${string}`;
 
 function initialState(): AppState {
   const cached = loadCache();
+  const preferences = loadRepositoryPreferences();
+  const ownedRepositoriesCache = loadOwnedRepositoriesCache();
+  const ownedRepositories = preferences.includePrivateRepositories
+    ? (ownedRepositoriesCache?.repositories ?? [])
+    : (ownedRepositoriesCache?.repositories ?? []).filter(
+        (repository) => repository.visibility === "public",
+      );
   return {
     tokenConfigured: hasToken(),
+    includePrivateRepositories: preferences.includePrivateRepositories,
     viewer: cached?.viewer ?? null,
     stars: cached?.stars ?? [],
     lists: cached?.lists ?? [],
+    ownedRepositories,
     memberships: loadMembershipCache(),
     listDetails: {},
     viewerState: cached?.viewer ? "loaded" : "idle",
     starsState: cached?.stars ? "loaded" : "idle",
     listsState: cached?.lists ? "loaded" : "idle",
+    ownedRepositoriesState: ownedRepositoriesCache ? "loaded" : "idle",
     detailStates: {},
     viewerError: null,
     starsError: null,
     listsError: null,
+    ownedRepositoriesError: null,
     detailErrors: {},
     lastSyncedAt: cached?.savedAt ?? null,
   };
@@ -151,6 +180,7 @@ export class GitHubDataStore {
     this.update({ tokenConfigured: hasToken() }, [
       "stars",
       "lists",
+      "repositories",
       "settings",
     ]);
   }
@@ -224,7 +254,12 @@ export class GitHubDataStore {
 
       if (starsUnchanged && listsUnchanged && viewerUnchanged) {
         // 数据无实质变动，仅更新同步时间戳，跳过大对象替换
-        this.update({ lastSyncedAt: syncedAt }, ["stars", "lists", "settings"]);
+        this.update({ lastSyncedAt: syncedAt }, [
+          "stars",
+          "lists",
+          "repositories",
+          "settings",
+        ]);
         return;
       }
 
@@ -245,7 +280,7 @@ export class GitHubDataStore {
           viewerState: "loaded",
           lastSyncedAt: syncedAt,
         },
-        ["stars", "lists", "settings"],
+        ["stars", "lists", "repositories", "settings"],
       );
       this.saveNonSensitiveCache();
     } catch {
@@ -544,6 +579,143 @@ export class GitHubDataStore {
     await this.refreshMemberships();
   }
 
+  async setIncludePrivateRepositories(enabled: boolean): Promise<void> {
+    saveRepositoryPreferences({
+      version: 1,
+      includePrivateRepositories: enabled,
+    });
+    if (!enabled) {
+      const ownedRepositories = this.state.ownedRepositories.filter(
+        (repository) => repository.visibility === "public",
+      );
+      saveOwnedRepositoriesCache({
+        version: 1,
+        repositories: ownedRepositories,
+        savedAt: new Date().toISOString(),
+      });
+      this.update(
+        {
+          includePrivateRepositories: false,
+          ownedRepositories,
+          ownedRepositoriesState: "loaded",
+          ownedRepositoriesError: null,
+        },
+        ["repositories", "settings"],
+      );
+      return;
+    }
+    this.update({ includePrivateRepositories: true }, ["repositories", "settings"]);
+    try {
+      await this.refreshOwnedRepositories();
+    } catch (error) {
+      saveRepositoryPreferences({
+        version: 1,
+        includePrivateRepositories: false,
+      });
+      this.update(
+        {
+          includePrivateRepositories: false,
+          ownedRepositoriesState: "loaded",
+          ownedRepositoriesError: null,
+        },
+        ["repositories", "settings"],
+      );
+      throw error;
+    }
+  }
+
+  async ensureOwnedRepositories(): Promise<void> {
+    if (
+      this.state.ownedRepositoriesState === "idle" ||
+      (this.state.ownedRepositoriesState === "error" &&
+        this.state.ownedRepositories.length === 0)
+    ) {
+      await this.refreshOwnedRepositories();
+      return;
+    }
+    // 有缓存时先直接展示，再后台校验公开仓库列表。
+    void this.refreshOwnedRepositories().catch(() => {});
+  }
+
+  async ensurePinnedRepositories(): Promise<void> {
+    if (this.state.viewer?.pinnedRepositories !== undefined) return;
+    await this.refreshViewer();
+  }
+
+  async refreshOwnedRepositories(): Promise<void> {
+    this.update(
+      { ownedRepositoriesState: "loading", ownedRepositoriesError: null },
+      ["repositories"],
+    );
+    try {
+      const raw = await fetchOwnedRepositories(
+        this.state.includePrivateRepositories,
+      );
+      const ownedRepositories = raw.map(normalizeOwnedRepository);
+      saveOwnedRepositoriesCache({
+        version: 1,
+        repositories: ownedRepositories,
+        savedAt: new Date().toISOString(),
+      });
+      this.update(
+        {
+          ownedRepositories,
+          ownedRepositoriesState: "loaded",
+          ownedRepositoriesError: null,
+        },
+        ["repositories"],
+      );
+    } catch (error) {
+      this.update(
+        {
+          ownedRepositoriesState:
+            this.state.ownedRepositories.length > 0 ? "loaded" : "error",
+          ownedRepositoriesError: asError(error),
+        },
+        ["repositories"],
+      );
+      throw error;
+    }
+  }
+
+  async updateOwnedRepository(
+    repository: OwnedRepository,
+    input: UpdateOwnedRepositoryInput,
+  ): Promise<void> {
+    const updated = normalizeOwnedRepository(
+      await updateOwnedRepositoryRequest(repository.fullName, input),
+    );
+    this.replaceOwnedRepository(updated);
+  }
+
+  async archiveOwnedRepository(repository: OwnedRepository): Promise<void> {
+    const updated = normalizeOwnedRepository(
+      await archiveOwnedRepositoryRequest(repository.fullName),
+    );
+    this.replaceOwnedRepository(updated);
+  }
+
+  async syncOwnedFork(repository: OwnedRepository): Promise<void> {
+    if (!repository.isFork || repository.isArchived) {
+      throw new Error("只有未归档的 Fork 仓库可以同步上游。");
+    }
+    await syncOwnedForkRequest(repository.fullName, repository.defaultBranch);
+    // GitHub 返回后重新读取完整列表，更新推送时间与仓库状态。
+    await this.refreshOwnedRepositories();
+  }
+
+  private replaceOwnedRepository(repository: OwnedRepository): void {
+    const ownedRepositories = this.state.ownedRepositories.map((item) =>
+      item.nodeId === repository.nodeId ? repository : item,
+    );
+    saveOwnedRepositoriesCache({
+      version: 1,
+      repositories: ownedRepositories,
+      savedAt: new Date().toISOString(),
+    });
+    this.update({ ownedRepositories }, ["repositories"]);
+  }
+
   async refreshViewer(saveCacheAfter = true): Promise<void> {
     this.update({ viewerState: "loading", viewerError: null }, ["settings"]);
     try {
@@ -558,12 +730,13 @@ export class GitHubDataStore {
           viewerError: null,
           lastSyncedAt: new Date().toISOString(),
         },
-        ["settings"],
+        ["settings", "repositories"],
       );
       if (saveCacheAfter) this.saveNonSensitiveCache();
     } catch (error) {
       this.update({ viewerState: "error", viewerError: asError(error) }, [
         "settings",
+        "repositories",
       ]);
       throw error;
     }
@@ -788,11 +961,17 @@ export class GitHubDataStore {
     clearCache();
     clearDetailCaches();
     clearMembershipCache();
+    clearOwnedRepositoriesCache();
+    clearRepositoryPreferences();
     this.update(
       {
         viewer: null,
+        includePrivateRepositories: false,
         stars: [],
         lists: [],
+        ownedRepositories: [],
+        ownedRepositoriesState: "idle",
+        ownedRepositoriesError: null,
         memberships: null,
         listDetails: {},
         detailStates: {},
@@ -802,6 +981,7 @@ export class GitHubDataStore {
       [
         "stars",
         "lists",
+        "repositories",
         "settings",
         ...Array.from(this.scopedListeners.keys()).filter(
           (scope): scope is `detail:${string}` => scope.startsWith("detail:"),

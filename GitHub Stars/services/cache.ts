@@ -2,6 +2,8 @@ import type {
   CacheEnvelope,
   GitHubListDetail,
   MembershipSnapshot,
+  OwnedRepositoriesCache,
+  RepositoryPreferences,
 } from "../types";
 
 const CACHE_KEY = "github_stars_cache_v1";
@@ -9,6 +11,8 @@ const MEMBERSHIP_CACHE_KEY = "github_stars_memberships_v1";
 const DETAIL_CACHE_INDEX_KEY = "github_stars_detail_index_v1";
 const DETAIL_CACHE_KEY_PREFIX = "github_stars_detail_v1:";
 const DETAIL_CACHE_LIMIT = 5;
+const OWNED_REPOSITORIES_CACHE_KEY = "github_stars_owned_repositories_v1";
+const REPOSITORY_PREFERENCES_KEY = "github_stars_repository_preferences_v1";
 
 export type DetailCacheRecord = {
   version: 1;
@@ -47,6 +51,43 @@ export function saveMembershipCache(value: MembershipSnapshot): void {
 
 export function clearMembershipCache(): void {
   Storage.remove(MEMBERSHIP_CACHE_KEY);
+}
+
+export function loadOwnedRepositoriesCache(): OwnedRepositoriesCache | null {
+  const value = Storage.get<OwnedRepositoriesCache>(OWNED_REPOSITORIES_CACHE_KEY);
+  if (!value || value.version !== 1 || !Array.isArray(value.repositories)) {
+    return null;
+  }
+  return value;
+}
+
+export function saveOwnedRepositoriesCache(value: OwnedRepositoriesCache): void {
+  Storage.set(OWNED_REPOSITORIES_CACHE_KEY, value);
+}
+
+export function clearOwnedRepositoriesCache(): void {
+  Storage.remove(OWNED_REPOSITORIES_CACHE_KEY);
+}
+
+export function loadRepositoryPreferences(): RepositoryPreferences {
+  const value = Storage.get<RepositoryPreferences>(REPOSITORY_PREFERENCES_KEY);
+  if (!value || value.version !== 1) {
+    return { version: 1, includePrivateRepositories: false };
+  }
+  return {
+    version: 1,
+    includePrivateRepositories: value.includePrivateRepositories === true,
+  };
+}
+
+export function saveRepositoryPreferences(
+  value: RepositoryPreferences,
+): void {
+  Storage.set(REPOSITORY_PREFERENCES_KEY, value);
+}
+
+export function clearRepositoryPreferences(): void {
+  Storage.remove(REPOSITORY_PREFERENCES_KEY);
 }
 
 function detailCacheKey(listId: string): string {
