@@ -17,6 +17,12 @@ test("Stage G centralizes shared window copy and keeps provider themes visual-on
     copilotWidget,
     zaiWidget,
     antigravityParser,
+    codexOverviewWidget,
+    codexDetailWidget,
+    grokWidget,
+    claudeWidget,
+    antigravityWidget,
+    cursorWidget,
   ] = await Promise.all([
     source("copy/labels.ts"),
     source("widget/dashboard/model.ts"),
@@ -28,6 +34,12 @@ test("Stage G centralizes shared window copy and keeps provider themes visual-on
     source("widget/copilot/UsageWidgetView.tsx"),
     source("widget/zai/UsageWidgetView.tsx"),
     source("providers/antigravity/parsing.ts"),
+    source("widget/codex/OverviewWidgetView.tsx"),
+    source("widget/codex/DetailWidgetView.tsx"),
+    source("widget/grok/WeeklyUsageWidgetView.tsx"),
+    source("widget/claude/UsageWidgetView.tsx"),
+    source("widget/antigravity/UsageWidgetView.tsx"),
+    source("widget/cursor/UsageWidgetView.tsx"),
   ]);
 
   assert.match(labels, /CURSOR_WINDOW/);
@@ -44,6 +56,20 @@ test("Stage G centralizes shared window copy and keeps provider themes visual-on
     assert.match(widget, /copy\/labels/);
     assert.doesNotMatch(widget, /title="(?:5H|周限)"/);
   }
+  for (const widget of [
+    codexOverviewWidget,
+    codexDetailWidget,
+    grokWidget,
+    claudeWidget,
+    antigravityWidget,
+  ]) {
+    assert.match(widget, /providers\/[^"\n]+\/window-titles/);
+  }
+  assert.match(cursorWidget, /copy\/labels/);
+  assert.doesNotMatch(codexOverviewWidget + codexDetailWidget, /"(?:5H|周限|月限)"/);
+  assert.doesNotMatch(grokWidget, /"周限"/);
+  assert.doesNotMatch(claudeWidget, /"(?:周限|周限额度|Fable 周限)"/);
+  assert.doesNotMatch(cursorWidget, /"(?:AUTO|所有|Auto 额度|所有额度)"/);
   assert.match(antigravityParser, /return antigravityWindowLabel\(groupName, bucketId, seconds\)/);
   assert.match(prefsPage, /normalizeAppWindowLabel/);
   assert.match(settings, /APP_DASHBOARD_SETTINGS_FOOTER/);

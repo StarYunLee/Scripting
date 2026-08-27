@@ -1,5 +1,6 @@
 import { HStack, Image, Script, Spacer, Text, Widget, ZStack } from "scripting";
 import type { Color, DynamicShapeStyle } from "scripting";
+import { CURSOR_WIDGET, CURSOR_WINDOW } from "../../copy/labels";
 import { usageTint } from "../../services/usage-colors";
 import {
   formatPercent,
@@ -461,13 +462,13 @@ export function UsageWidgetView({ result, family }: Props) {
           </Text>
         </HStack>
         <SmallWindow
-          title="AUTO"
+          title={CURSOR_WINDOW.AUTO}
           window={model.fiveHour}
           width={contentWidth}
           top={43}
         />
         <SmallWindow
-          title="所有"
+          title={CURSOR_WINDOW.TOTAL}
           window={model.weekly}
           width={contentWidth}
           top={99}
@@ -527,13 +528,13 @@ export function UsageWidgetView({ result, family }: Props) {
         </Text>
       </HStack>
       <MediumWindow
-        title="Auto 额度"
+        title={CURSOR_WIDGET.autoQuota}
         window={model.fiveHour}
         width={contentWidth}
         top={38}
       />
       <MediumWindow
-        title="所有额度"
+        title={CURSOR_WIDGET.totalQuota}
         window={model.weekly}
         width={contentWidth}
         top={96}

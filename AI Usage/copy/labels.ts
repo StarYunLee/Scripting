@@ -111,8 +111,8 @@ export const CLAUDE_WIDGET = {
   fableWeekly: "Fable 每周",
   dualFiveHourWeekly: "5 小时 + 每周",
   dualWeeklyFable: "每周 + Fable 每周",
-  shortFiveHour: "5H",
-  shortWeekly: "每周",
+  shortFiveHour: PERIOD.FIVE_HOUR.widget,
+  shortWeekly: PERIOD.WEEKLY.widget,
   shortFableWeekly: "Fable 每周",
 };
 
@@ -183,6 +183,25 @@ export const CURSOR_WINDOW = {
 export const GROK_WINDOW = {
   WEEKLY: PERIOD.WEEKLY.app,
   BUILD: "Grok Build",
+};
+
+/** Codex 单账号小组件专用文案 */
+export const CODEX_WIDGET = {
+  fiveHourQuota: "5 小时额度",
+  weeklyQuota: "每周额度",
+  monthlyQuota: "每月额度",
+};
+
+/** Grok 单账号小组件专用文案 */
+export const GROK_WIDGET = {
+  weeklyQuota: "每周额度",
+  shortWeekly: PERIOD.WEEKLY.widget,
+};
+
+/** Cursor 单账号小组件专用文案 */
+export const CURSOR_WIDGET = {
+  autoQuota: `${CURSOR_WINDOW.AUTO} 额度`,
+  totalQuota: `${CURSOR_WINDOW.TOTAL} 额度`,
 };
 
 /** Antigravity 模型分组名 */
