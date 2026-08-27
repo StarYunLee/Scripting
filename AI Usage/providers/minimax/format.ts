@@ -78,8 +78,8 @@ export function formatPlanLabel(value: string | null | undefined): string | null
 }
 
 /**
- * 根据 5h 窗口总额度推断档位（国际站常见值）。
- * 输入为 current_interval_total_count（次数）；usage_count 字段实际表示剩余量。
+ * 根据 5h 窗口总额度推断档位。
+ * 注意：usage_count 的含义由 usage-parser 按区域解释；本函数只读取总额度。
  */
 export function inferPlanFromLimit(total: number | null, region: "intl" | "cn"): string | null {
   if (total == null || total <= 0) return null;
