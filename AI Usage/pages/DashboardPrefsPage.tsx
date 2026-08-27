@@ -18,6 +18,8 @@ import {
   resetDashboardPrefs,
   setAccountVisibleOnDashboard,
   setWindowVisibleOnDashboard,
+  setWidgetPrivacyPrefs,
+  type DashboardPrefsScope,
 } from "../services/dashboard-prefs";
 import { PageBackground } from "../components/PageBackground";
 import type { BackgroundThemeId } from "../services/settings";
@@ -39,10 +41,16 @@ const rowBackground = <RowBackground />;
 export function DashboardPrefsPage(props: {
   backgroundTheme: BackgroundThemeId;
   demoMode: boolean;
+  scope?: DashboardPrefsScope;
   onChanged?: () => void;
 }) {
+  const scope = props.scope || "app";
+  const isWidget = scope === "widget";
   const [tick, setTick] = useState(0);
-  const prefs = getDashboardPrefs();
+  const prefs =
+    scope === "widget"
+      ? getDashboardPrefs("widget")
+      : getDashboardPrefs("app");
   const cards = listAllAuthorizedCards();
 
   function refresh() {
@@ -55,7 +63,7 @@ export function DashboardPrefsPage(props: {
   return (
     <NavigationStack>
       <List
-        navigationTitle="用量总览"
+        navigationTitle={isWidget ? "小组件总览" : "用量总览"}
         navigationBarTitleDisplayMode="inline"
         scrollContentBackground="hidden"
         listStyle="plain"
@@ -72,7 +80,9 @@ export function DashboardPrefsPage(props: {
           listRowBackground={rowBackground}
           footer={
             <Text font="caption" foregroundStyle="secondaryLabel">
-              控制用量页展示哪些账号与用量窗口。默认全部显示；关闭后仅影响应用内总览，不影响主屏幕小组件。
+              {isWidget
+                ? "控制多账号小组件展示哪些账号与用量窗口。默认全部显示，与应用内用量页互不影响。"
+                : "控制用量页展示哪些账号与用量窗口。默认全部显示；关闭后仅影响应用内总览，不影响主屏幕小组件。"}
             </Text>
           }
         >
@@ -85,7 +95,7 @@ export function DashboardPrefsPage(props: {
               buttonStyle="plain"
               frame={{ maxWidth: "infinity" }}
               action={() => {
-                resetDashboardPrefs();
+                resetDashboardPrefs(scope);
                 refresh();
               }}
             >
@@ -100,6 +110,57 @@ export function DashboardPrefsPage(props: {
             </Button>
           </VStack>
         </Section>
+
+        {scope === "widget" && "privacy" in prefs ? (
+          <Section
+            listRowBackground={rowBackground}
+            header={<Text foregroundStyle="secondaryLabel">隐私与显示</Text>}
+            footer={
+              <Text font="caption" foregroundStyle="secondaryLabel">
+                默认隐藏邮箱与账号 ID，避免主屏幕泄露隐私。
+              </Text>
+            }
+          >
+            <VStack
+              spacing={0}
+              frame={{ maxWidth: "infinity" }}
+              listRowInsets={{ top: 0, bottom: 0, leading: 16, trailing: 16 }}
+            >
+              <Toggle
+                title="显示账号邮箱"
+                value={prefs.privacy.showAccountEmail}
+                onChanged={(value) => {
+                  setWidgetPrivacyPrefs({ showAccountEmail: value });
+                  refresh();
+                }}
+                padding={{ vertical: true }}
+                frame={{ minHeight: 44, maxWidth: "infinity" }}
+              />
+              <Divider />
+              <Toggle
+                title="显示账号 ID"
+                value={prefs.privacy.showAccountId}
+                onChanged={(value) => {
+                  setWidgetPrivacyPrefs({ showAccountId: value });
+                  refresh();
+                }}
+                padding={{ vertical: true }}
+                frame={{ minHeight: 44, maxWidth: "infinity" }}
+              />
+              <Divider />
+              <Toggle
+                title="显示方案标记"
+                value={prefs.privacy.showPlanBadge}
+                onChanged={(value) => {
+                  setWidgetPrivacyPrefs({ showPlanBadge: value });
+                  refresh();
+                }}
+                padding={{ vertical: true }}
+                frame={{ minHeight: 44, maxWidth: "infinity" }}
+              />
+            </VStack>
+          </Section>
+        ) : null}
 
         {cards.length === 0 ? (
           <Section listRowBackground={rowBackground}>
@@ -125,11 +186,11 @@ export function DashboardPrefsPage(props: {
                 prefs.hiddenWindowIdsByAccount[card.key] || []
               }
               onAccountChanged={(visible) => {
-                setAccountVisibleOnDashboard(card.key, visible);
+                setAccountVisibleOnDashboard(card.key, visible, scope);
                 refresh();
               }}
               onWindowChanged={(windowId, visible) => {
-                setWindowVisibleOnDashboard(card.key, windowId, visible);
+                setWindowVisibleOnDashboard(card.key, windowId, visible, scope);
                 refresh();
               }}
             />

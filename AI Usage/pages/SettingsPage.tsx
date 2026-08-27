@@ -10,6 +10,7 @@ import {
   Text,
   Toggle,
   VStack,
+  Widget,
   useState,
 } from "scripting";
 import { PROVIDERS, type ProviderId } from "../models";
@@ -50,6 +51,7 @@ import { DashboardPrefsPage } from "./DashboardPrefsPage";
 import type { AuthSheet } from "../models";
 import { listDemoAccounts } from "../services/demo";
 import { requestWidgetReload } from "../services/widgets";
+import { WIDGET_DASHBOARD_PARAMETER } from "../widget/parameter";
 
 function errorText(error: unknown): string {
   if (error instanceof Error && error.message) return error.message;
@@ -69,7 +71,8 @@ type SelectedDestination =
     }
   | { kind: "log" }
   | { kind: "changelog" }
-  | { kind: "dashboard" };
+  | { kind: "dashboard" }
+  | { kind: "widget-dashboard" };
 
 export function SettingsPage(props: {
   demoMode: boolean;
@@ -189,6 +192,33 @@ export function SettingsPage(props: {
     refresh();
   }
 
+  async function previewDashboardWidget(
+    family: "systemSmall" | "systemMedium" | "systemLarge" | "systemExtraLarge",
+  ): Promise<void> {
+    try {
+      await Widget.preview({
+        family,
+        parameters: {
+          options: {
+            [WIDGET_DASHBOARD_PARAMETER]: JSON.stringify(
+              WIDGET_DASHBOARD_PARAMETER,
+            ),
+          },
+          default: WIDGET_DASHBOARD_PARAMETER,
+        },
+      });
+    } catch (error) {
+      await Dialog.alert({
+        title: "无法预览小组件",
+        message:
+          error instanceof Error && error.message
+            ? error.message
+            : "请稍后重试，或通过 Scripting 调试页面预览。",
+        buttonLabel: "关闭",
+      });
+    }
+  }
+
   // 设置页只保留账号维护与小组件设置；添加账号统一从状态页右上角进入。
   const toolbar = usePageToolbar();
 
@@ -264,6 +294,16 @@ export function SettingsPage(props: {
                 onChanged={() => {
                   refresh();
                   props.onDashboardPrefsChange?.();
+                }}
+              />
+            ) : selectedDestination?.kind === "widget-dashboard" ? (
+              <DashboardPrefsPage
+                backgroundTheme={props.backgroundTheme}
+                demoMode={props.demoMode}
+                scope="widget"
+                onChanged={() => {
+                  refresh();
+                  requestWidgetReload();
                 }}
               />
             ) : (
@@ -454,6 +494,67 @@ export function SettingsPage(props: {
               padding={{ vertical: true }}
             >
               选择用量页要展示的账号与用量窗口（5 小时 / 周限等）。
+            </Text>
+          </GlassGroup>
+        </Section>
+
+        <Section
+          listRowBackground={glassRowBackground}
+          header={<GlassSectionHeader title="小组件总览" />}
+        >
+          <GlassGroup>
+            <Button
+              buttonStyle="plain"
+              frame={{ maxWidth: "infinity" }}
+              action={() =>
+                setSelectedDestination({ kind: "widget-dashboard" })
+              }
+            >
+              <HStack
+                padding={{ vertical: true }}
+                frame={{ minHeight: 44, maxWidth: "infinity" }}
+                contentShape="rect"
+              >
+                <Text>选择展示内容与隐私</Text>
+                <Spacer />
+                <Image
+                  systemName="chevron.right"
+                  foregroundStyle="tertiaryLabel"
+                />
+              </HStack>
+            </Button>
+            <GlassDivider />
+            <Picker
+              title="预览小组件"
+              value="choose"
+              onChanged={(value: string) => {
+                if (value !== "choose") {
+                  void previewDashboardWidget(
+                    value as
+                      | "systemSmall"
+                      | "systemMedium"
+                      | "systemLarge"
+                      | "systemExtraLarge",
+                  );
+                }
+              }}
+              pickerStyle="menu"
+              padding={{ vertical: true }}
+              frame={{ minHeight: 44, maxWidth: "infinity" }}
+            >
+              <Text tag="choose">选择尺寸</Text>
+              <Text tag="systemSmall">Small</Text>
+              <Text tag="systemMedium">Medium</Text>
+              <Text tag="systemLarge">Large</Text>
+              <Text tag="systemExtraLarge">Extra Large</Text>
+            </Picker>
+            <GlassDivider />
+            <Text
+              font="caption"
+              foregroundStyle="secondaryLabel"
+              padding={{ vertical: true }}
+            >
+              将小组件参数设为 dashboard，即可显示多账号总览；四种尺寸均可预览。
             </Text>
           </GlassGroup>
         </Section>

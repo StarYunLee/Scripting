@@ -1,6 +1,8 @@
 import { Image, Spacer, Text, VStack, Widget } from "scripting";
-import { resolveWidgetAccount } from "./widget/parameter";
+import { resolveWidgetParameter } from "./widget/parameter";
 import { loadWidgetUsage } from "./widget/loader";
+import { loadDashboardWidgetUsage } from "./widget/dashboard-loader";
+import { DashboardWidgetView } from "./widget/dashboard/DashboardWidgetView";
 import { UsageWidgetView as CodexUsageWidgetView } from "./widget/codex/UsageWidgetView";
 import { UsageWidgetView as GrokUsageWidgetView } from "./widget/grok/UsageWidgetView";
 import { UsageWidgetView as ClaudeUsageWidgetView } from "./widget/claude/UsageWidgetView";
@@ -11,6 +13,7 @@ import { UsageWidgetView as CopilotUsageWidgetView } from "./widget/copilot/Usag
 import { UsageWidgetView as ZaiUsageWidgetView } from "./widget/zai/UsageWidgetView";
 import { UsageWidgetView as MinimaxUsageWidgetView } from "./widget/minimax/UsageWidgetView";
 import { getAppDisplaySettings } from "./services/settings";
+import { getWidgetPrivacyPrefs } from "./services/dashboard-prefs";
 import { writeLog } from "./services/logger";
 
 function ErrorWidget({ message }: { message: string }) {
@@ -40,7 +43,35 @@ function ErrorWidget({ message }: { message: string }) {
 
 async function run() {
   const family = String(Widget.family || "systemSmall");
-  const resolved = resolveWidgetAccount(Widget.parameter);
+  const resolved = resolveWidgetParameter(Widget.parameter);
+  const reloadMinutes = getAppDisplaySettings().reloadMinutes;
+  const reloadPolicy = {
+    policy: "after" as const,
+    date: new Date(Date.now() + reloadMinutes * 60 * 1000),
+  };
+
+  if (resolved.mode === "dashboard") {
+    try {
+      const loaded = await loadDashboardWidgetUsage();
+      Widget.present(
+        <DashboardWidgetView
+          cards={loaded.cards}
+          family={family}
+          hasErrors={loaded.hasErrors}
+          privacy={getWidgetPrivacyPrefs()}
+        />,
+        { reloadPolicy },
+      );
+    } catch (error) {
+      const message =
+        error instanceof Error && error.message
+          ? error.message
+          : "总览小组件加载失败";
+      Widget.present(<ErrorWidget message={message} />, { reloadPolicy });
+    }
+    return;
+  }
+
   if (!resolved.account) {
     writeLog({
       level: "error",
@@ -55,11 +86,6 @@ async function run() {
   }
 
   const { provider, profileId } = resolved.account;
-  const reloadMinutes = getAppDisplaySettings().reloadMinutes;
-  const reloadPolicy = {
-    policy: "after" as const,
-    date: new Date(Date.now() + reloadMinutes * 60 * 1000),
-  };
   const loaded = await loadWidgetUsage(provider, profileId);
 
   if (loaded.provider === "codex") {

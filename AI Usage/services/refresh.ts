@@ -20,7 +20,7 @@ export type RefreshOutcome = RefreshTarget & {
 
 export type RefreshOptions = {
   force: boolean;
-  source: "app" | "intent";
+  source: "app" | "widget" | "intent";
 };
 
 export type RefreshSummary = {
