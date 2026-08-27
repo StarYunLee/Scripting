@@ -1,5 +1,6 @@
 import { HStack, Image, Script, Spacer, Text, Widget, ZStack } from "scripting";
 import type { Color, DynamicShapeStyle } from "scripting";
+import { PERIOD, widgetWindowLabel } from "../../copy/labels";
 import { usageTint } from "../../services/usage-colors";
 import {
   formatPercent,
@@ -461,13 +462,17 @@ export function UsageWidgetView({ result, family }: Props) {
           </Text>
         </HStack>
         <SmallWindow
-          title="5H"
+          title={PERIOD.FIVE_HOUR.widget}
           window={model.fiveHour}
           width={contentWidth}
           top={43}
         />
         <SmallWindow
-          title={model.weekly?.name === "weekly" ? "周限" : model.weekly?.label || "额度"}
+          title={
+            model.weekly
+              ? widgetWindowLabel(model.weekly.label)
+              : PERIOD.QUOTA.widget
+          }
           window={model.weekly}
           width={contentWidth}
           top={99}

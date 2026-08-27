@@ -93,6 +93,28 @@ test("treats a described zero-usage window as available but rejects malformed em
   assert.equal(parseKimiUsage({ limits: [{ detail: {} }] }), null);
 });
 
+test("keeps unknown rolling durations generic instead of inventing a five-hour window", () => {
+  const unknown = parseKimiUsage({
+    limits: [
+      {
+        window: { duration: 1, timeUnit: "FORTNIGHT" },
+        detail: { limit: 10, used: 2, reset_at: reset },
+      },
+    ],
+  });
+  assert.equal(unknown?.fiveHour?.label, "滚动额度");
+
+  const ninetyMinutes = parseKimiUsage({
+    limits: [
+      {
+        window: { duration: 90, timeUnit: "MINUTE" },
+        detail: { limit: 10, used: 2, reset_at: reset },
+      },
+    ],
+  });
+  assert.equal(ninetyMinutes?.fiveHour?.label, "90 分钟");
+});
+
 test("maps observed LEVEL membership values without speculative pro or ultra aliases", () => {
   assert.equal(formatKimiPlanLabel("LEVEL_FREE"), "Free");
   assert.equal(formatKimiPlanLabel("LEVEL_BASIC"), "Adagio");

@@ -1,6 +1,6 @@
 import { Divider, Picker, Text, useState } from "scripting";
+import { CLAUDE_WIDGET } from "../../copy/labels";
 import * as ClaudeSettings from "./credentials";
-import { claudeWindowTitle } from "./window-titles";
 
 export function ClaudeWidgetSettingsView(props: {
   profileId: string;
@@ -48,11 +48,9 @@ export function ClaudeWidgetSettingsView(props: {
           frame={{ minHeight: 44, maxWidth: "infinity" }}
         >
           <Text tag="five_hour_weekly">
-            {claudeWindowTitle("five_hour")} + {claudeWindowTitle("weekly")}
+            {CLAUDE_WIDGET.dualFiveHourWeekly}
           </Text>
-          <Text tag="weekly_fable">
-            {claudeWindowTitle("weekly")} + {claudeWindowTitle("weekly_fable")}
-          </Text>
+          <Text tag="weekly_fable">{CLAUDE_WIDGET.dualWeeklyFable}</Text>
         </Picker>
       ) : (
         <Picker
@@ -68,9 +66,9 @@ export function ClaudeWidgetSettingsView(props: {
           padding={{ vertical: true }}
           frame={{ minHeight: 44, maxWidth: "infinity" }}
         >
-          <Text tag="five_hour">{claudeWindowTitle("five_hour")}</Text>
-          <Text tag="weekly">{claudeWindowTitle("weekly")}</Text>
-          <Text tag="weekly_fable">{claudeWindowTitle("weekly_fable")}</Text>
+          <Text tag="five_hour">{CLAUDE_WIDGET.fiveHourQuota}</Text>
+          <Text tag="weekly">{CLAUDE_WIDGET.shortWeekly}</Text>
+          <Text tag="weekly_fable">{CLAUDE_WIDGET.shortFableWeekly}</Text>
         </Picker>
       )}
     </>

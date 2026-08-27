@@ -17,7 +17,11 @@ import {
   WIDGET_EMPTY_NO_ROWS,
   WIDGET_TITLE,
   widgetAccountEntryCount,
+  widgetAccountOverflow,
   widgetEntryCount,
+  widgetOverflowLarge,
+  widgetOverflowMedium,
+  widgetOverflowSmall,
   widgetRemainingLabel,
 } from "../../copy/labels";
 import type { WidgetPrivacyPrefs } from "../../services/dashboard-prefs";
@@ -367,7 +371,7 @@ function SmallTextLayout(props: {
       <HStack alignment="center">
         {hidden > 0 ? (
           <Text font={8} foregroundStyle={C.secondary}>
-            +{hidden} 条
+            {widgetOverflowSmall(hidden)}
           </Text>
         ) : (
           <Spacer minLength={0} />
@@ -428,7 +432,7 @@ function MediumRingLayout(props: {
       ) : null}
       {hidden > 0 ? (
         <Text font={9} foregroundStyle={C.secondary} padding={{ top: 4 }}>
-          另有 {hidden} 条 · 可换大尺寸查看详情
+          {widgetOverflowMedium(hidden)}
         </Text>
       ) : (
         <HStack padding={{ top: 4 }}>
@@ -486,7 +490,7 @@ function LargeBarLayout(props: {
       </VStack>
       {hidden > 0 ? (
         <Text font={10} foregroundStyle={C.secondary}>
-          另有 {hidden} 条未显示
+          {widgetOverflowLarge(hidden)}
         </Text>
       ) : null}
       <Spacer minLength={0} />
@@ -564,7 +568,7 @@ function ExtraLargeGroupedLayout(props: {
               </VStack>
               {extra > 0 ? (
                 <Text font={9} foregroundStyle={C.secondary}>
-                  该账号另有 {extra} 条未显示
+                  {widgetAccountOverflow(extra)}
                 </Text>
               ) : null}
             </VStack>
@@ -574,7 +578,7 @@ function ExtraLargeGroupedLayout(props: {
 
       {hidden > 0 ? (
         <Text font={10} foregroundStyle={C.secondary}>
-          另有 {hidden} 条未显示
+          {widgetOverflowLarge(hidden)}
         </Text>
       ) : null}
       <Spacer minLength={0} />

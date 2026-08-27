@@ -34,9 +34,7 @@ export function normalizeAppWindowLabel(label: string): string {
 
   const exact: { [key: string]: string } = {
     "所有": CURSOR_WINDOW.TOTAL,
-    "总计": CURSOR_WINDOW.TOTAL,
     "第三方模型": CURSOR_WINDOW.API,
-    "第三方 API": CURSOR_WINDOW.API,
     "周限": PERIOD.WEEKLY.app,
     "模型周限": "模型每周",
   };
@@ -133,6 +131,10 @@ export function widgetOverflowLarge(hidden: number): string {
   return `还有 ${hidden} 条未显示`;
 }
 
+export function widgetAccountOverflow(hidden: number): string {
+  return `该账号还有 ${hidden} 条未显示`;
+}
+
 export function widgetEntryCount(count: number): string {
   return `${count} 条目`;
 }
@@ -155,7 +157,7 @@ export const WIDGET_EMPTY_NO_ROWS =
   "所选账号暂无可见用量窗口，请在设置 → 小组件总览调整展示内容。";
 
 export const WIDGET_SIZE_DESCRIPTION =
-  "小尺寸列表（Small）/ 中尺寸圆环（Medium）/ 大尺寸进度条（Large）";
+  "小尺寸列表（Small）/ 中尺寸圆环（Medium）/ 大尺寸进度条（Large）/ 超大尺寸账号分组（Extra Large）";
 
 export const WIDGET_DASHBOARD_SETTINGS_FOOTER =
   `添加 AI Usage 小组件后，将参数粘贴为 dashboard，即可显示多账号总用量。${WIDGET_SIZE_DESCRIPTION}。`;
@@ -237,13 +239,13 @@ export const MINIMAX_WINDOW = {
 
 /** Kimi 5 小时窗口标签（支持动态时长） */
 export function kimiFiveHourLabel(seconds: number | null): string {
-  if (seconds == null) return PERIOD.FIVE_HOUR.app;
+  if (seconds == null) return "滚动额度";
   if (seconds % 3600 === 0) {
     const hours = seconds / 3600;
     return hours === 5 ? PERIOD.FIVE_HOUR.app : `${hours} 小时`;
   }
   if (seconds % 60 === 0) return `${seconds / 60} 分钟`;
-  return PERIOD.FIVE_HOUR.app;
+  return "滚动额度";
 }
 
 function antigravityGroupName(groupName: string, bucketId: string): string {
