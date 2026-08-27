@@ -100,13 +100,10 @@ export function minimaxWidgetColors(): Record<string, Color | DynamicShapeStyle>
     primary: "label",
     secondary: "secondaryLabel",
     accent: dynamic(MINIMAX_ACCENT, "#FB923C"),
-    accentSoft: dynamic("rgba(232,93,4,0.12)", "rgba(251,146,60,0.18)"),
     track: dynamic("#FFEDD5", "#9A3412"),
     trackBorder: dynamic("rgba(232,93,4,0.15)", "rgba(251,146,60,0.22)"),
     warn: "systemOrange",
     watermark: dynamic("rgba(232,93,4,0.10)", "rgba(251,146,60,0.14)"),
-    capsuleBg: dynamic(MINIMAX_ACCENT, "#F97316"),
-    capsuleFg: "#FFFFFF",
   };
 }
 
