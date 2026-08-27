@@ -35,6 +35,7 @@ import {
   GlassSectionHeader,
   glassRowBackground,
 } from "../components/GlassList";
+import { getPendingUserCode } from "../providers/copilot/oauth";
 import { AuthSheetView } from "../components/AuthSheetView";
 import { PageBackground } from "../components/PageBackground";
 import { ProviderLogo } from "../components/ProviderLogo";
@@ -94,10 +95,13 @@ export function SettingsPage(props: {
         provider,
         profileId: started.profileId,
         authorizationInput: "",
+        deviceCode: provider === "copilot" ? getPendingUserCode() || undefined : undefined,
         status:
-          mode === "present"
-            ? "关闭授权页后，把回调地址或授权码粘贴到下方"
-            : "已在系统 Safari 打开授权页，完成后把回调地址或授权码粘贴到下方",
+          provider === "copilot"
+            ? "请在 GitHub 授权页输入设备码；完成登录后返回并提交"
+            : mode === "present"
+              ? "关闭授权页后，把回调地址或授权码粘贴到下方"
+              : "已在系统 Safari 打开授权页，完成后把回调地址或授权码粘贴到下方",
       });
     } catch (error) {
       setSheet({

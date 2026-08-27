@@ -57,14 +57,27 @@ export function AuthSheetView(props: {
               </HStack>
             ) : null}
             {props.authSheet.status ? <GlassDivider /> : null}
-            <TextField
-              title="授权内容"
-              value={props.authSheet.authorizationInput}
-              onChanged={props.onChangeInput}
-              prompt={meta.pastePlaceholder}
-              padding={{ vertical: true }}
-              frame={{ minHeight: 44, maxWidth: "infinity" }}
-            />
+            {props.authSheet.deviceCode ? (
+              <HStack
+                padding={{ vertical: true }}
+                frame={{ minHeight: 44, maxWidth: "infinity" }}
+              >
+                <Text foregroundStyle="secondaryLabel">设备码</Text>
+                <Spacer />
+                <Text font="headline" fontWeight="bold">
+                  {props.authSheet.deviceCode}
+                </Text>
+              </HStack>
+            ) : (
+              <TextField
+                title="授权内容"
+                value={props.authSheet.authorizationInput}
+                onChanged={props.onChangeInput}
+                prompt={meta.pastePlaceholder}
+                padding={{ vertical: true }}
+                frame={{ minHeight: 44, maxWidth: "infinity" }}
+              />
+            )}
             <GlassDivider />
             <Button
               buttonStyle="plain"

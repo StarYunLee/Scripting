@@ -19,6 +19,7 @@ export type AuthSheet = {
   profileId: string;
   authorizationInput: string;
   status: string;
+  deviceCode?: string;
 };
 
 export type UsageWindowView = {
@@ -129,7 +130,7 @@ export const PROVIDERS: Array<{
     subtitle: "使用 GitHub 设备授权查看高级请求、聊天和代码补全额度。",
     accent: "#24292F",
     pasteHint:
-      "设备码会显示在授权页面。完成 GitHub 登录后返回应用，直接点击“提交并完成授权”。",
+      "记下设备码，在 GitHub 授权页输入并完成登录；返回应用后直接点击“提交并完成授权”。",
     pastePlaceholder: "无需填写，完成设备授权后提交",
     capabilities: { widget: true },
   },

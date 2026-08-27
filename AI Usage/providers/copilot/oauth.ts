@@ -202,7 +202,7 @@ async function pollForToken(pending: PendingOAuth): Promise<TokenPayload> {
     if (response.ok && data.access_token) return data;
     if (data.error === "authorization_pending") continue;
     if (data.error === "slow_down") {
-      intervalMs = Math.min(intervalMs + 1000, 15_000);
+      intervalMs += 5_000;
       continue;
     }
     if (data.error === "expired_token")
