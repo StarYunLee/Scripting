@@ -51,6 +51,10 @@ import { DashboardPrefsPage } from "./DashboardPrefsPage";
 import type { AuthSheet } from "../models";
 import { listDemoAccounts } from "../services/demo";
 import { requestWidgetReload } from "../services/widgets";
+import {
+  APP_DASHBOARD_SETTINGS_FOOTER,
+  WIDGET_DASHBOARD_SETTINGS_FOOTER,
+} from "../copy/labels";
 import { WIDGET_DASHBOARD_PARAMETER } from "../widget/parameter";
 
 function errorText(error: unknown): string {
@@ -493,7 +497,7 @@ export function SettingsPage(props: {
               foregroundStyle="secondaryLabel"
               padding={{ vertical: true }}
             >
-              选择用量页要展示的账号与用量窗口（5 小时 / 周限等）。
+              {APP_DASHBOARD_SETTINGS_FOOTER}
             </Text>
           </GlassGroup>
         </Section>
@@ -554,7 +558,7 @@ export function SettingsPage(props: {
               foregroundStyle="secondaryLabel"
               padding={{ vertical: true }}
             >
-              将小组件参数设为 dashboard，即可显示多账号总览；四种尺寸均可预览。
+              {WIDGET_DASHBOARD_SETTINGS_FOOTER}
             </Text>
           </GlassGroup>
         </Section>

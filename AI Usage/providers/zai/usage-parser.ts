@@ -1,3 +1,4 @@
+import { ZAI_WINDOW } from "../../copy/labels";
 import type { LimitWindow, LimitWindowName } from "./types";
 
 export type ParsedZaiQuota = {
@@ -39,11 +40,23 @@ function tokenWindowKind(
   number: number | null,
 ): { name: LimitWindowName; label: string; seconds: number } | null {
   if (unit === 3 && number === 5)
-    return { name: "five_hour", label: "5 小时", seconds: 5 * 3600 };
+    return {
+      name: "five_hour",
+      label: ZAI_WINDOW.FIVE_HOUR,
+      seconds: 5 * 3600,
+    };
   if (unit === 6 && number === 7)
-    return { name: "weekly", label: "每周", seconds: 7 * 86400 };
+    return {
+      name: "weekly",
+      label: ZAI_WINDOW.WEEKLY,
+      seconds: 7 * 86400,
+    };
   if (unit === 5 && number === 1)
-    return { name: "monthly", label: "每月", seconds: 30 * 86400 };
+    return {
+      name: "monthly",
+      label: ZAI_WINDOW.MONTHLY,
+      seconds: 30 * 86400,
+    };
   return null;
 }
 
@@ -60,7 +73,7 @@ function limitWindow(
       : type === "TIME_LIMIT"
         ? {
             name: "web_search" as const,
-            label: "Web Search",
+            label: ZAI_WINDOW.WEB_SEARCH,
             seconds: 30 * 86400,
           }
         : null;

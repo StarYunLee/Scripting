@@ -24,5 +24,6 @@ test("Stage F keeps app and widget display planes recoverable and isolated", asy
   assert.doesNotMatch(page, /额度条目/);
   assert.match(prefs, /WidgetPrivacyPrefs/);
   assert.match(prefs, /ai_usage_widget_dashboard_prefs_v1/);
-  assert.doesNotMatch(prefs + hub + page, /copy\/labels/);
+  assert.doesNotMatch(prefs + hub, /copy\/labels/);
+  assert.match(page, /copy\/labels/);
 });

@@ -107,7 +107,7 @@ export const PROVIDERS: Array<{
     id: "cursor",
     title: "Cursor",
     connectTitle: "连接 Cursor 账户",
-    subtitle: "连接 Cursor 账户，查看 Auto、所有、第三方模型和 Grok Bot 用量。",
+    subtitle: "连接 Cursor 账户，查看 Auto、Total、API 和 Grok Bot 用量。",
     accent: "#111827",
     pasteHint:
       "在浏览器完成 Cursor 登录后返回应用，无需粘贴内容，直接点击“提交并完成授权”。",
@@ -129,7 +129,7 @@ export const PROVIDERS: Array<{
     id: "copilot",
     title: "GitHub Copilot",
     connectTitle: "连接 GitHub Copilot 账户",
-    subtitle: "使用 GitHub 设备授权查看高级请求、聊天和代码补全额度。",
+    subtitle: "使用 GitHub 设备授权查看 AI Credits、Chat 和 Completions。",
     accent: "#24292F",
     pasteHint:
       "记下设备码，在 GitHub 授权页输入并完成登录；返回应用后直接点击“提交并完成授权”。",

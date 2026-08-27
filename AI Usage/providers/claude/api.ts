@@ -1,8 +1,8 @@
 import { fetch, Response } from "scripting";
+import { claudeScopedAppLabel, PERIOD } from "../../copy/labels";
 import { getProfileAccessToken, resolveProfile } from "./accounts";
 import { refreshOAuthToken } from "./oauth";
 import type { LimitWindow, UsageResult, UsageSnapshot } from "./types";
-import { claudeScopedWindowTitle, claudeWindowTitle } from "./window-titles";
 
 const CACHE_KEY = "ai_usage_claude_cache_v1";
 const RATE_LIMIT_KEY = "ai_usage_claude_rate_limit_v1";
@@ -82,7 +82,7 @@ function parseWindow(
   );
 }
 function scopedLabel(value: string): string {
-  return claudeScopedWindowTitle(value);
+  return claudeScopedAppLabel(value);
 }
 function scopedId(value: string, index: number): string {
   const normalized = value
@@ -119,16 +119,16 @@ function parseFlatScopedLimits(
   payload: Record<string, unknown>,
 ): LimitWindow[] {
   const definitions: Array<[string, string, LimitWindow["name"]]> = [
-    ["seven_day_sonnet", claudeScopedWindowTitle("Sonnet"), "weekly_scoped"],
-    ["seven_day_opus", claudeScopedWindowTitle("Opus"), "weekly_scoped"],
+    ["seven_day_sonnet", claudeScopedAppLabel("Sonnet"), "weekly_scoped"],
+    ["seven_day_opus", claudeScopedAppLabel("Opus"), "weekly_scoped"],
     [
       "seven_day_oauth_apps",
-      claudeScopedWindowTitle("OAuth Apps"),
+      claudeScopedAppLabel("OAuth Apps"),
       "weekly_scoped",
     ],
-    ["seven_day_fable", claudeWindowTitle("weekly_fable"), "weekly_fable"],
-    ["seven_day_fable_5", claudeWindowTitle("weekly_fable"), "weekly_fable"],
-    ["fable_seven_day", claudeWindowTitle("weekly_fable"), "weekly_fable"],
+    ["seven_day_fable", claudeScopedAppLabel("Fable"), "weekly_fable"],
+    ["seven_day_fable_5", claudeScopedAppLabel("Fable"), "weekly_fable"],
+    ["fable_seven_day", claudeScopedAppLabel("Fable"), "weekly_fable"],
   ];
   const windows: LimitWindow[] = [];
   for (const [key, label, name] of definitions) {
@@ -372,14 +372,14 @@ export async function fetchUsage(options?: {
       payload,
       "five_hour",
       "five_hour",
-      claudeWindowTitle("five_hour"),
+      PERIOD.FIVE_HOUR.app,
       5 * 3600,
     );
     const weekly = parseWindow(
       payload,
       "seven_day",
       "weekly",
-      claudeWindowTitle("weekly"),
+      PERIOD.WEEKLY.app,
       7 * 86400,
     );
     const dynamicScoped = parseScopedLimits(payload);

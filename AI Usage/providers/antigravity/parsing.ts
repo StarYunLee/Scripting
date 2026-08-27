@@ -1,5 +1,5 @@
+import { antigravityWindowLabel } from "../../copy/labels";
 import type { AntigravityProjectInfo, LimitWindow } from "./types";
-import { antigravityWindowTitle } from "./window-titles";
 
 export type JsonObject = Record<string, unknown>;
 
@@ -87,40 +87,12 @@ function windowName(seconds: number | null): LimitWindow["name"] {
   return "unknown";
 }
 
-function localWindowLabel(seconds: number | null, fallback: string): string {
-  if (seconds === 5 * 3600) return "5 小时";
-  if (seconds === 7 * 86400) return "每周";
-  if (seconds === 30 * 86400) return "每月";
-  if (seconds === 86400) return "每天";
-  return fallback || "额度";
-}
-
-function displayGroupName(groupName: string, bucketId: string): string {
-  const bucket = bucketId.toLowerCase();
-  if (bucket.startsWith("gemini-")) return "Gemini";
-  if (bucket.startsWith("3p-")) return "Claude/GPT";
-  return groupName;
-}
-
 function windowLabel(
   groupName: string,
   bucketId: string,
   seconds: number | null,
 ): string {
-  const bucket = bucketId.toLowerCase();
-  if (bucket.startsWith("gemini-")) {
-    if (seconds === 5 * 3600) return antigravityWindowTitle("gemini_five_hour");
-    if (seconds === 7 * 86400) return antigravityWindowTitle("gemini_weekly");
-  }
-  if (bucket.startsWith("3p-")) {
-    if (seconds === 5 * 3600)
-      return antigravityWindowTitle("third_party_five_hour");
-    if (seconds === 7 * 86400)
-      return antigravityWindowTitle("third_party_weekly");
-  }
-  const local = localWindowLabel(seconds, bucketId);
-  const group = displayGroupName(groupName, bucketId);
-  return group ? `${group} ${local}` : local;
+  return antigravityWindowLabel(groupName, bucketId, seconds);
 }
 
 function sortWindows(left: LimitWindow, right: LimitWindow): number {

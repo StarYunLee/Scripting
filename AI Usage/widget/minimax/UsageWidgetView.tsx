@@ -15,7 +15,8 @@ import {
   formatResetDate,
   formatSmallDate,
 } from "../../providers/minimax/format";
-import { MINIMAX_WIDGET, minimaxWidgetColors } from "../../providers/minimax/theme";
+import { MINIMAX_WINDOW, widgetWindowLabel } from "../../copy/labels";
+import { minimaxWidgetColors } from "../../providers/minimax/theme";
 import { PlanBadge } from "./PlanBadge";
 import type {
   LimitWindow,
@@ -46,9 +47,7 @@ type Model = {
 
 function shortLabel(window: LimitWindow | null): string {
   if (!window) return "—";
-  if (window.name === "five_hour") return MINIMAX_WIDGET.shortFiveHour;
-  if (window.name === "weekly") return MINIMAX_WIDGET.shortWeekly;
-  return window.label;
+  return widgetWindowLabel(window.label);
 }
 
 function modelFor(result: UsageResult): Model {
@@ -370,8 +369,8 @@ export function UsageWidgetView({ result, family }: Props) {
   }
 
   const contentWidth = Math.max(220, width - 40);
-  const primaryTitle = model.primary?.label || MINIMAX_WIDGET.fiveHourTitle;
-  const secondaryTitle = model.secondary?.label || MINIMAX_WIDGET.weeklyTitle;
+  const primaryTitle = model.primary?.label || MINIMAX_WINDOW.FIVE_HOUR;
+  const secondaryTitle = model.secondary?.label || MINIMAX_WINDOW.WEEKLY;
   return (
     <ZStack
       frame={{ maxWidth: "infinity", maxHeight: "infinity" }}

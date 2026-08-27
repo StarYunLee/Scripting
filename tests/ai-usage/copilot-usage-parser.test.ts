@@ -39,7 +39,7 @@ test("parses premium requests chat and completions from a fixed Copilot payload"
     credits: {
       id: "copilot:credits",
       name: "credits",
-      label: "高级请求",
+      label: "AI Credits",
       usedPercent: 25,
       remainingPercent: 75,
       resetAt: reset,
@@ -49,7 +49,7 @@ test("parses premium requests chat and completions from a fixed Copilot payload"
     chat: {
       id: "copilot:chat",
       name: "chat",
-      label: "聊天消息",
+      label: "Chat",
       usedPercent: 60,
       remainingPercent: 40,
       resetAt: reset,
@@ -59,7 +59,7 @@ test("parses premium requests chat and completions from a fixed Copilot payload"
     completions: {
       id: "copilot:completions",
       name: "completions",
-      label: "代码补全",
+      label: "Completions",
       usedPercent: 10,
       remainingPercent: 90,
       resetAt: reset,
@@ -70,7 +70,7 @@ test("parses premium requests chat and completions from a fixed Copilot payload"
       {
         id: "copilot:credits",
         name: "credits",
-        label: "高级请求",
+        label: "AI Credits",
         usedPercent: 25,
         remainingPercent: 75,
         resetAt: reset,
@@ -80,7 +80,7 @@ test("parses premium requests chat and completions from a fixed Copilot payload"
       {
         id: "copilot:chat",
         name: "chat",
-        label: "聊天消息",
+        label: "Chat",
         usedPercent: 60,
         remainingPercent: 40,
         resetAt: reset,
@@ -90,7 +90,7 @@ test("parses premium requests chat and completions from a fixed Copilot payload"
       {
         id: "copilot:completions",
         name: "completions",
-        label: "代码补全",
+        label: "Completions",
         usedPercent: 10,
         remainingPercent: 90,
         resetAt: reset,

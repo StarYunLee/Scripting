@@ -1,3 +1,4 @@
+import { CURSOR_WINDOW } from "../../copy/labels";
 import type { LimitWindow, UsageSnapshot } from "./types";
 
 export type CursorPlanInfo = {
@@ -100,12 +101,14 @@ export function parseCursorCurrentUsage(
   if (spendPercent == null) spendPercent = percentFromMessage(payload.displayMessage);
 
   if (autoPercent != null)
-    windows.push(makeWindow("auto", "Auto", autoPercent, reset));
+    windows.push(makeWindow("auto", CURSOR_WINDOW.AUTO, autoPercent, reset));
   const allPercent = totalPercent ?? spendPercent;
   if (allPercent != null)
-    windows.push(makeWindow("total", "所有", allPercent, reset));
+    windows.push(
+      makeWindow("total", CURSOR_WINDOW.TOTAL, allPercent, reset),
+    );
   if (apiPercent != null)
-    windows.push(makeWindow("api", "第三方模型", apiPercent, reset));
+    windows.push(makeWindow("api", CURSOR_WINDOW.API, apiPercent, reset));
   if (!windows.length) return null;
   return { windows, planLabel: plan.planLabel };
 }
@@ -154,7 +157,13 @@ export function parseCursorSandUsage(
     start.ms != null && reset.ms != null && reset.ms > start.ms
       ? Math.round((reset.ms - start.ms) / 1000)
       : 7 * 86400;
-  return makeWindow("grok_bot", "Grok Bot", used, reset, seconds);
+  return makeWindow(
+    "grok_bot",
+    CURSOR_WINDOW.GROK_BOT,
+    used,
+    reset,
+    seconds,
+  );
 }
 
 export function parseCursorLegacyUsage(

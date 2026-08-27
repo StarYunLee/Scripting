@@ -1,3 +1,4 @@
+import { MINIMAX_WINDOW } from "../../copy/labels";
 import { formatPlanLabel } from "./format";
 import type { LimitWindow, MinimaxRegion } from "./types";
 
@@ -32,9 +33,12 @@ function quotaRows(payload: unknown): Record<string, unknown>[] {
   const direct = object.model_remains;
   const nested = asObject(object.data)?.model_remains;
   const raw = Array.isArray(direct) ? direct : Array.isArray(nested) ? nested : [];
-  return raw
-    .map((value) => asObject(value))
-    .filter((value): value is Record<string, unknown> => Boolean(value));
+  const rows: Record<string, unknown>[] = [];
+  for (const value of raw) {
+    const row = asObject(value);
+    if (row) rows.push(row);
+  }
+  return rows;
 }
 
 export function hasMinimaxQuotaRows(payload: unknown): boolean {
@@ -139,7 +143,7 @@ export function parseMinimaxQuota(
   const fiveHour = windowFromCounts({
     id: "minimax:five_hour",
     name: "five_hour",
-    label: "5 小时",
+    label: MINIMAX_WINDOW.FIVE_HOUR,
     total: intervalTotal,
     usageCount: toNumber(row.current_interval_usage_count),
     explicitRemaining:
@@ -154,7 +158,7 @@ export function parseMinimaxQuota(
   const weekly = windowFromCounts({
     id: "minimax:weekly",
     name: "weekly",
-    label: "每周",
+    label: MINIMAX_WINDOW.WEEKLY,
     total: toNumber(row.current_weekly_total_count),
     usageCount: toNumber(row.current_weekly_usage_count),
     explicitRemaining:
@@ -166,9 +170,9 @@ export function parseMinimaxQuota(
     region,
   });
 
-  const windows = [fiveHour, weekly].filter(
-    (window): window is LimitWindow => Boolean(window),
-  );
+  const windows: LimitWindow[] = [];
+  if (fiveHour) windows.push(fiveHour);
+  if (weekly) windows.push(weekly);
   if (!windows.length) return null;
   const planRaw =
     (typeof row.current_subscribe_title === "string" &&

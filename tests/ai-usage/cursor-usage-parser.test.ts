@@ -41,7 +41,7 @@ test("parses Auto Total and API windows with a unix-millisecond reset", () => {
       {
         id: "cursor:total",
         name: "total",
-        label: "所有",
+        label: "Total",
         usedPercent: 46,
         remainingPercent: 54,
         resetAt: "2026-09-01T00:00:00.000Z",
@@ -51,7 +51,7 @@ test("parses Auto Total and API windows with a unix-millisecond reset", () => {
       {
         id: "cursor:api",
         name: "api",
-        label: "第三方模型",
+        label: "API",
         usedPercent: 8,
         remainingPercent: 92,
         resetAt: "2026-09-01T00:00:00.000Z",

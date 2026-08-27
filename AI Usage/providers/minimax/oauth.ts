@@ -172,5 +172,3 @@ export async function refreshOAuthToken(
 export function resolveRegion(profileId: string): MinimaxRegion {
   return getProfileRegion(profileId) || "intl";
 }
-
-export { consoleUrlForRegion, quotaUrls };

@@ -1,5 +1,9 @@
 import { formatPercent } from "../../providers/codex/format";
-import { providerMeta, type ProviderId, type UsageCard } from "../../models";
+import { type ProviderId, type UsageCard } from "../../models";
+import {
+  widgetProviderShortName,
+  widgetWindowLabel,
+} from "../../copy/labels";
 import type { WidgetPrivacyPrefs } from "../../services/dashboard-prefs";
 
 export type WidgetLayoutSize = "small" | "medium" | "large" | "exlarge";
@@ -89,26 +93,8 @@ export function groupRowsByAccount(rows: DashboardRow[]): AccountGroup[] {
   return groups;
 }
 
-export function providerShortName(provider: ProviderId): string {
-  if (provider === "codex") return "ChatGPT";
-  if (provider === "antigravity") return "Agy";
-  return providerMeta(provider).title;
-}
-
-export function shortWindowLabel(label: string): string {
-  const value = label.trim().toLowerCase();
-  if (value.includes("周") || value.includes("week")) return "Weekly";
-  if (value.includes("5") && (value.includes("时") || value.includes("hour")))
-    return "Session";
-  if (value.includes("session")) return "Session";
-  if (value.includes("auto")) return "Auto";
-  if (value.includes("月") || value.includes("month")) return "Monthly";
-  if (value.includes("api")) return "API";
-  if (value.includes("grok") && value.includes("bot")) return "Grok Bot";
-  if (value.includes("total") || value.includes("总计")) return "Total";
-  if (label.length <= 10) return label;
-  return `${label.slice(0, 9)}…`;
-}
+export const providerShortName = widgetProviderShortName;
+export const shortWindowLabel = widgetWindowLabel;
 
 export function shortAccountTitle(title: string): string {
   const trimmed = title.trim();

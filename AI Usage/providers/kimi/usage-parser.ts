@@ -1,3 +1,4 @@
+import { PERIOD, kimiFiveHourLabel } from "../../copy/labels";
 import type { LimitWindow } from "./types";
 
 export type ParsedKimiUsage = {
@@ -87,10 +88,7 @@ function windowSeconds(window: Record<string, unknown> | null): number | null {
   return null;
 }
 function rollingLabel(seconds: number | null): string {
-  if (seconds == null) return "滚动额度";
-  if (seconds % 3600 === 0) return `${seconds / 3600} 小时`;
-  if (seconds % 60 === 0) return `${seconds / 60} 分钟`;
-  return "滚动额度";
+  return kimiFiveHourLabel(seconds);
 }
 function firstString(...values: unknown[]): string | null {
   for (const value of values) {
@@ -165,7 +163,7 @@ export function parseKimiUsage(
     weekly = {
       id: "kimi:weekly",
       name: "weekly",
-      label: "每周",
+      label: PERIOD.WEEKLY.app,
       usedPercent: weeklyPercents.used,
       remainingPercent: weeklyPercents.remaining,
       resetAt: reset.iso,

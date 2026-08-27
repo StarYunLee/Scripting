@@ -12,6 +12,14 @@ import type { Color, DynamicShapeStyle } from "scripting";
 import { PlanBadge } from "../../components/PlanBadge";
 import { ProviderLogo } from "../../components/ProviderLogo";
 import { providerMeta } from "../../models";
+import {
+  WIDGET_EMPTY_NO_ACCOUNTS,
+  WIDGET_EMPTY_NO_ROWS,
+  WIDGET_TITLE,
+  widgetAccountEntryCount,
+  widgetEntryCount,
+  widgetRemainingLabel,
+} from "../../copy/labels";
 import type { WidgetPrivacyPrefs } from "../../services/dashboard-prefs";
 import { usageTint } from "../../services/usage-colors";
 import type { UsageCard } from "../../models";
@@ -114,7 +122,7 @@ function EmptyView({ message }: { message: string }) {
       />
       <Spacer />
       <Text font={13} fontWeight="bold">
-        总用量
+        {WIDGET_TITLE}
       </Text>
       <Text
         font={10}
@@ -279,7 +287,7 @@ function BarRow(props: {
             lineLimit={1}
             minScaleFactor={0.8}
           >
-            {providerShortName(props.row.provider)} · {props.row.windowLabel}
+            {providerShortName(props.row.provider)} · {shortWindowLabel(props.row.windowLabel)}
           </Text>
           {subtitle ? (
             <Text font={8} foregroundStyle={C.secondary} lineLimit={1}>
@@ -294,7 +302,7 @@ function BarRow(props: {
           monospacedDigit
           foregroundStyle={C.primary}
         >
-          剩余 {remainingLabel(props.row.remainingPercent)}
+          {widgetRemainingLabel(remainingLabel(props.row.remainingPercent))}
         </Text>
       </HStack>
       <ProgressBar
@@ -457,11 +465,11 @@ function LargeBarLayout(props: {
     >
       <HStack alignment="center">
         <Text font={14} fontWeight="bold">
-          总用量
+          {WIDGET_TITLE}
         </Text>
         <Spacer minLength={0} />
         <Text font={9} foregroundStyle={C.secondary}>
-          {props.rows.length} 条目
+          {widgetEntryCount(props.rows.length)}
         </Text>
         <ErrorHint show={props.hasErrors} />
       </HStack>
@@ -507,11 +515,11 @@ function ExtraLargeGroupedLayout(props: {
     >
       <HStack alignment="center">
         <Text font={16} fontWeight="bold">
-          总用量
+          {WIDGET_TITLE}
         </Text>
         <Spacer minLength={0} />
         <Text font={10} foregroundStyle={C.secondary}>
-          {groups.length} 账号 · {props.rows.length} 条目
+          {widgetAccountEntryCount(groups.length, props.rows.length)}
         </Text>
         <ErrorHint show={props.hasErrors} />
       </HStack>
@@ -590,8 +598,8 @@ export function DashboardWidgetView(props: Props) {
       <EmptyView
         message={
           accountCount === 0
-            ? "请先在 AI Usage 连接账号，或在设置中为总览小组件选择展示内容。"
-            : "所选账号暂无可见用量窗口，请在设置中调整小组件总览。"
+            ? WIDGET_EMPTY_NO_ACCOUNTS
+            : WIDGET_EMPTY_NO_ROWS
         }
       />
     );

@@ -106,10 +106,3 @@ export function minimaxWidgetColors(): Record<string, Color | DynamicShapeStyle>
     watermark: dynamic("rgba(232,93,4,0.10)", "rgba(251,146,60,0.14)"),
   };
 }
-
-export const MINIMAX_WIDGET = {
-  fiveHourTitle: "5 小时额度",
-  weeklyTitle: "每周额度",
-  shortFiveHour: "5h",
-  shortWeekly: "Weekly",
-};

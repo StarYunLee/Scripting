@@ -1,3 +1,4 @@
+import { COPILOT_WINDOW } from "../../copy/labels";
 import type { LimitWindow, LimitWindowName } from "./types";
 
 export type ParsedCopilotUsage = {
@@ -119,20 +120,26 @@ export function parseCopilotUsage(
   const reset = resetFromPayload(payload);
   const credits = parseQuota(
     "credits",
-    "高级请求",
+    COPILOT_WINDOW.CREDITS,
     asObject(snapshots.premium_interactions),
     reset,
   );
-  const chat = parseQuota("chat", "聊天消息", asObject(snapshots.chat), reset);
+  const chat = parseQuota(
+    "chat",
+    COPILOT_WINDOW.CHAT,
+    asObject(snapshots.chat),
+    reset,
+  );
   const completions = parseQuota(
     "completions",
-    "代码补全",
+    COPILOT_WINDOW.COMPLETIONS,
     asObject(snapshots.completions),
     reset,
   );
-  const windows = [credits, chat, completions].filter(
-    (window): window is LimitWindow => window != null,
-  );
+  const windows: LimitWindow[] = [];
+  for (const window of [credits, chat, completions]) {
+    if (window) windows.push(window);
+  }
   if (!windows.length) return null;
   return {
     windows,
