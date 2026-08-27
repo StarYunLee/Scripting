@@ -34,7 +34,9 @@ const providerName = (provider?: ProviderId) =>
         ? "Claude"
         : provider === "antigravity"
           ? "Antigravity"
-          : "系统";
+          : provider === "kimi"
+            ? "Kimi Code"
+            : "系统";
 
 function recordTime(value: string): string {
   const date = new Date(value);

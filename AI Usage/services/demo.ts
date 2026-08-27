@@ -544,6 +544,8 @@ export function getDemoWidgetResult(
     };
   }
 
+  if (provider === "kimi") return null;
+
   if (provider === "antigravity") {
     const windows: AntigravityLimitWindow[] = account.windows.map((window) => ({
       ...windowBase(window),
