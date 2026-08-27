@@ -69,6 +69,10 @@ test("Stage G centralizes shared window copy and keeps provider themes visual-on
   assert.doesNotMatch(codexOverviewWidget + codexDetailWidget, /"(?:5H|周限|月限)"/);
   assert.doesNotMatch(grokWidget, /"周限"/);
   assert.doesNotMatch(claudeWidget, /"(?:周限|周限额度|Fable 周限)"/);
+  assert.doesNotMatch(
+    antigravityWidget,
+    /"(?:Claude\/GPT5H|Claude\/GPT 周|Gemini 5H|Gemini 周)"/,
+  );
   assert.doesNotMatch(cursorWidget, /"(?:AUTO|所有|Auto 额度|所有额度)"/);
   assert.match(antigravityParser, /return antigravityWindowLabel\(groupName, bucketId, seconds\)/);
   assert.match(prefsPage, /normalizeAppWindowLabel/);

@@ -207,7 +207,9 @@ export const CURSOR_WIDGET = {
 /** Antigravity 模型分组名 */
 export const ANTIGRAVITY_GROUP = {
   GEMINI_MODEL: "Gemini Model",
+  GEMINI_SHORT: "Gemini",
   CLAUDE_AND_GPT: "Claude and GPT",
+  CLAUDE_AND_GPT_SHORT: "Claude/GPT",
 };
 
 /** 按窗口秒数返回标准周期中文标签 */
