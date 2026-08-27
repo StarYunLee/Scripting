@@ -6,6 +6,7 @@ export const PROVIDER_IDS = [
   "claude",
   "antigravity",
   "cursor",
+  "kimi",
 ] as const;
 
 export type ProviderId = (typeof PROVIDER_IDS)[number];
@@ -106,6 +107,17 @@ export const PROVIDERS: Array<{
     accent: "#111827",
     pasteHint:
       "在浏览器完成 Cursor 登录后返回应用，无需粘贴内容，直接点击“提交并完成授权”。",
+    pastePlaceholder: "无需填写，完成浏览器登录后提交",
+    capabilities: { widget: true },
+  },
+  {
+    id: "kimi",
+    title: "Kimi Code",
+    connectTitle: "连接 Kimi Code 账户",
+    subtitle: "连接 Kimi Code 账户，查看滚动额度与每周额度。",
+    accent: "#111827",
+    pasteHint:
+      "设备码会自动包含在授权页中。完成浏览器登录后返回应用，直接点击“提交并完成授权”。",
     pastePlaceholder: "无需填写，完成浏览器登录后提交",
     capabilities: { widget: true },
   },

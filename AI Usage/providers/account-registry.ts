@@ -3,6 +3,7 @@ import * as GrokAccounts from "./grok/accounts";
 import * as ClaudeAccounts from "./claude/accounts";
 import * as AntigravityAccounts from "./antigravity/accounts";
 import * as CursorAccounts from "./cursor/accounts";
+import * as KimiAccounts from "./kimi/accounts";
 import type { ProviderId } from "../models";
 import type { AccountLookupProvider } from "./contracts";
 
@@ -31,6 +32,11 @@ export const ACCOUNT_PROVIDERS = {
     id: "cursor",
     list: CursorAccounts.listAccounts,
     token: CursorAccounts.getProfileAccessToken,
+  },
+  kimi: {
+    id: "kimi",
+    list: KimiAccounts.listAccounts,
+    token: KimiAccounts.getProfileAccessToken,
   },
 } satisfies Record<ProviderId, AccountLookupProvider>;
 
