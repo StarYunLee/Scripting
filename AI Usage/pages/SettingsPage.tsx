@@ -110,9 +110,13 @@ export function SettingsPage(props: {
         profileId: started.profileId,
         authorizationInput: "",
         status:
-          mode === "present"
-            ? "关闭授权页后，把回调地址或授权码粘贴到下方"
-            : "已在系统 Safari 打开授权页，完成后把回调地址或授权码粘贴到下方",
+          provider === "zai"
+            ? mode === "present"
+              ? "关闭控制台后，把 API Key 粘贴到下方并提交"
+              : "已打开 API Key 控制台，复制 Key 后粘贴到下方并提交"
+            : mode === "present"
+              ? "关闭授权页后，把回调地址或授权码粘贴到下方"
+              : "已在系统 Safari 打开授权页，完成后把回调地址或授权码粘贴到下方",
       });
     } catch (error) {
       setSheet({

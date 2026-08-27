@@ -38,7 +38,9 @@ const providerName = (provider?: ProviderId) =>
             ? "Kimi Code"
             : provider === "copilot"
               ? "GitHub Copilot"
-              : "系统";
+              : provider === "zai"
+                ? "Z.ai"
+                : "系统";
 
 function recordTime(value: string): string {
   const date = new Date(value);

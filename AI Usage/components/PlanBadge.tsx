@@ -19,7 +19,8 @@ export function PlanBadge(props: { provider: ProviderId; label: string; size?: P
     props.provider === "claude" ? "CLAUDE" :
     props.provider === "cursor" ? "CURSOR" :
     props.provider === "kimi" ? "KIMI" :
-    props.provider === "copilot" ? "COPILOT" : "ANTIGRAVITY";
+    props.provider === "copilot" ? "COPILOT" :
+    props.provider === "zai" ? "Z.AI" : "ANTIGRAVITY";
   const text = recipe.text === providerText ? "" : recipe.text;
   return (
     <HStack
@@ -30,21 +31,12 @@ export function PlanBadge(props: { provider: ProviderId; label: string; size?: P
       layoutPriority={1}
       fixedSize={true}
     >
-      <ProviderLogo
-        provider={props.provider}
-        size={layout.logo}
-        tint={recipe.preserveLogoColor ? undefined : recipe.foreground}
-      />
+      <ProviderLogo provider={props.provider} size={layout.logo}
+        tint={recipe.preserveLogoColor ? undefined : recipe.foreground} />
       {text ? (
-        <Text
-          fontDesign="default"
-          fontWidth="standard"
-          font={layout.text}
-          fontWeight="bold"
-          foregroundStyle={recipe.foreground}
-          lineLimit={1}
-          minScaleFactor={props.size === "small" ? 0.7 : 1}
-        >
+        <Text fontDesign="default" fontWidth="standard" font={layout.text} fontWeight="bold"
+          foregroundStyle={recipe.foreground} lineLimit={1}
+          minScaleFactor={props.size === "small" ? 0.7 : 1}>
           {text}
         </Text>
       ) : null}
