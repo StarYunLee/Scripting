@@ -20,7 +20,11 @@ import { usePageToolbar } from "../components/PageToolbar";
 import { UsageCardView } from "../components/UsageCardView";
 import { type AuthSheet, type ProviderId, type UsageCard } from "../models";
 import { openAuthorizationPage } from "../services/browser";
-import { getPendingUserCode } from "../providers/copilot/oauth";
+import { getPendingAuthorizationState } from "../providers/copilot/oauth";
+import {
+  planCopilotAuthorization,
+  planPendingCopilotAuthorization,
+} from "../providers/copilot/auth-flow";
 import { refreshAccounts } from "../services/refresh";
 import { requestWidgetReload } from "../services/widgets";
 import { type BackgroundThemeId } from "../services/settings";
@@ -76,16 +80,18 @@ export function StatusPage(props: {
     const pending = findPendingAuth();
     if (!pending) return;
     setProvider(pending.provider);
+    const copilotState =
+      pending.provider === "copilot" ? getPendingAuthorizationState() : null;
+    const copilotPlan = copilotState
+      ? planPendingCopilotAuthorization(copilotState)
+      : null;
     setSheet({
       provider: pending.provider,
       profileId: pending.profileId,
       authorizationInput: "",
-      deviceCode:
-        pending.provider === "copilot" ? getPendingUserCode() || undefined : undefined,
+      deviceCode: copilotPlan?.deviceCode,
       status:
-        pending.provider === "copilot"
-          ? "存在未完成的 GitHub 设备授权；完成登录后直接提交"
-          : "存在未完成的授权，请粘贴回调或授权码",
+        copilotPlan?.status || "存在未完成的授权，请粘贴回调或授权码",
     });
   }, [props.demoMode]);
 
@@ -118,19 +124,29 @@ export function StatusPage(props: {
     setBusy(true);
     try {
       const started = await beginProviderAuth(target, profileId);
-      // 先打开授权页；关闭后再进入粘贴页，避免状态页被粘贴界面顶掉。
+      if (target === "copilot") {
+        const state = getPendingAuthorizationState();
+        if (!state) throw new Error("GitHub 设备码生成失败，请重新开始");
+        const plan = planCopilotAuthorization(state);
+        setSheet({
+          provider: target,
+          profileId: plan.profileId,
+          authorizationInput: "",
+          deviceCode: plan.deviceCode,
+          status: plan.status,
+        });
+        return;
+      }
+      // 其他平台保持原流程：先打开授权页，关闭后再进入粘贴页。
       const mode = await openAuthorizationPage(started.url);
       setSheet({
         provider: target,
         profileId: started.profileId,
         authorizationInput: "",
-        deviceCode: target === "copilot" ? getPendingUserCode() || undefined : undefined,
         status:
-          target === "copilot"
-            ? "请在 GitHub 授权页输入设备码；完成登录后返回并提交"
-            : mode === "present"
-              ? "关闭授权页后，把回调地址或授权码粘贴到下方"
-              : "已在系统 Safari 打开授权页，完成后把回调地址或授权码粘贴到下方",
+          mode === "present"
+            ? "关闭授权页后，把回调地址或授权码粘贴到下方"
+            : "已在系统 Safari 打开授权页，完成后把回调地址或授权码粘贴到下方",
       });
     } catch (error) {
       setSheet({

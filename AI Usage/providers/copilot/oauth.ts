@@ -330,6 +330,20 @@ export function getPendingUserCode(): string | null {
   return pending.userCode;
 }
 
+export function getPendingAuthorizationState(): {
+  profileId: string;
+  verificationUri: string;
+  userCode: string;
+} | null {
+  const pending = readPending();
+  if (!pending || Date.now() - pending.createdAt > PENDING_TTL_MS) return null;
+  return {
+    profileId: pending.profileId,
+    verificationUri: pending.verificationUri,
+    userCode: pending.userCode,
+  };
+}
+
 export function getPendingVerificationUri(): string | null {
   const pending = readPending();
   if (!pending || Date.now() - pending.createdAt > PENDING_TTL_MS) return null;
