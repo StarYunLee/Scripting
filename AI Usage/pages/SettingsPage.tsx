@@ -46,6 +46,7 @@ import { CURRENT_VERSION } from "../changelog";
 import { ChangelogPage } from "./ChangelogPage";
 import { AccountDetailPage } from "./AccountDetailPage";
 import { LogPage } from "./LogPage";
+import { DashboardPrefsPage } from "./DashboardPrefsPage";
 import type { AuthSheet } from "../models";
 import { listDemoAccounts } from "../services/demo";
 import { requestWidgetReload } from "../services/widgets";
@@ -67,13 +68,15 @@ type SelectedDestination =
       };
     }
   | { kind: "log" }
-  | { kind: "changelog" };
+  | { kind: "changelog" }
+  | { kind: "dashboard" };
 
 export function SettingsPage(props: {
   demoMode: boolean;
   backgroundTheme: BackgroundThemeId;
   onDemoModeChange: (enabled: boolean) => void;
   onBackgroundThemeChange: (theme: BackgroundThemeId) => void;
+  onDashboardPrefsChange?: () => void;
 }) {
   const [tick, setTick] = useState(0);
   const [sheet, setSheet] = useState<AuthSheet | null>(null);
@@ -254,6 +257,15 @@ export function SettingsPage(props: {
               <LogPage backgroundTheme={props.backgroundTheme} />
             ) : selectedDestination?.kind === "changelog" ? (
               <ChangelogPage backgroundTheme={props.backgroundTheme} />
+            ) : selectedDestination?.kind === "dashboard" ? (
+              <DashboardPrefsPage
+                backgroundTheme={props.backgroundTheme}
+                demoMode={props.demoMode}
+                onChanged={() => {
+                  refresh();
+                  props.onDashboardPrefsChange?.();
+                }}
+              />
             ) : (
               <Text>选择项目</Text>
             ),
@@ -409,6 +421,40 @@ export function SettingsPage(props: {
               <Text tag="30">30 分钟</Text>
               <Text tag="60">60 分钟</Text>
             </Picker>
+          </GlassGroup>
+        </Section>
+
+        <Section
+          listRowBackground={glassRowBackground}
+          header={<GlassSectionHeader title="用量总览" />}
+        >
+          <GlassGroup>
+            <Button
+              buttonStyle="plain"
+              frame={{ maxWidth: "infinity" }}
+              action={() => setSelectedDestination({ kind: "dashboard" })}
+            >
+              <HStack
+                padding={{ vertical: true }}
+                frame={{ minHeight: 44, maxWidth: "infinity" }}
+                contentShape="rect"
+              >
+                <Text>选择展示内容</Text>
+                <Spacer />
+                <Image
+                  systemName="chevron.right"
+                  foregroundStyle="tertiaryLabel"
+                />
+              </HStack>
+            </Button>
+            <GlassDivider />
+            <Text
+              font="caption"
+              foregroundStyle="secondaryLabel"
+              padding={{ vertical: true }}
+            >
+              选择用量页要展示的账号与用量窗口（5 小时 / 周限等）。
+            </Text>
           </GlassGroup>
         </Section>
 

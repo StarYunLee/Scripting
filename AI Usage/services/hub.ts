@@ -8,6 +8,7 @@ import {
 } from "./demo";
 import { writeLog } from "./logger";
 import { refreshAccount } from "./refresh";
+import { applyDashboardPrefs } from "./dashboard-prefs";
 import { PROVIDER_IDS, type ProviderId, type UsageCard } from "../models";
 
 type AccountLike = ProviderAccount;
@@ -60,6 +61,10 @@ export function buildCard(
 }
 
 export function listAuthorizedCards(): UsageCard[] {
+  return applyDashboardPrefs(listAllAuthorizedCards());
+}
+
+export function listAllAuthorizedCards(): UsageCard[] {
   if (isDemoMode()) return listDemoCards();
   const cards: UsageCard[] = [];
   for (const provider of PROVIDER_IDS) {
