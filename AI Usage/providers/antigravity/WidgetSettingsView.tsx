@@ -9,26 +9,33 @@ import {
   useState,
 } from "scripting";
 import * as AntigravitySettings from "./credentials";
+import { ANTIGRAVITY_GROUP } from "../../copy/labels";
 import type { DualQuotaPreset, FocusWindow, WidgetStyle } from "./types";
 
 const DUAL_PRESETS: Array<{ value: DualQuotaPreset; label: string }> = [
   {
     value: "gemini_five_hour_weekly",
-    label: "Gemini Model 5 小时 + Gemini Model 每周",
+    label: `${ANTIGRAVITY_GROUP.GEMINI_MODEL} · 5 小时 + 每周`,
   },
   {
     value: "third_party_five_hour_weekly",
-    label: "Claude and GPT 5 小时 + Claude and GPT 每周",
+    label: `${ANTIGRAVITY_GROUP.CLAUDE_AND_GPT} · 5 小时 + 每周`,
   },
   {
     value: "weekly_both",
-    label: "Gemini Model 每周 + Claude and GPT 每周",
+    label: `${ANTIGRAVITY_GROUP.GEMINI_MODEL} · 每周 + ${ANTIGRAVITY_GROUP.CLAUDE_AND_GPT} · 每周`,
   },
 ];
 
 const FOCUS_WINDOWS: Array<{ value: FocusWindow; label: string }> = [
-  { value: "gemini_weekly", label: "Gemini Model 每周" },
-  { value: "third_party_weekly", label: "Claude and GPT 每周" },
+  {
+    value: "gemini_weekly",
+    label: `${ANTIGRAVITY_GROUP.GEMINI_MODEL} · 每周`,
+  },
+  {
+    value: "third_party_weekly",
+    label: `${ANTIGRAVITY_GROUP.CLAUDE_AND_GPT} · 每周`,
+  },
 ];
 
 function optionLabel<T extends string>(
@@ -127,7 +134,7 @@ export function AntigravityWidgetSettingsView(props: {
   return (
     <>
       <Picker
-        title="组件布局"
+        title="小组件布局"
         value={settings.widgetStyle}
         onChanged={(value: string) => {
           AntigravitySettings.setProfileSettings(props.profileId, {
@@ -140,7 +147,7 @@ export function AntigravityWidgetSettingsView(props: {
         frame={{ minHeight: 44, maxWidth: "infinity" }}
       >
         <Text tag="dual">双额度概览</Text>
-        <Text tag="single">单用量详情</Text>
+        <Text tag="single">单额度详情</Text>
       </Picker>
       <Divider />
       {settings.widgetStyle === "dual" ? (

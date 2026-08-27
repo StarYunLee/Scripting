@@ -27,6 +27,7 @@ import { providerMeta, type ProviderId } from "../models";
 import { accountTitle } from "../services/hub";
 import { widgetParameter } from "../widget/parameter";
 import { PageBackground } from "../components/PageBackground";
+import { ProviderLogo } from "../components/ProviderLogo";
 import type { BackgroundThemeId } from "../services/settings";
 import { requestWidgetReload } from "../services/widgets";
 
@@ -172,33 +173,25 @@ export function AccountDetailPage(props: {
         <DetailGroup>
           <HStack
             padding={{ vertical: true }}
-            frame={{ minHeight: 44, maxWidth: "infinity" }}
+            spacing={12}
+            frame={{ minHeight: 60, maxWidth: "infinity" }}
           >
-            <Text font="body" lineLimit={1} truncationMode="tail">
-              {title}
-            </Text>
+            <ProviderLogo provider={props.provider} size={32} />
+            <VStack spacing={2} frame={{ alignment: "leading" }}>
+              <Text font="headline">{meta.title}</Text>
+              <Text font="subheadline" foregroundStyle="secondaryLabel" lineLimit={1} truncationMode="tail">
+                {title}
+              </Text>
+            </VStack>
             <Spacer />
+            <Text font="subheadline" foregroundStyle="secondaryLabel">
+              已连接
+            </Text>
           </HStack>
           {props.demo ? null : (
             <>
               <DetailDivider />
               <DetailActionRow title="重新授权" action={props.onReauthorize} />
-              <DetailDivider />
-              <DetailActionRow
-                title="删除账号…"
-                destructive={true}
-                action={async () => {
-                  const confirmed = await Dialog.confirm({
-                    title: "删除账号",
-                    message: `确定要删除“${title}”吗？账号凭据、缓存和小组件设置将一并清除。`,
-                    cancelLabel: "取消",
-                    confirmLabel: "删除",
-                  });
-                  if (!confirmed) return;
-                  props.onDelete();
-                  dismiss();
-                }}
-              />
             </>
           )}
         </DetailGroup>
@@ -265,7 +258,7 @@ export function AccountDetailPage(props: {
 
             <DetailDivider />
             <Picker
-              title="组件预览"
+              title="小组件预览"
               value={previewFamily}
               onChanged={(value: string) => {
                 if (value !== "systemSmall" && value !== "systemMedium") {
@@ -281,22 +274,51 @@ export function AccountDetailPage(props: {
               frame={{ minHeight: 44, maxWidth: "infinity" }}
             >
               <Text tag="choose">选择尺寸</Text>
-              <Text tag="systemSmall">Small 小组件</Text>
-              <Text tag="systemMedium">Medium 小组件</Text>
+              <Text tag="systemSmall">小号小组件</Text>
+              <Text tag="systemMedium">中号小组件</Text>
             </Picker>
             <DetailDivider />
             <DetailActionRow
-              title="复制组件参数"
+              title="复制小组件参数"
               action={async () => {
                 await Pasteboard.setString(
                   widgetParameter(props.provider, props.account.id),
                 );
                 await Dialog.alert({
-                  title: "已复制组件参数",
+                  title: "已复制小组件参数",
                   message:
                     "请长按主屏幕上的 AI Usage 小组件并选择“编辑小组件”，将内容粘贴到“参数”。",
                   buttonLabel: "知道了",
                 });
+              }}
+            />
+          </DetailGroup>
+        </Section>
+      ) : null}
+
+      {!props.demo ? (
+        <Section
+          listRowBackground={detailRowBackground}
+          header={
+            <Text font="footnote" foregroundStyle="secondaryLabel">
+              危险操作
+            </Text>
+          }
+        >
+          <DetailGroup>
+            <DetailActionRow
+              title="删除账号…"
+              destructive={true}
+              action={async () => {
+                const confirmed = await Dialog.confirm({
+                  title: "删除账号",
+                  message: `确定要删除“${title}”吗？账号凭据、缓存和小组件设置将一并清除。`,
+                  cancelLabel: "取消",
+                  confirmLabel: "删除",
+                });
+                if (!confirmed) return;
+                props.onDelete();
+                dismiss();
               }}
             />
           </DetailGroup>

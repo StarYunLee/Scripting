@@ -17,8 +17,44 @@ export type AuthLaunchResult = {
   status: string;
 };
 
-const CODEX_CALLBACK_PORT = 1455;
-const CODEX_CALLBACK_PATH = "/auth/callback";
+type LocalOAuthProvider = "codex" | "grok" | "antigravity";
+
+type LocalOAuthCallback = {
+  host: "localhost" | "127.0.0.1";
+  port: number;
+  path: string;
+};
+
+const LOCAL_OAUTH_CALLBACKS: Record<LocalOAuthProvider, LocalOAuthCallback> = {
+  codex: {
+    host: "localhost",
+    port: 1455,
+    path: "/auth/callback",
+  },
+  grok: {
+    host: "127.0.0.1",
+    port: 56122,
+    path: "/callback",
+  },
+  antigravity: {
+    host: "localhost",
+    port: 51121,
+    path: "/oauth-callback",
+  },
+};
+
+function localOAuthCallback(
+  provider: ProviderId,
+): LocalOAuthCallback | null {
+  if (
+    provider !== "codex" &&
+    provider !== "grok" &&
+    provider !== "antigravity"
+  ) {
+    return null;
+  }
+  return LOCAL_OAUTH_CALLBACKS[provider];
+}
 
 function pasteStatus(
   provider: ProviderId,
@@ -43,8 +79,9 @@ function pasteStatus(
       return "关闭控制台后，把 Subscription Key 粘贴到下方并提交";
     return "已打开 MiniMax 控制台，复制 Subscription Key 后粘贴到下方并提交";
   }
-  if (provider === "codex" && mode === "present") {
-    return "未能自动捕获回调时，请粘贴地址栏中的 localhost:1455/auth/callback?...";
+  const callback = localOAuthCallback(provider);
+  if (callback && mode === "present") {
+    return `未能自动捕获回调时，请粘贴地址栏中的 ${callback.host}:${callback.port}${callback.path}?...`;
   }
   if (mode === "present")
     return "关闭授权页后，把回调地址或授权码粘贴到下方";
@@ -52,7 +89,8 @@ function pasteStatus(
 }
 
 /**
- * 启动平台授权：Codex 在 in-app Safari 下优先本机捕获回调并自动换 token。
+ * 启动平台授权：使用 loopback redirect 的平台在 in-app Safari 下优先
+ * 由本机 HttpServer 捕获回调并自动换 token，失败时保留手动粘贴回退。
  */
 export async function launchProviderAuthorization(
   provider: ProviderId,
@@ -60,14 +98,14 @@ export async function launchProviderAuthorization(
 ): Promise<AuthLaunchResult> {
   const started = await beginProviderAuth(provider, profileId);
 
-  if (provider === "codex") {
+  const callback = localOAuthCallback(provider);
+  if (callback) {
     const captured = await openAuthAndCaptureLocalCallback({
       authorizationUrl: started.url,
-      port: CODEX_CALLBACK_PORT,
-      path: CODEX_CALLBACK_PATH,
+      ...callback,
     });
     if (captured.callbackUrl) {
-      await completeProviderAuth("codex", captured.callbackUrl);
+      await completeProviderAuth(provider, captured.callbackUrl);
       return {
         profileId: started.profileId,
         mode: captured.mode,
@@ -81,7 +119,7 @@ export async function launchProviderAuthorization(
       mode: captured.mode,
       autoCompleted: false,
       needsSheet: true,
-      status: pasteStatus("codex", captured.mode),
+      status: pasteStatus(provider, captured.mode),
     };
   }
 

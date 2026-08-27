@@ -319,93 +319,21 @@ export function SettingsPage(props: {
       >
         <Section
           listRowBackground={settingsRowBackground}
-          header={<Text font="footnote" foregroundStyle="secondaryLabel">演示</Text>}
+          header={<Text font="footnote" foregroundStyle="secondaryLabel">账号</Text>}
         >
           <SettingsGroup>
-            <Toggle
-              title="演示模式"
-              value={props.demoMode}
-              onChanged={(value: boolean) => {
-                props.onDemoModeChange(value);
-                refresh();
-              }}
-              padding={{ vertical: true }}
-              frame={{ minHeight: 44, maxWidth: "infinity" }}
-            />
-          </SettingsGroup>
-        </Section>
+            {(() => {
+              const allAccounts = PROVIDERS.flatMap((meta) => {
+                const accounts = props.demoMode
+                  ? listDemoAccounts(meta.id)
+                  : listProviderAccounts(meta.id).filter((account) =>
+                      isAuthorized(meta.id, account.id),
+                    );
+                return accounts.map((account) => ({ meta, account }));
+              });
 
-        {PROVIDERS.map((meta) => {
-          const accounts = props.demoMode
-            ? listDemoAccounts(meta.id)
-            : listProviderAccounts(meta.id).filter((account) =>
-                isAuthorized(meta.id, account.id),
-              );
-          return (
-            <Section
-              key={meta.id}
-              listRowBackground={settingsRowBackground}
-              header={
-                meta.id === "codex" ? (
-                  <Text font="footnote" foregroundStyle="secondaryLabel">账号</Text>
-                ) : undefined
-              }
-            >
-              <SettingsGroup>
-                <HStack
-                  spacing={8}
-                  padding={{ vertical: true }}
-                  frame={{ minHeight: 44, maxWidth: "infinity" }}
-                >
-                  <ProviderLogo provider={meta.id} size={18} />
-                  <Text fontWeight="semibold">{meta.title}</Text>
-                  <Spacer />
-                </HStack>
-                <CardDivider />
-                {accounts.length > 0 ? (
-                  accounts.map((account, index) => (
-                    <VStack
-                      key={`${meta.id}:${account.id}:${tick}`}
-                      alignment="leading"
-                      spacing={0}
-                      frame={{ maxWidth: "infinity" }}
-                    >
-                      <Button
-                        buttonStyle="plain"
-                        frame={{ maxWidth: "infinity" }}
-                        action={() =>
-                          setSelectedDestination({
-                            kind: "account",
-                            provider: meta.id,
-                            account,
-                          })
-                        }
-                      >
-                        <HStack
-                          padding={{ vertical: true }}
-                          frame={{ minHeight: 44, maxWidth: "infinity" }}
-                          contentShape="rect"
-                        >
-                          <Text font="body" lineLimit={1} truncationMode="tail">
-                            {account.email ||
-                              (account.name &&
-                              account.name !== account.id &&
-                              !/^acct_/i.test(account.name)
-                                ? account.name
-                                : "未命名账号")}
-                          </Text>
-                          <Spacer />
-                          <Image
-                            systemName="chevron.right"
-                            imageScale="small"
-                            foregroundStyle="tertiaryLabel"
-                          />
-                        </HStack>
-                      </Button>
-                      {index < accounts.length - 1 ? <CardDivider /> : null}
-                    </VStack>
-                  ))
-                ) : (
+              if (allAccounts.length === 0) {
+                return (
                   <HStack
                     padding={{ vertical: true }}
                     frame={{ minHeight: 44, maxWidth: "infinity" }}
@@ -415,15 +343,72 @@ export function SettingsPage(props: {
                     </Text>
                     <Spacer />
                   </HStack>
-                )}
-              </SettingsGroup>
-            </Section>
-          );
-        })}
+                );
+              }
+
+              return allAccounts.map(({ meta, account }, index) => {
+                const displayName =
+                  account.email ||
+                  (account.name &&
+                  account.name !== account.id &&
+                  !/^acct_/i.test(account.name)
+                    ? account.name
+                    : "未命名账号");
+                return (
+                  <VStack
+                    key={`${meta.id}:${account.id}:${tick}`}
+                    alignment="leading"
+                    spacing={0}
+                    frame={{ maxWidth: "infinity" }}
+                  >
+                    <Button
+                      buttonStyle="plain"
+                      frame={{ maxWidth: "infinity" }}
+                      action={() =>
+                        setSelectedDestination({
+                          kind: "account",
+                          provider: meta.id,
+                          account,
+                        })
+                      }
+                    >
+                      <HStack
+                        spacing={12}
+                        padding={{ vertical: true }}
+                        frame={{ minHeight: 44, maxWidth: "infinity" }}
+                        contentShape="rect"
+                      >
+                        <ProviderLogo provider={meta.id} size={20} />
+                        <VStack alignment="leading" spacing={2}>
+                          <Text font="body">{meta.title}</Text>
+                          <Text font="caption" foregroundStyle="secondaryLabel" lineLimit={1} truncationMode="tail">
+                            {displayName}
+                          </Text>
+                        </VStack>
+                        <Spacer />
+                        <Image
+                          systemName="chevron.right"
+                          imageScale="small"
+                          foregroundStyle="tertiaryLabel"
+                        />
+                      </HStack>
+                    </Button>
+                    {index < allAccounts.length - 1 ? <CardDivider /> : null}
+                  </VStack>
+                );
+              });
+            })()}
+          </SettingsGroup>
+        </Section>
 
         <Section
           listRowBackground={settingsRowBackground}
           header={<Text font="footnote" foregroundStyle="secondaryLabel">显示</Text>}
+          footer={
+            <Text font="caption" foregroundStyle="secondaryLabel">
+              {APP_DASHBOARD_SETTINGS_FOOTER}
+            </Text>
+          }
         >
           <SettingsGroup>
             <Picker
@@ -444,6 +429,38 @@ export function SettingsPage(props: {
               ))}
             </Picker>
             <CardDivider />
+            <Button
+              buttonStyle="plain"
+              frame={{ maxWidth: "infinity" }}
+              action={() => setSelectedDestination({ kind: "dashboard" })}
+            >
+              <HStack
+                padding={{ vertical: true }}
+                frame={{ minHeight: 44, maxWidth: "infinity" }}
+                contentShape="rect"
+              >
+                <Text>应用内用量内容</Text>
+                <Spacer />
+                <Image
+                  systemName="chevron.right"
+                  imageScale="small"
+                  foregroundStyle="tertiaryLabel"
+                />
+              </HStack>
+            </Button>
+          </SettingsGroup>
+        </Section>
+
+        <Section
+          listRowBackground={settingsRowBackground}
+          header={<Text font="footnote" foregroundStyle="secondaryLabel">桌面小组件</Text>}
+          footer={
+            <Text font="caption" foregroundStyle="secondaryLabel">
+              {WIDGET_DASHBOARD_SETTINGS_FOOTER}
+            </Text>
+          }
+        >
+          <SettingsGroup>
             <Picker
               title="刷新间隔"
               value={String(snapReloadMinutes(settings.reloadMinutes))}
@@ -462,51 +479,7 @@ export function SettingsPage(props: {
               <Text tag="30">30 分钟</Text>
               <Text tag="60">60 分钟</Text>
             </Picker>
-          </SettingsGroup>
-        </Section>
-
-        <Section
-          listRowBackground={settingsRowBackground}
-          header={<Text font="footnote" foregroundStyle="secondaryLabel">用量总览</Text>}
-          footer={
-            <Text font="caption" foregroundStyle="secondaryLabel">
-              {APP_DASHBOARD_SETTINGS_FOOTER}
-            </Text>
-          }
-        >
-          <SettingsGroup>
-            <Button
-              buttonStyle="plain"
-              frame={{ maxWidth: "infinity" }}
-              action={() => setSelectedDestination({ kind: "dashboard" })}
-            >
-              <HStack
-                padding={{ vertical: true }}
-                frame={{ minHeight: 44, maxWidth: "infinity" }}
-                contentShape="rect"
-              >
-                <Text>选择展示内容</Text>
-                <Spacer />
-                <Image
-                  systemName="chevron.right"
-                  imageScale="small"
-                  foregroundStyle="tertiaryLabel"
-                />
-              </HStack>
-            </Button>
-          </SettingsGroup>
-        </Section>
-
-        <Section
-          listRowBackground={settingsRowBackground}
-          header={<Text font="footnote" foregroundStyle="secondaryLabel">小组件总览</Text>}
-          footer={
-            <Text font="caption" foregroundStyle="secondaryLabel">
-              {WIDGET_DASHBOARD_SETTINGS_FOOTER}
-            </Text>
-          }
-        >
-          <SettingsGroup>
+            <CardDivider />
             <Button
               buttonStyle="plain"
               frame={{ maxWidth: "infinity" }}
@@ -517,7 +490,7 @@ export function SettingsPage(props: {
                 frame={{ minHeight: 44, maxWidth: "infinity" }}
                 contentShape="rect"
               >
-                <Text>选择展示内容</Text>
+                <Text>桌面小组件内容</Text>
                 <Spacer />
                 <Image
                   systemName="chevron.right"
@@ -528,7 +501,7 @@ export function SettingsPage(props: {
             </Button>
             <CardDivider />
             <Picker
-              title="预览总览小组件"
+              title="预览桌面小组件"
               value={dashboardPreviewFamily}
               onChanged={(value: string) => {
                 if (
@@ -548,9 +521,9 @@ export function SettingsPage(props: {
               frame={{ minHeight: 44, maxWidth: "infinity" }}
             >
               <Text tag="choose">选择尺寸</Text>
-              <Text tag="systemSmall">Small 小组件</Text>
-              <Text tag="systemMedium">Medium 小组件</Text>
-              <Text tag="systemLarge">Large 小组件</Text>
+              <Text tag="systemSmall">小号小组件</Text>
+              <Text tag="systemMedium">中号小组件</Text>
+              <Text tag="systemLarge">大号小组件</Text>
             </Picker>
             <CardDivider />
             <Button
@@ -559,9 +532,9 @@ export function SettingsPage(props: {
               action={async () => {
                 await Pasteboard.setString(WIDGET_DASHBOARD_PARAMETER);
                 await Dialog.alert({
-                  title: "已复制组件参数",
+                  title: "已复制小组件参数",
                   message:
-                    "请长按主屏幕上的 AI Usage 小组件并选择“编辑小组件”，将内容粘贴到“参数”。参数为 dashboard 时将显示总用量。",
+                    "请长按主屏幕上的 AI Usage 小组件并选择“编辑小组件”，将内容粘贴到“参数”。参数为 dashboard 时将显示多账号用量。",
                   buttonLabel: "知道了",
                 });
               }}
@@ -571,18 +544,11 @@ export function SettingsPage(props: {
                 frame={{ minHeight: 44, maxWidth: "infinity" }}
                 contentShape="rect"
               >
-                <Text foregroundStyle="accentColor">复制总览组件参数</Text>
+                <Text foregroundStyle="accentColor">复制小组件参数</Text>
                 <Spacer />
               </HStack>
             </Button>
-          </SettingsGroup>
-        </Section>
-
-        <Section
-          listRowBackground={settingsRowBackground}
-          header={<Text font="footnote" foregroundStyle="secondaryLabel">运行与支持</Text>}
-        >
-          <SettingsGroup>
+            <CardDivider />
             <Button
               buttonStyle="plain"
               frame={{ maxWidth: "infinity" }}
@@ -599,6 +565,24 @@ export function SettingsPage(props: {
                 <Spacer />
               </HStack>
             </Button>
+          </SettingsGroup>
+        </Section>
+
+        <Section
+          listRowBackground={settingsRowBackground}
+          header={<Text font="footnote" foregroundStyle="secondaryLabel">高级与支持</Text>}
+        >
+          <SettingsGroup>
+            <Toggle
+              title="演示模式"
+              value={props.demoMode}
+              onChanged={(value: boolean) => {
+                props.onDemoModeChange(value);
+                refresh();
+              }}
+              padding={{ vertical: true }}
+              frame={{ minHeight: 44, maxWidth: "infinity" }}
+            />
             <CardDivider />
             <Button
               buttonStyle="plain"

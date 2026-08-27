@@ -3,6 +3,7 @@ import { claudeScopedAppLabel, PERIOD } from "../../copy/labels";
 import { getProfileAccessToken, resolveProfile } from "./accounts";
 import { refreshOAuthToken } from "./oauth";
 import type { LimitWindow, UsageResult, UsageSnapshot } from "./types";
+import { createUsageCache } from "../../services/usage-cache";
 
 const CACHE_KEY = "ai_usage_claude_cache_v1";
 const RATE_LIMIT_KEY = "ai_usage_claude_rate_limit_v1";
@@ -252,12 +253,11 @@ async function fetchPlanFromProfile(token: string): Promise<string | null> {
     return null;
   }
 }
-function cacheKey(profileId: string): string {
-  return `${CACHE_KEY}_${profileId}`;
-}
+
 function rateLimitKey(profileId: string): string {
   return `${RATE_LIMIT_KEY}_${profileId}`;
 }
+
 function readBlockedUntil(profileId: string): number | null {
   try {
     const value = Storage.get<number>(rateLimitKey(profileId));
@@ -271,6 +271,7 @@ function readBlockedUntil(profileId: string): number | null {
     return null;
   }
 }
+
 function writeBlockedUntil(profileId: string, value: number): void {
   try {
     Storage.set(rateLimitKey(profileId), value);
@@ -278,6 +279,7 @@ function writeBlockedUntil(profileId: string, value: number): void {
     /* ignore */
   }
 }
+
 function clearBlockedUntil(profileId: string): void {
   try {
     Storage.remove(rateLimitKey(profileId));
@@ -285,6 +287,7 @@ function clearBlockedUntil(profileId: string): void {
     /* ignore */
   }
 }
+
 function parseRetryAfter(response: Response): number {
   const raw = response.headers.get("Retry-After")?.trim();
   if (raw) {
@@ -296,48 +299,37 @@ function parseRetryAfter(response: Response): number {
   }
   return Date.now() + DEFAULT_RATE_LIMIT_MS;
 }
-function readCache(profileId?: string | null): UsageSnapshot | null {
+
+const usageCache = createUsageCache<UsageSnapshot>({
+  keyPrefix: `${CACHE_KEY}_`,
+  resolveProfileId: (pid) => resolveProfile(pid)?.id || null,
+  recentMs: MIN_LIVE_INTERVAL_MS,
+});
+
+function readCache(profileId?: string | null) {
+  return usageCache.read(profileId);
+}
+function writeCache(profileId: string, value: UsageSnapshot) {
+  usageCache.write(profileId, value);
+}
+export const getCachedUsage = (profileId?: string | null) => usageCache.read(profileId);
+export function clearUsageCache(profileId?: string | null) {
   const profile = resolveProfile(profileId);
-  if (!profile) return null;
-  try {
-    const v = Storage.get<UsageSnapshot>(cacheKey(profile.id));
-    return v?.fetchedAt ? { ...v, source: "cache" } : null;
-  } catch {
-    return null;
-  }
+  usageCache.clear(profileId);
+  if (profile) clearBlockedUntil(profile.id);
 }
-function writeCache(profileId: string, value: UsageSnapshot): void {
-  try {
-    Storage.set(cacheKey(profileId), { ...value, source: "cache" });
-  } catch {
-    /* ignore */
-  }
-}
-export const getCachedUsage = (profileId?: string | null) =>
-  readCache(profileId);
-export function clearUsageCache(profileId?: string | null): void {
-  const p = resolveProfile(profileId);
-  if (!p) return;
-  try {
-    Storage.remove(cacheKey(p.id));
-    Storage.remove(rateLimitKey(p.id));
-  } catch {
-    /* ignore */
-  }
-}
+
 export function pickFocusWindow(
   snapshot: UsageSnapshot,
   focus: "five_hour" | "weekly" | "weekly_fable" = "five_hour",
 ): LimitWindow | null {
-  return snapshot.windows.find((w) => w.name === focus) || null;
+  return snapshot.windows.find((window) => window.name === focus) || null;
 }
-function recent(cache: UsageSnapshot | null): boolean {
-  if (!cache?.fetchedAt) return false;
-  const fetchedAt = new Date(cache.fetchedAt).getTime();
-  return (
-    Number.isFinite(fetchedAt) && Date.now() - fetchedAt < MIN_LIVE_INTERVAL_MS
-  );
+
+function recent(cache: UsageSnapshot | null) {
+  return usageCache.recent(cache);
 }
+
 async function requestUsage(token: string): Promise<Response> {
   return fetch(USAGE_URL, {
     method: "GET",
@@ -376,6 +368,7 @@ export async function fetchUsage(options?: {
       cache,
     };
   }
+
   const cacheIsRecent = recent(cache);
   if (!options?.force && cacheIsRecent) {
     return { ok: true, snapshot: cache! };
@@ -415,6 +408,7 @@ export async function fetchUsage(options?: {
       const unauthorized = response.status === 401 || response.status === 403;
       const rateLimited = response.status === 429;
       if (rateLimited) writeBlockedUntil(profile.id, parseRetryAfter(response));
+
       const message = unauthorized
         ? "Claude OAuth 已失效或该账号无权读取用量"
         : rateLimited

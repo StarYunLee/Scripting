@@ -1,6 +1,6 @@
 /**
- * 用本机 HttpServer 捕获 localhost OAuth 回调（与 Codex CLI 同思路）。
- * HttpServer 为 Scripting Pro 能力：不可用或启动失败时返回 null，调用方回退到粘贴。
+ * 用本机 HttpServer 捕获 loopback OAuth 回调（与各平台 CLI 同思路）。
+ * HttpServer 不可用或启动失败时返回 null，调用方回退到粘贴。
  */
 
 export type LocalOAuthCapture = {
@@ -19,6 +19,7 @@ function queryValue(
 }
 
 function buildCallbackUrl(
+  host: "localhost" | "127.0.0.1",
   port: number,
   path: string,
   req: {
@@ -37,7 +38,7 @@ function buildCallbackUrl(
           )
           .join("&")}`;
   const suffix = target.startsWith("/") ? target : `/${target}`;
-  return `http://127.0.0.1:${port}${suffix}`;
+  return `http://${host}:${port}${suffix}`;
 }
 
 /**
@@ -45,12 +46,15 @@ function buildCallbackUrl(
  * 若环境无 HttpServer 或端口占用，返回 null。
  */
 export function startLocalOAuthCapture(options: {
+  host: "localhost" | "127.0.0.1";
   port: number;
   path: string;
 }): LocalOAuthCapture | null {
   try {
     if (typeof HttpServer === "undefined") return null;
     const server = new HttpServer();
+    // OAuth redirect 只允许本机访问，不把临时 authorization code 暴露到局域网。
+    server.listenAddressIPv4 = "127.0.0.1";
     let settled = false;
     let resolveUrl: ((url: string) => void) | null = null;
     const wait = new Promise<string>((resolve) => {
@@ -75,7 +79,9 @@ export function startLocalOAuthCapture(options: {
           HttpResponseBody.text("缺少 authorization code"),
         );
       }
-      finish(buildCallbackUrl(options.port, options.path, req));
+      finish(
+        buildCallbackUrl(options.host, options.port, options.path, req),
+      );
       const body = error
         ? "授权被拒绝，请返回 AI Usage 重试。"
         : "授权完成，请关闭此页并返回 AI Usage。";
@@ -126,6 +132,7 @@ function delay(ms: number): Promise<null> {
  */
 export async function openAuthAndCaptureLocalCallback(options: {
   authorizationUrl: string;
+  host: "localhost" | "127.0.0.1";
   port: number;
   path: string;
 }): Promise<{
@@ -133,6 +140,7 @@ export async function openAuthAndCaptureLocalCallback(options: {
   callbackUrl: string | null;
 }> {
   const capture = startLocalOAuthCapture({
+    host: options.host,
     port: options.port,
     path: options.path,
   });

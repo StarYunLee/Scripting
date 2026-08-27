@@ -31,11 +31,18 @@ export function buildCard(
     refreshing?: boolean;
     errorMessage?: string;
     source?: UsageCard["source"];
+    authorized?: boolean;
+    cache?: ReturnType<ReturnType<typeof getProvider>["usage"]["cache"]>;
   },
 ): UsageCard {
   const api = getProvider(provider);
-  const authorized = Boolean(api.token(account.id));
-  const cache = authorized ? api.usage.cache(account.id) : null;
+  const authorized = extras?.authorized ?? Boolean(api.token(account.id));
+  const cache =
+    extras && "cache" in extras
+      ? extras.cache || null
+      : authorized
+        ? api.usage.cache(account.id)
+        : null;
   return {
     key: `${provider}:${account.id}`,
     provider,
@@ -65,11 +72,18 @@ export function listAllAuthorizedCards(): UsageCard[] {
   for (const provider of PROVIDER_IDS) {
     const api = getProvider(provider);
     const accounts = api.list() as AccountLike[];
-    const authorized = accounts.filter((account) => api.token(account.id));
+    const authorized = accounts.filter((account) => Boolean(api.token(account.id)));
     authorized.sort((a, b) =>
       String(a.createdAt).localeCompare(String(b.createdAt)),
     );
-    for (const account of authorized) cards.push(buildCard(provider, account));
+    for (const account of authorized) {
+      cards.push(
+        buildCard(provider, account, {
+          authorized: true,
+          cache: api.usage.cache(account.id),
+        }),
+      );
+    }
   }
   return cards;
 }

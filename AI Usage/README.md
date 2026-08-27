@@ -2,8 +2,8 @@
 
 <table>
   <tr>
-    <td align="center" width="33%"><img src="assets/ai-usage-preview-small.jpeg" alt="AI Usage Small 小组件预览" /></td>
-    <td align="center" width="33%"><img src="assets/ai-usage-preview-medium.jpeg" alt="AI Usage Medium 小组件预览" /></td>
+    <td align="center" width="33%"><img src="assets/ai-usage-preview-small.jpeg" alt="AI Usage 小号小组件预览" /></td>
+    <td align="center" width="33%"><img src="assets/ai-usage-preview-medium.jpeg" alt="AI Usage 中号小组件预览" /></td>
     <td align="center" width="33%"><img src="assets/ai-usage-preview-app.jpeg" alt="AI Usage 应用预览" /></td>
   </tr>
 </table>
@@ -17,13 +17,13 @@
 ## 功能
 
 - 统一管理 Codex、Grok、Claude、Antigravity、Cursor、Kimi Code、GitHub Copilot、Z.ai、MiniMax 多个账号
-- **用量总览**与**小组件总览**可分别选择要展示的账号与额度条目
-- **总用量小组件**（参数 `dashboard`）：Small 列表 / Medium 圆环 / Large 进度条，多账号一览
+- **应用内用量**与**桌面小组件内容**可分别选择要展示的账号与额度条目
+- **多账号用量小组件**（参数 `dashboard`）：小号列表 / 中号圆环 / 大号进度条
 - 小组件隐私选项：可单独开关账号邮箱、账号 ID、套餐档位徽章
 - 统一文案术语表（`copy/labels.ts`）：应用内中文 + 小组件英文缩写（如 5h / Weekly / API）
 - Access Token、Refresh Token 和相关身份凭据保存在本机 Keychain
 - Token 到期前自动刷新
-- 主屏幕小组件支持 Small、Medium、Large，单账号布局按账号独立保存
+- 主屏幕小组件支持小号、中号和大号，单账号布局按账号独立保存
 - 小组件主数值和进度条固定显示剩余额度
 - 统一绿 / 橙 / 红风险配色：剩余不高于 40% 显示橙色，不高于 15% 显示红色
 - 网络失败或接口限流时回退最近一次成功缓存
@@ -55,7 +55,7 @@ https://raw.githubusercontent.com/StarYunLee/Scripting/main/AI-Usage.scripting
 
 ## OAuth 登录
 
-在用量页点击右上角 `+` 选择平台后，应用会打开对应授权页。完成登录后，把回调内容复制回应用并提交。
+在用量页点击右上角 `+` 选择平台后，应用会打开对应授权页。Codex、Grok 与 Antigravity 会尽量在本机自动捕获回调并完成登录；若未自动完成，再把回调内容复制回应用并提交。
 
 ### Codex
 
@@ -66,7 +66,8 @@ https://raw.githubusercontent.com/StarYunLee/Scripting/main/AI-Usage.scripting
 ### Grok
 
 - 回调：`http://127.0.0.1:56122/callback?...`
-- 可复制完整回调地址，或页面显示的一次性代码
+- 应用会尽量在本机自动捕获回调并完成登录
+- 若未自动完成：复制完整回调地址，或页面显示的一次性代码
 
 ### Claude
 
@@ -76,7 +77,8 @@ https://raw.githubusercontent.com/StarYunLee/Scripting/main/AI-Usage.scripting
 ### Antigravity
 
 - 回调：`http://localhost:51121/oauth-callback?...`
-- 复制 Safari 地址栏中的完整回调地址
+- 应用会尽量在本机自动捕获回调并完成登录
+- 若未自动完成：复制 Safari 地址栏中的完整回调地址
 
 ### Cursor
 
@@ -103,7 +105,7 @@ https://raw.githubusercontent.com/StarYunLee/Scripting/main/AI-Usage.scripting
 - 应用会打开 MiniMax 控制台 Token Plan 页（`platform.minimax.io`）
 - 复制 Subscription Key 后粘贴到应用并提交；会自动探测国际站（`api.minimax.io`）或国内站（`api.minimaxi.com`）
 
-OAuth 临时状态有效期为 10 分钟。Authorization Code 通常只能交换一次；授权失败或超时后请重新开始。
+本机自动回调依赖 Scripting 提供 `HttpServer` 能力；若不可用、端口被占用或授权页改用系统 Safari，应用会回退到手动粘贴。OAuth 临时状态通常有效 10 分钟；Kimi Code、GitHub Copilot、Z.ai 与 MiniMax 为 15 分钟。Authorization Code 通常只能交换一次；授权失败或超时后请重新开始。
 
 > 回调 URL 和一次性授权码属于短期敏感凭据。不要截图、公开或发送给他人。
 
@@ -119,7 +121,7 @@ OAuth 临时状态有效期为 10 分钟。Authorization Code 通常只能交换
 
 绑定某个账号的用量小组件：
 
-1. 打开目标账号详情页，点击“复制组件参数”
+1. 打开目标账号详情页，点击“复制小组件参数”
 2. 长按主屏幕小组件，选择“编辑小组件”
 3. 将参数粘贴到“参数”
 
@@ -129,20 +131,20 @@ OAuth 临时状态有效期为 10 分钟。Authorization Code 通常只能交换
 provider:profileId
 ```
 
-### 总用量小组件（dashboard）
+### 多账号用量小组件（dashboard）
 
-在设置 → **小组件总览** 中选择要展示的账号与额度条目，然后：
+在设置 → **桌面小组件内容** 中选择要展示的账号与额度条目，然后：
 
-1. 点击“复制总览组件参数”
+1. 点击“复制小组件参数”
 2. 编辑主屏幕 AI Usage 小组件，将参数粘贴为 `dashboard`
 
 | 尺寸 | 布局 | 说明 |
 |------|------|------|
-| Small | 文本列表 | 无标题，紧凑显示剩余百分比 |
-| Medium | 圆环 | 中心为剩余整数，超出时最多双行 |
-| Large | 进度条 | 显示「总用量」标题与完整条目 |
+| 小号 | 文本列表 | 无标题，紧凑显示剩余百分比 |
+| 中号 | 圆环 | 中心为剩余整数，超出时最多双行 |
+| 大号 | 进度条 | 显示「多账号用量」标题与完整条目 |
 
-应用内 **用量总览** 与 **小组件总览** 的展示偏好**互不影响**，分别存储。
+**应用内用量**与**桌面小组件** 的展示偏好**互不影响**，分别存储。
 
 ## 小组件显示
 
@@ -152,23 +154,23 @@ provider:profileId
 - 橙色：剩余不高于 40%、高于 15%
 - 红色：剩余不高于 15%
 
-### 总用量（dashboard）
+### 多账号用量（dashboard）
 
 - 各尺寸共用统一缩写：5h / Weekly / Monthly / Auto / Total / API 等
 - Antigravity 复合标签显示为 `Agy · Gemini · 5h` 等形式
-- 默认隐藏邮箱与账号 ID；可在小组件总览 → 隐私与显示 中开启
+- 默认隐藏邮箱与账号 ID；可在桌面小组件内容 → 隐私与显示中开启
 
-### Small（单账号）
+### 小号（单账号）
 
 - Codex / Claude / Antigravity：可按账号选择单额度详情或双额度概览
 - Grok：固定展示每周额度
-- Cursor：固定展示 Auto / 总计 / 第三方 API，有资格时附带 Grok Bot 周额度
+- Cursor：固定展示 Auto / Total / API，有资格时附带 Grok Bot 周额度
 - Kimi Code：固定展示 5 小时与每周额度
 - GitHub Copilot：固定展示 AI Credits / Chat / Completions（按套餐自动选取可用额度）
 - Z.ai：固定展示 5 小时与每周额度（有则附带每月 / Web Search）
 - MiniMax：固定展示 5 小时与每周额度
 
-### Medium（单账号）
+### 中号（单账号）
 
 - 单额度详情用大数字突出剩余额度，右上角显示已用百分比
 - 双额度概览同时展示两个额度窗口的剩余百分比、进度条和重置时间
@@ -181,18 +183,18 @@ provider:profileId
 
 ### Codex
 
-- 组件布局：单额度详情、双额度概览
+- 小组件布局：单额度详情、双额度概览
 - 单额度详情可选择 5 小时、每周或每月额度
 
 ### Claude
 
-- 组件布局：双额度概览、单额度详情
+- 小组件布局：双额度概览、单额度详情
 - 概览组合和单额度窗口可按账号选择
 
 ### Antigravity
 
-- 单额度详情：Gemini Model 每周、Claude and GPT 每周
-- 双额度概览：Gemini 5 小时 + 每周、Claude and GPT 5 小时 + 每周、双方每周额度
+- 单额度详情：Gemini Model · 每周、Claude / GPT · 每周
+- 双额度概览：Gemini Model · 5 小时 + 每周、Claude / GPT · 5 小时 + 每周、双方每周额度
 
 ### Grok
 
@@ -200,7 +202,7 @@ provider:profileId
 
 ### Cursor
 
-- 固定展示 Auto、总计、第三方 API 三个计费周期额度窗口的剩余百分比
+- 固定展示 Auto、Total、API 三个计费周期额度窗口的剩余百分比
 - 有 Grok Bot 包含额度时，额外展示独立的 **Grok Bot** 周额度（`GetSandUsageStatus`）
 - 无 Bot 资格或接口失败时不影响前三个窗口
 
@@ -268,7 +270,7 @@ iOS WidgetKit 可能根据系统调度延后刷新。所选时间是请求的最
 - OAuth 成功不代表所有账号都具有对应用量查询资格
 - 账号实际拥有的额度窗口由服务端决定，缺失窗口显示 `—`
 - WidgetKit 不保证严格按照所选分钟数刷新
-- Scripting 目前不支持注册 Extra Large 小组件；总用量仅适配 Small / Medium / Large
+- Scripting 目前不支持注册 Extra Large 小组件；多账号用量仅适配小号、中号和大号
 - 演示模式只用于预览界面，不会写入真实账号或发起授权请求
 
 ## 项目结构
@@ -282,7 +284,7 @@ AI Usage/
 ├── providers/                各平台 OAuth 与用量适配
 ├── services/                 刷新编排、配色、设置、演示与存储
 ├── widget/                   小组件分发、Loader 与平台布局
-│   └── dashboard/            总用量小组件（dashboard 参数）
+│   └── dashboard/            多账号用量小组件（dashboard 参数）
 ├── app_intents.tsx           系统 App Intent
 ├── index.tsx                 应用入口
 ├── intent.tsx                快捷指令刷新入口

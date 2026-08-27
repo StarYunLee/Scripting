@@ -278,7 +278,7 @@ function MetaColumn({
   );
 }
 function focusTitle(small = false, build = false): string {
-  if (build) return GROK_WINDOW.BUILD;
+  if (build) return small ? "Build 周" : GROK_WINDOW.BUILD;
   return small ? GROK_WIDGET.shortWeekly : GROK_WIDGET.weeklyQuota;
 }
 

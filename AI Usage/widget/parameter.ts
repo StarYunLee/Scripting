@@ -80,12 +80,12 @@ export function resolveWidgetAccount(rawValue: unknown): {
 
   const separator = raw.indexOf(":");
   if (separator <= 0 || separator === raw.length - 1) {
-    return { account: null, error: "组件参数格式无效" };
+    return { account: null, error: "小组件参数格式无效" };
   }
   const provider = raw.slice(0, separator).toLowerCase() as ProviderId;
   const profileId = raw.slice(separator + 1).trim();
   if (!PROVIDER_IDS.includes(provider)) {
-    return { account: null, error: "组件参数中的平台无效" };
+    return { account: null, error: "小组件参数中的平台无效" };
   }
   if (!providerMeta(provider).capabilities.widget) {
     return {
@@ -108,11 +108,11 @@ export function resolveWidgetAccount(rawValue: unknown): {
           },
           error: null,
         }
-      : { account: null, error: "演示账号不存在，请重新复制组件参数" };
+      : { account: null, error: "演示账号不存在，请重新复制小组件参数" };
   }
   const account = api.list().find((item) => item.id === profileId);
   if (!account)
-    return { account: null, error: "该账号已删除，请重新复制组件参数" };
+    return { account: null, error: "该账号已删除，请重新复制小组件参数" };
   if (!api.token(profileId)) {
     return { account: null, error: "该账号授权已失效，请重新授权" };
   }

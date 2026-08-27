@@ -10,6 +10,7 @@ import {
 } from "scripting";
 import { PROVIDERS, providerMeta, type ProviderId } from "../models";
 import { PageBackground } from "./PageBackground";
+import { ProviderLogo } from "./ProviderLogo";
 import type { BackgroundThemeId } from "../services/settings";
 
 export function ConnectEmptyView(props: {
@@ -32,8 +33,8 @@ export function ConnectEmptyView(props: {
         <Toolbar>
           <ToolbarItem placement="cancellationAction">
             <Button
-              title="返回"
-              systemImage="chevron.left"
+              title="关闭"
+              systemImage="xmark"
               labelStyle="iconOnly"
               action={dismiss}
             />
@@ -62,6 +63,7 @@ export function ConnectEmptyView(props: {
         frame={{ maxWidth: "infinity" }}
       >
         <VStack spacing={8} frame={{ maxWidth: "infinity" }}>
+          <ProviderLogo provider={props.provider} size={64} />
           <Text font="title" fontWeight="bold" multilineTextAlignment="center">
             连接 {meta.title}
           </Text>

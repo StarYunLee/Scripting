@@ -1,5 +1,6 @@
-import { List, NavigationStack, Text, useEffect, useMemo, useState } from "scripting";
+import { Button, List, NavigationStack, Text, VStack, useEffect, useState } from "scripting";
 import { AccountDetailPage } from "./AccountDetailPage";
+import { DashboardPrefsPage } from "./DashboardPrefsPage";
 import {
   deleteAuthorizedAccount,
   buildCard,
@@ -45,23 +46,20 @@ export function StatusPage(props: {
   const [sheet, setSheet] = useState<AuthSheet | null>(null);
   const [busy, setBusy] = useState(false);
   const [openedCard, setOpenedCard] = useState<UsageCard | null>(null);
+  const [showDashboardPrefs, setShowDashboardPrefs] = useState(false);
+  const [refreshSummary, setRefreshSummary] = useState<{ message: string; failed: boolean } | null>(null);
   const displayMode = "remaining";
 
   // 所有卡片 state 写入的唯一入口：刷新路径返回的是未过滤卡片，
-  // 这里统一套用总览偏好，保证「隐藏的账号/额度行」刷新后不复活。
-  // prefs 随 dashboardEpoch 重取，避免每次写入都同步读 Storage。
-  const dashboardPrefs = useMemo(
-    () => getDashboardPrefs(),
-    [props.dashboardEpoch, props.demoMode],
-  );
-
+  // 这里统一套用最新总览偏好，保证隐藏项不复活，也能立即恢复刚取消隐藏的项。
   function setCards(
     next: UsageCard[] | ((current: UsageCard[]) => UsageCard[]),
   ) {
+    const latestPrefs = getDashboardPrefs();
     setCardsRaw((current) =>
       applyDashboardPrefs(
         typeof next === "function" ? next(current) : next,
-        dashboardPrefs,
+        latestPrefs,
       ),
     );
   }
@@ -253,11 +251,11 @@ export function StatusPage(props: {
           event: "refresh_all.completed",
           message: `全部刷新完成：成功 ${nextCards.length}，失败 0`,
         });
-        await Dialog.alert({
-          title: "刷新完成",
-          message: `成功 ${nextCards.length} 个，失败 0 个。`,
-          buttonLabel: "关闭",
+        setRefreshSummary({
+          message: `刷新完成：成功 ${nextCards.length} 个，失败 0 个`,
+          failed: false,
         });
+        setTimeout(() => setRefreshSummary(null), 3000);
         for (const card of nextCards) clearCardRefreshState(card.key);
         requestWidgetReload();
       } finally {
@@ -310,11 +308,13 @@ export function StatusPage(props: {
         event: "refresh_all.completed",
         message: `全部刷新完成：成功 ${summary.succeeded}，失败 ${summary.failed}`,
       });
-      await Dialog.alert({
-        title: summary.failed ? "刷新完成，部分失败" : "刷新成功",
-        message: `成功 ${summary.succeeded} 个，失败 ${summary.failed} 个。`,
-        buttonLabel: "关闭",
+      setRefreshSummary({
+        message: summary.failed
+          ? `刷新完成：成功 ${summary.succeeded} 个，失败 ${summary.failed} 个`
+          : `成功刷新 ${summary.succeeded} 个账号`,
+        failed: summary.failed > 0,
       });
+      setTimeout(() => setRefreshSummary(null), 3000);
     } finally {
       requestWidgetReload();
       setBusy(false);
@@ -370,7 +370,9 @@ export function StatusPage(props: {
     );
   }
 
-  if (!cards.length) {
+  // 偏好页仍在展示时保留同一个导航栈；取消隐藏会更新 cards，
+  // 但应等用户正常返回后再切回有卡片的主列表。
+  if (!cards.length || showDashboardPrefs) {
     const hasAccounts = listAllAuthorizedCards().length > 0;
     return (
       <NavigationStack>
@@ -382,14 +384,39 @@ export function StatusPage(props: {
             listStyle="plain"
             background={<PageBackground theme={props.backgroundTheme} />}
             toolbar={toolbar}
+            navigationDestination={{
+              isPresented: showDashboardPrefs,
+              onChanged: (value) => {
+                if (!value) setShowDashboardPrefs(false);
+              },
+              content: showDashboardPrefs ? (
+                <DashboardPrefsPage
+                  demoMode={props.demoMode}
+                  backgroundTheme={props.backgroundTheme}
+                  onChanged={() => reloadCards()}
+                />
+              ) : (
+                <Text>选择内容</Text>
+              ),
+            }}
           >
-            <Text
-              padding
-              foregroundStyle="secondaryLabel"
+            <VStack
+              padding={{ vertical: 64, horizontal: 16 }}
+              spacing={12}
               frame={{ maxWidth: "infinity", alignment: "center" }}
+              listRowBackground={<></>}
+              listRowSeparator="hidden"
             >
-              当前没有可展示的账号。请到「设置 → 用量总览」开启要显示的账号或条目。
-            </Text>
+              <Text font="headline">无展示内容</Text>
+              <Text foregroundStyle="secondaryLabel" multilineTextAlignment="center">
+                已连接账号，但其额度行已被隐藏。
+              </Text>
+              <Button
+                title="管理展示内容"
+                action={() => setShowDashboardPrefs(true)}
+                buttonStyle="borderedProminent"
+              />
+            </VStack>
           </List>
         ) : (
           <ConnectEmptyView
@@ -475,11 +502,24 @@ export function StatusPage(props: {
             onOpen={() => setOpenedCard(card)}
           />
         ))}
+        {refreshSummary && (
+          <Text
+            font="footnote"
+            foregroundStyle={refreshSummary.failed ? "systemRed" : "secondaryLabel"}
+            listRowBackground={<></>}
+            listRowSeparator="hidden"
+            frame={{ maxWidth: "infinity", alignment: "center" }}
+            padding={{ top: 8 }}
+          >
+            {refreshSummary.message}
+          </Text>
+        )}
         <Text
           font="caption"
           foregroundStyle="tertiaryLabel"
           listRowBackground={<></>}
           listRowSeparator="hidden"
+          frame={{ maxWidth: "infinity", alignment: "center" }}
         >
           {props.demoMode
             ? `当前为演示模式，显示 ${demoAccountCount()} 个样例账号，不会请求真实接口。`

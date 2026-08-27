@@ -11,8 +11,8 @@ export function usePageToolbar(options?: {
     <Toolbar>
       <ToolbarItem placement="cancellationAction">
         <Button
-          title="返回"
-          systemImage="chevron.left"
+          title="关闭"
+          systemImage="xmark"
           labelStyle="iconOnly"
           action={dismiss}
         />

@@ -68,3 +68,19 @@ export function toUsageWindowView(
     resetAt: window.resetAt,
   };
 }
+
+export function normalizeBasicUsageSnapshot(snapshot: {
+  planLabel?: string | null;
+  planType?: string | null;
+  windows: UsageWindowLike[];
+  fetchedAt: string;
+  source: "live" | "cache";
+}): NormalizedUsageSnapshot {
+  return {
+    planLabel: snapshot.planLabel || snapshot.planType || null,
+    windows: snapshot.windows.map(toUsageWindowView).filter(isUsageWindowView),
+    resetCredits: null,
+    fetchedAt: snapshot.fetchedAt,
+    source: snapshot.source,
+  };
+}

@@ -66,7 +66,7 @@ export function DashboardPrefsPage(props: {
   return (
     <NavigationStack>
       <List
-        navigationTitle={isWidget ? "小组件总览" : "用量总览"}
+        navigationTitle={isWidget ? "桌面小组件内容" : "应用内用量"}
         navigationBarTitleDisplayMode="inline"
         scrollContentBackground="hidden"
         listStyle="plain"
@@ -84,8 +84,8 @@ export function DashboardPrefsPage(props: {
           footer={
             <Text font="caption" foregroundStyle="secondaryLabel">
               {isWidget
-                ? "控制总用量小组件展示哪些账号与额度条目。默认全部显示；仅影响参数为 dashboard 的总览小组件，与应用内用量页互不影响。"
-                : "控制用量页展示哪些账号与额度条目。默认全部显示；关闭后仅影响应用内总览，不影响主屏幕小组件。"}
+                ? "控制桌面小组件展示哪些账号与额度条目。默认全部显示；仅影响参数为 dashboard 的小组件，与应用内用量互不影响。"
+                : "控制应用内用量展示哪些账号与额度条目。默认全部显示；不影响桌面小组件。"}
             </Text>
           }
         >

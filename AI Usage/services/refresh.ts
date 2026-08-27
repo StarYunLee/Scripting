@@ -20,6 +20,10 @@ export type RefreshOutcome = RefreshTarget & {
 export type RefreshOptions = {
   force: boolean;
   source: "app" | "widget" | "intent";
+  /** 总预算的绝对截止时间；仅用于在发起下一次小组件请求前停止。 */
+  deadlineMs?: number;
+  /** 批量刷新时可关闭逐账号成功/缓存日志，改由调用方写汇总。 */
+  logSuccess?: boolean;
 };
 
 export type RefreshSummary = {
@@ -53,25 +57,35 @@ export async function refreshAccount(
     return { ...target, ok: false, error };
   }
 
+  if (options.deadlineMs != null && Date.now() >= options.deadlineMs) {
+    return {
+      ...target,
+      ok: false,
+      error: { message: "小组件刷新预算已用尽", code: "deadline_exceeded" },
+    };
+  }
+
   try {
     const result = await provider.fetch({
       force: options.force,
       profileId: target.profileId,
     });
     if (result.ok) {
-      writeLog({
-        level: "info",
-        source: options.source,
-        category: result.snapshot.source === "cache" ? "cache" : "refresh",
-        event:
-          result.snapshot.source === "cache"
-            ? "refresh.cache"
-            : "refresh.succeeded",
-        provider: target.provider,
-        accountId: target.profileId,
-        message:
-          result.snapshot.source === "cache" ? "使用最近缓存" : "刷新成功",
-      });
+      if (options.logSuccess !== false) {
+        writeLog({
+          level: "info",
+          source: options.source,
+          category: result.snapshot.source === "cache" ? "cache" : "refresh",
+          event:
+            result.snapshot.source === "cache"
+              ? "refresh.cache"
+              : "refresh.succeeded",
+          provider: target.provider,
+          accountId: target.profileId,
+          message:
+            result.snapshot.source === "cache" ? "使用最近缓存" : "刷新成功",
+        });
+      }
       return { ...target, ok: true, source: result.snapshot.source };
     }
 

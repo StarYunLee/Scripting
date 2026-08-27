@@ -11,12 +11,13 @@ import {
 } from "scripting";
 import type { Color, DynamicShapeStyle } from "scripting";
 import { ProviderLogo } from "../../components/ProviderLogo";
+import { ANTIGRAVITY_GROUP } from "../../copy/labels";
 import { usageTint } from "../../services/usage-colors";
 import {
   formatPercent,
   formatResetDate,
   formatSmallDate,
-} from "../../providers/codex/format";
+} from "../../services/format";
 import type {
   DualQuotaPreset,
   FocusWindow,
@@ -505,8 +506,8 @@ function MediumWindow({
 
 function singleWindowTitle(focus: FocusWindow): string {
   return focus === "gemini_weekly"
-    ? "Gemini Model 每周"
-    : "Claude and GPT 每周";
+    ? `${ANTIGRAVITY_GROUP.GEMINI_MODEL} · 每周`
+    : `${ANTIGRAVITY_GROUP.CLAUDE_AND_GPT} · 每周`;
 }
 
 function pickFocusWindow(model: Model, focus: FocusWindow): LimitWindow | null {
@@ -881,23 +882,23 @@ export function UsageWidgetView({
   if (dualQuotaPreset === "third_party_five_hour_weekly") {
     firstWindow = model.thirdPartyFiveHour;
     secondWindow = model.thirdPartyWeekly;
-    firstTitle = "Claude and GPT 5 小时";
-    secondTitle = "Claude and GPT 每周";
-    smallFirstTitle = "Claude/GPT5H";
+    firstTitle = `${ANTIGRAVITY_GROUP.CLAUDE_AND_GPT} · 5 小时`;
+    secondTitle = `${ANTIGRAVITY_GROUP.CLAUDE_AND_GPT} · 每周`;
+    smallFirstTitle = "Claude/GPT 5h";
     smallSecondTitle = "Claude/GPT 周";
   } else if (dualQuotaPreset === "weekly_both") {
     firstWindow = model.geminiWeekly;
     secondWindow = model.thirdPartyWeekly;
-    firstTitle = "Gemini Model 每周";
-    secondTitle = "Claude and GPT 每周";
+    firstTitle = `${ANTIGRAVITY_GROUP.GEMINI_MODEL} · 每周`;
+    secondTitle = `${ANTIGRAVITY_GROUP.CLAUDE_AND_GPT} · 每周`;
     smallFirstTitle = "Gemini 周";
     smallSecondTitle = "Claude/GPT 周";
   } else {
     firstWindow = model.geminiFiveHour;
     secondWindow = model.geminiWeekly;
-    firstTitle = "Gemini Model 5 小时";
-    secondTitle = "Gemini Model 每周";
-    smallFirstTitle = "Gemini 5H";
+    firstTitle = `${ANTIGRAVITY_GROUP.GEMINI_MODEL} · 5 小时`;
+    secondTitle = `${ANTIGRAVITY_GROUP.GEMINI_MODEL} · 每周`;
+    smallFirstTitle = "Gemini 5h";
     smallSecondTitle = "Gemini 周";
   }
   const small = isSmall(family);

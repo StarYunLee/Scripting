@@ -76,7 +76,7 @@ export const PROVIDERS: Array<{
     id: "grok",
     title: "Grok",
     connectTitle: "连接 xAI 账户",
-    subtitle: "连接 xAI 账户，查看每周用量与重置次数。",
+    subtitle: "连接 xAI 账户，查看每周用量与可用重置。",
     accent: "#111111",
     accentIsDark: true,
     pasteHint:
@@ -109,7 +109,7 @@ export const PROVIDERS: Array<{
     id: "cursor",
     title: "Cursor",
     connectTitle: "连接 Cursor 账户",
-    subtitle: "连接 Cursor 账户，查看 Auto / 总计 / 第三方 API / Grok Bot 用量。",
+    subtitle: "连接 Cursor 账户，查看 Auto、Total、API 和 Grok Bot 用量。",
     accent: "#111827",
     accentIsDark: true,
     pasteHint:
@@ -132,7 +132,7 @@ export const PROVIDERS: Array<{
     id: "copilot",
     title: "Copilot",
     connectTitle: "连接 GitHub Copilot 账户",
-    subtitle: "连接 GitHub 账户，查看 Copilot AI Credits / Chat / Completions 用量。",
+    subtitle: "连接 GitHub 账户，查看 Copilot AI Credits、Chat 和 Completions 用量。",
     accent: "#8957E5",
     pasteHint:
       "设备码会自动复制到剪贴板。点击「打开 GitHub 授权页」粘贴设备码完成授权，返回应用后点击“提交并完成授权”。",
@@ -143,7 +143,7 @@ export const PROVIDERS: Array<{
     id: "zai",
     title: "Z.ai",
     connectTitle: "连接 Z.ai / 智谱账户",
-    subtitle: "粘贴 API Key，查看 GLM Coding 5 小时 / 每周 / 每月用量。",
+    subtitle: "粘贴 API Key，查看 GLM Coding 5 小时、每周和每月用量。",
     accent: "#0EA5A8",
     pasteHint:
       "在 z.ai 或 open.bigmodel.cn 控制台创建 API Key，复制后粘贴到下方。应用会自动识别国际站或国内站。",
@@ -154,7 +154,7 @@ export const PROVIDERS: Array<{
     id: "minimax",
     title: "MiniMax",
     connectTitle: "连接 MiniMax Coding Plan",
-    subtitle: "粘贴 Subscription Key，查看 Coding / Token Plan 5 小时与每周用量。",
+    subtitle: "粘贴 Subscription Key，查看 Coding Plan 和 Token Plan 的 5 小时与每周用量。",
     accent: "#E85D04",
     pasteHint:
       "在 platform.minimax.io（国际）或 platform.minimaxi.com（国内）控制台复制 Subscription Key，粘贴到下方。应用会自动识别区域。",

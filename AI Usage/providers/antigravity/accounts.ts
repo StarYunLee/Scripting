@@ -1,102 +1,43 @@
+import { createAccountStore } from "../../services/account-store";
 import type { AccountRegistry, AntigravityAccountProfile } from "./types";
 
-const REGISTRY_KEY = "ai_usage_antigravity_account_registry_v1";
-
-const emptyRegistry = (): AccountRegistry => ({
-  version: 1,
-  defaultAccountId: null,
-  accounts: [],
-});
-function secretKey(profileId: string, field: string): string {
-  return `ai_usage_antigravity_profile_${profileId}_${field}`;
-}
-function getSecretRaw(key: string): string | null {
-  try {
-    const value = Keychain.get(key);
-    return typeof value === "string" && value.trim() ? value.trim() : null;
-  } catch {
-    return null;
-  }
-}
-function setSecretRaw(key: string, value: string | null): boolean {
-  try {
-    if (!value) {
-      Keychain.remove(key);
-      return true;
-    }
-    return Keychain.set(key, value.trim());
-  } catch {
-    return false;
-  }
-}
-function makeId(): string {
-  return `acct_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
-}
-function readRegistryRaw(): AccountRegistry {
-  try {
-    const value = Storage.get<AccountRegistry>(REGISTRY_KEY);
-    if (value?.version === 1 && Array.isArray(value.accounts)) return value;
-  } catch {
-    /* ignore */
-  }
-  return emptyRegistry();
-}
-function writeRegistry(value: AccountRegistry): AccountRegistry {
-  try {
-    Storage.set(REGISTRY_KEY, value);
-  } catch {
-    /* ignore */
-  }
-  return value;
-}
-export function ensureAccountMigration(): AccountRegistry {
-  return readRegistryRaw();
-}
-export function getAccountRegistry(): AccountRegistry {
-  return ensureAccountMigration();
-}
-export function listAccounts(): AntigravityAccountProfile[] {
-  return getAccountRegistry().accounts;
-}
-export function resolveProfile(
-  profileId?: string | null,
-): AntigravityAccountProfile | null {
-  const r = getAccountRegistry();
-  if (profileId) {
-    const query = profileId.trim().toLowerCase();
-    return (
-      r.accounts.find(
-        (a) =>
-          a.id.toLowerCase() === query ||
-          a.email?.toLowerCase() === query ||
-          a.name.toLowerCase() === query,
-      ) || null
-    );
-  }
-  return (
-    r.accounts.find((a) => a.id === r.defaultAccountId) || r.accounts[0] || null
-  );
-}
-export function createAccount(name = ""): AntigravityAccountProfile {
-  const r = getAccountRegistry();
-  const now = new Date().toISOString();
-  const profile: AntigravityAccountProfile = {
-    id: makeId(),
-    name: name.trim() || `账号 ${r.accounts.length + 1}`,
+const store = createAccountStore<AntigravityAccountProfile>({
+  registryKey: "ai_usage_antigravity_account_registry_v1",
+  secretPrefix: "ai_usage_antigravity_profile",
+  createProfile: ({ id, name, index, now }) => ({
+    id,
+    name,
     email: null,
     accountId: null,
     projectId: null,
     planLabel: null,
     createdAt: now,
     updatedAt: now,
-  };
-  writeRegistry({
-    ...r,
-    defaultAccountId: r.defaultAccountId || profile.id,
-    accounts: [...r.accounts, profile],
-  });
-  return profile;
+  }),
+});
+
+export function ensureAccountMigration(): AccountRegistry {
+  return store.ensure() as AccountRegistry;
 }
+
+export function getAccountRegistry(): AccountRegistry {
+  return store.registry() as AccountRegistry;
+}
+
+export function listAccounts(): AntigravityAccountProfile[] {
+  return store.list();
+}
+
+export function resolveProfile(
+  profileId?: string | null,
+): AntigravityAccountProfile | null {
+  return store.resolve(profileId);
+}
+
+export function createAccount(name = ""): AntigravityAccountProfile {
+  return store.create(name);
+}
+
 export function updateProfileInfo(
   profileId: string,
   patch: Partial<
@@ -106,63 +47,49 @@ export function updateProfileInfo(
     >
   >,
 ): void {
-  const r = getAccountRegistry();
-  writeRegistry({
-    ...r,
-    accounts: r.accounts.map((a) =>
-      a.id === profileId
-        ? {
-            ...a,
-            email: patch.email || a.email || null,
-            accountId: patch.accountId ?? a.accountId,
-            projectId: patch.projectId ?? a.projectId,
-            planLabel: patch.planLabel ?? a.planLabel,
-            name: patch.email || a.email || a.name,
-            updatedAt: new Date().toISOString(),
-          }
-        : a,
-    ),
-  });
+  store.update(profileId, (a) => ({
+    ...a,
+    email: patch.email || a.email || null,
+    accountId: patch.accountId ?? a.accountId,
+    projectId: patch.projectId ?? a.projectId,
+    planLabel: patch.planLabel ?? a.planLabel,
+    name: patch.email || a.email || a.name,
+    updatedAt: new Date().toISOString(),
+  }));
 }
+
 export function deleteAccount(profileId: string): void {
-  const r = getAccountRegistry();
-  for (const field of [
+  store.remove(profileId, [
     "access_token",
     "refresh_token",
     "id_token",
     "expires_at",
-  ])
-    setSecretRaw(secretKey(profileId, field), null);
-  const accounts = r.accounts.filter((a) => a.id !== profileId);
-  writeRegistry({
-    ...r,
-    accounts,
-    defaultAccountId:
-      r.defaultAccountId === profileId
-        ? accounts[0]?.id || null
-        : r.defaultAccountId,
-  });
+  ]);
 }
+
 export function getProfileAccessToken(
   profileId?: string | null,
 ): string | null {
   const p = resolveProfile(profileId);
-  return p ? getSecretRaw(secretKey(p.id, "access_token")) : null;
+  return p ? store.getSecret(p.id, "access_token") : null;
 }
+
 export function getProfileRefreshToken(
   profileId?: string | null,
 ): string | null {
   const p = resolveProfile(profileId);
-  return p ? getSecretRaw(secretKey(p.id, "refresh_token")) : null;
+  return p ? store.getSecret(p.id, "refresh_token") : null;
 }
+
 export function getProfileTokenExpiresAt(
   profileId?: string | null,
 ): number | null {
   const p = resolveProfile(profileId);
-  const raw = p ? getSecretRaw(secretKey(p.id, "expires_at")) : null;
+  const raw = p ? store.getSecret(p.id, "expires_at") : null;
   const value = raw ? Number(raw) : NaN;
   return Number.isFinite(value) ? value : null;
 }
+
 export function saveProfileCredentials(
   profileId: string,
   value: {
@@ -178,12 +105,12 @@ export function saveProfileCredentials(
 ): boolean {
   const p = resolveProfile(profileId);
   if (!p) return false;
-  const ok = setSecretRaw(secretKey(p.id, "access_token"), value.accessToken);
+  const ok = store.setSecret(p.id, "access_token", value.accessToken);
   if (value.refreshToken)
-    setSecretRaw(secretKey(p.id, "refresh_token"), value.refreshToken);
-  if (value.idToken) setSecretRaw(secretKey(p.id, "id_token"), value.idToken);
+    store.setSecret(p.id, "refresh_token", value.refreshToken);
+  if (value.idToken) store.setSecret(p.id, "id_token", value.idToken);
   if (value.expiresAt)
-    setSecretRaw(secretKey(p.id, "expires_at"), String(value.expiresAt));
+    store.setSecret(p.id, "expires_at", String(value.expiresAt));
   if (value.email || value.accountId || value.projectId || value.planLabel)
     updateProfileInfo(p.id, {
       email: value.email,

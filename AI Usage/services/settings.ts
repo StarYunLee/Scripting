@@ -1,39 +1,12 @@
-import {
-  getSettings as getCodexSettings,
-  setReloadMinutes as setCodexReloadMinutes,
-} from "../providers/codex/credentials";
-import {
-  getSettings as getGrokSettings,
-  setReloadMinutes as setGrokReloadMinutes,
-} from "../providers/grok/credentials";
-import {
-  getSettings as getClaudeSettings,
-  setReloadMinutes as setClaudeReloadMinutes,
-} from "../providers/claude/credentials";
-import {
-  getSettings as getAntigravitySettings,
-  setReloadMinutes as setAntigravityReloadMinutes,
-} from "../providers/antigravity/credentials";
-import {
-  getSettings as getCursorSettings,
-  setReloadMinutes as setCursorReloadMinutes,
-} from "../providers/cursor/credentials";
-import {
-  getSettings as getKimiSettings,
-  setReloadMinutes as setKimiReloadMinutes,
-} from "../providers/kimi/credentials";
-import {
-  getSettings as getCopilotSettings,
-  setReloadMinutes as setCopilotReloadMinutes,
-} from "../providers/copilot/credentials";
-import {
-  getSettings as getZaiSettings,
-  setReloadMinutes as setZaiReloadMinutes,
-} from "../providers/zai/credentials";
-import {
-  getSettings as getMinimaxSettings,
-  setReloadMinutes as setMinimaxReloadMinutes,
-} from "../providers/minimax/credentials";
+import { getSettings as getCodexSettings } from "../providers/codex/credentials";
+import { getSettings as getGrokSettings } from "../providers/grok/credentials";
+import { getSettings as getClaudeSettings } from "../providers/claude/credentials";
+import { getSettings as getAntigravitySettings } from "../providers/antigravity/credentials";
+import { getSettings as getCursorSettings } from "../providers/cursor/credentials";
+import { getSettings as getKimiSettings } from "../providers/kimi/credentials";
+import { getSettings as getCopilotSettings } from "../providers/copilot/credentials";
+import { getSettings as getZaiSettings } from "../providers/zai/credentials";
+import { getSettings as getMinimaxSettings } from "../providers/minimax/credentials";
 
 const DISPLAY_KEY = "ai_usage_display_settings_v1";
 
@@ -84,46 +57,49 @@ function normalizeTheme(value: unknown): BackgroundThemeId {
   return "warm_paper";
 }
 
-let legacyWidgetSettingsMigrated = false;
+let settingsCache: AppDisplaySettings | null = null;
 
-function migrateLegacyWidgetSettings(): void {
-  if (legacyWidgetSettingsMigrated) return;
-  legacyWidgetSettingsMigrated = true;
-  getCodexSettings();
-  getGrokSettings();
-  getClaudeSettings();
-  getAntigravitySettings();
-  getCursorSettings();
-  getKimiSettings();
-  getCopilotSettings();
-  getZaiSettings();
-  getMinimaxSettings();
+function legacyReloadMinutes(): number {
+  const readers = [
+    getCodexSettings,
+    getGrokSettings,
+    getClaudeSettings,
+    getAntigravitySettings,
+    getCursorSettings,
+    getKimiSettings,
+    getCopilotSettings,
+    getZaiSettings,
+    getMinimaxSettings,
+  ];
+  for (const readSettings of readers) {
+    try {
+      const value = readSettings().reloadMinutes;
+      if (Number.isFinite(value) && value >= 5) return value;
+    } catch {
+      /* try next legacy store */
+    }
+  }
+  return DEFAULT_SETTINGS.reloadMinutes;
 }
 
 export function getAppDisplaySettings(): AppDisplaySettings {
-  migrateLegacyWidgetSettings();
+  if (settingsCache) return settingsCache;
   try {
     const value = Storage.get<Partial<AppDisplaySettings>>(DISPLAY_KEY);
-    if (!value || typeof value !== "object") {
-      const fallback =
-        getCodexSettings().reloadMinutes ||
-        getGrokSettings().reloadMinutes ||
-        getClaudeSettings().reloadMinutes ||
-        getAntigravitySettings().reloadMinutes ||
-        getCursorSettings().reloadMinutes ||
-        getKimiSettings().reloadMinutes ||
-        getCopilotSettings().reloadMinutes ||
-        getZaiSettings().reloadMinutes ||
-        getMinimaxSettings().reloadMinutes;
-      return { ...DEFAULT_SETTINGS, reloadMinutes: clampMinutes(fallback) };
-    }
-    return {
-      reloadMinutes: clampMinutes(value.reloadMinutes),
-      backgroundTheme: normalizeTheme(value.backgroundTheme),
-    };
+    settingsCache =
+      value && typeof value === "object"
+        ? {
+            reloadMinutes: clampMinutes(value.reloadMinutes),
+            backgroundTheme: normalizeTheme(value.backgroundTheme),
+          }
+        : {
+            ...DEFAULT_SETTINGS,
+            reloadMinutes: clampMinutes(legacyReloadMinutes()),
+          };
   } catch {
-    return { ...DEFAULT_SETTINGS };
+    settingsCache = { ...DEFAULT_SETTINGS };
   }
+  return settingsCache;
 }
 
 export function setAppReloadMinutes(reloadMinutes: number): AppDisplaySettings {
@@ -132,20 +108,11 @@ export function setAppReloadMinutes(reloadMinutes: number): AppDisplaySettings {
     reloadMinutes: clampMinutes(reloadMinutes),
   };
   try {
-    Storage.set(DISPLAY_KEY, next);
+    if (Storage.set(DISPLAY_KEY, next)) settingsCache = next;
   } catch {
     /* ignore */
   }
-  setCodexReloadMinutes(next.reloadMinutes);
-  setGrokReloadMinutes(next.reloadMinutes);
-  setClaudeReloadMinutes(next.reloadMinutes);
-  setAntigravityReloadMinutes(next.reloadMinutes);
-  setCursorReloadMinutes(next.reloadMinutes);
-  setKimiReloadMinutes(next.reloadMinutes);
-  setCopilotReloadMinutes(next.reloadMinutes);
-  setZaiReloadMinutes(next.reloadMinutes);
-  setMinimaxReloadMinutes(next.reloadMinutes);
-  return next;
+  return settingsCache || getAppDisplaySettings();
 }
 
 export function setAppBackgroundTheme(
@@ -156,9 +123,9 @@ export function setAppBackgroundTheme(
     backgroundTheme: normalizeTheme(backgroundTheme),
   };
   try {
-    Storage.set(DISPLAY_KEY, next);
+    if (Storage.set(DISPLAY_KEY, next)) settingsCache = next;
   } catch {
     /* ignore */
   }
-  return next;
+  return settingsCache || getAppDisplaySettings();
 }

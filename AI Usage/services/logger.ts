@@ -24,6 +24,8 @@ export type RunRecord = {
 const KEY = "ai_usage_run_records_v1";
 const MAX = 100;
 const AGE = 7 * 24 * 60 * 60 * 1000;
+let recordsCache: RunRecord[] | null = null;
+
 function clean(v: unknown, max = 120): string {
   const s = String(v ?? "")
     .replace(/[\u0000-\u001f\u007f]/g, " ")
@@ -41,9 +43,10 @@ function account(value?: string | null): string | undefined {
   return s.length <= 8 ? s : `…${s.slice(-6)}`;
 }
 function records(): RunRecord[] {
+  if (recordsCache) return recordsCache;
   try {
     const value = Storage.get<RunRecord[]>(KEY, { shared: true });
-    return Array.isArray(value)
+    recordsCache = Array.isArray(value)
       ? value
           .filter(
             (item) =>
@@ -54,8 +57,9 @@ function records(): RunRecord[] {
           .slice(-MAX)
       : [];
   } catch {
-    return [];
+    recordsCache = [];
   }
+  return recordsCache;
 }
 function kind(input: Input): RunRecord["kind"] {
   if (input.event.includes("refresh_all") || input.source === "intent")
@@ -89,7 +93,8 @@ export function writeLog(input: Input): void {
         .join(" · ") || undefined,
   };
   try {
-    Storage.set(KEY, [...records(), item].slice(-MAX), { shared: true });
+    const next = [...records(), item].slice(-MAX);
+    if (Storage.set(KEY, next, { shared: true })) recordsCache = next;
   } catch {
     /* logging must never break app */
   }
@@ -111,6 +116,7 @@ export function readRunRecords(): RunRecord[] {
 export function clearRunRecords(): void {
   try {
     Storage.remove(KEY, { shared: true });
+    recordsCache = [];
   } catch {
     /* ignore */
   }

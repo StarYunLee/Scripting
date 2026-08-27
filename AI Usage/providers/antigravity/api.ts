@@ -12,6 +12,7 @@ import {
   type JsonObject,
 } from "./parsing";
 import type { LimitWindow, UsageResult, UsageSnapshot } from "./types";
+import { createUsageCache } from "../../services/usage-cache";
 
 const CACHE_KEY = "ai_usage_antigravity_cache_v1";
 const MIN_LIVE_INTERVAL_MS = 3 * 60_000;
@@ -32,46 +33,24 @@ function upstreamError(message: string, status?: number): UpstreamError {
   return error;
 }
 
-function cacheKey(profileId: string): string {
-  return `${CACHE_KEY}_${profileId}`;
+const usageCache = createUsageCache<UsageSnapshot>({
+  keyPrefix: `${CACHE_KEY}_`,
+  resolveProfileId: (pid) => resolveProfile(pid)?.id || null,
+  recentMs: MIN_LIVE_INTERVAL_MS,
+});
+
+function readCache(profileId?: string | null) {
+  return usageCache.read(profileId);
 }
-
-function readCache(profileId?: string | null): UsageSnapshot | null {
-  const profile = resolveProfile(profileId);
-  if (!profile) return null;
-  try {
-    const value = Storage.get<UsageSnapshot>(cacheKey(profile.id));
-    return value?.fetchedAt ? { ...value, source: "cache" } : null;
-  } catch {
-    return null;
-  }
+function writeCache(profileId: string, value: UsageSnapshot) {
+  usageCache.write(profileId, value);
 }
-
-function writeCache(profileId: string, value: UsageSnapshot): void {
-  try {
-    Storage.set(cacheKey(profileId), { ...value, source: "cache" });
-  } catch {
-    /* ignore */
-  }
+export const getCachedUsage = (profileId?: string | null) => usageCache.read(profileId);
+export function clearUsageCache(profileId?: string | null) {
+  usageCache.clear(profileId);
 }
-
-export const getCachedUsage = (profileId?: string | null) =>
-  readCache(profileId);
-
-export function clearUsageCache(profileId?: string | null): void {
-  const profile = resolveProfile(profileId);
-  if (!profile) return;
-  try {
-    Storage.remove(cacheKey(profile.id));
-  } catch {
-    /* ignore */
-  }
-}
-
-function recent(cache: UsageSnapshot | null): boolean {
-  if (!cache?.fetchedAt) return false;
-  const time = new Date(cache.fetchedAt).getTime();
-  return Number.isFinite(time) && Date.now() - time < MIN_LIVE_INTERVAL_MS;
+function recent(cache: UsageSnapshot | null) {
+  return usageCache.recent(cache);
 }
 
 function authHeaders(token: string): Record<string, string> {

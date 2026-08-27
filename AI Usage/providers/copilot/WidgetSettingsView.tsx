@@ -17,7 +17,7 @@ export function CopilotWidgetSettingsView(props: {
   return (
     <>
       <Picker
-        title="组件布局"
+        title="小组件布局"
         value={settings.widgetStyle}
         onChanged={(value: string) => {
           CopilotSettings.setProfileSettings(props.profileId, {

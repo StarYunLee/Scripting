@@ -27,6 +27,7 @@ import {
   widgetRemainingLabel,
 } from "../../copy/labels";
 import {
+  computeWidgetTrust,
   flattenCards,
   largeVisibleLimit,
   planMediumRings,
@@ -39,8 +40,9 @@ import {
   smallVisibleLimit,
   widgetDisplaySize,
   widgetLayoutSize,
+  widgetTrustText,
 } from "./model";
-import type { DashboardRow } from "./model";
+import type { DashboardRow, WidgetTrustStatus } from "./model";
 
 type Props = {
   cards: UsageCard[];
@@ -121,14 +123,40 @@ function EmptyView({ message }: { message: string }) {
   );
 }
 
-function ErrorHint({ show }: { show?: boolean }) {
-  if (!show) return <BuiltinEmptyView />;
+function TrustHint({
+  status,
+  size,
+}: {
+  status: WidgetTrustStatus;
+  size: "small" | "medium" | "large";
+}) {
+  const text = widgetTrustText(status, size);
+  const hasError = status.errorCount > 0;
+  if (!text && !hasError) return <BuiltinEmptyView />;
+
   return (
-    <Image
-      systemName="exclamationmark.triangle.fill"
-      foregroundStyle={C.warn}
-      font={9}
-    />
+    <HStack alignment="center" spacing={3}>
+      {hasError ? (
+        <Image
+          systemName="exclamationmark.triangle.fill"
+          foregroundStyle={C.warn}
+          font={size === "small" ? 8 : 9}
+        />
+      ) : (
+        <BuiltinEmptyView />
+      )}
+      {text ? (
+        <Text
+          font={size === "small" ? 8 : 9}
+          foregroundStyle={hasError ? C.warn : C.secondary}
+          lineLimit={1}
+        >
+          {text}
+        </Text>
+      ) : (
+        <BuiltinEmptyView />
+      )}
+    </HStack>
   );
 }
 
@@ -178,8 +206,6 @@ function UsageRing(props: {
   const titleFont = props.compact ? 9 : 10;
   const subFont = props.compact ? 8 : 9;
   const subtitle = privacySubtitle(props.row, props.privacy);
-  // 圆环改为 Circle + trim 手绘：iOS 上 circular ProgressView 会渲染成
-  // 不确定状态的转圈指示器（官方文档注明），无法用作确定性环形仪表。
   const thickness = Math.max(3, Math.round(props.size * 0.09));
   const circleSize = props.size - thickness;
 
@@ -342,8 +368,8 @@ function RingRow(props: {
 
 function SmallTextLayout(props: {
   rows: DashboardRow[];
-  hasErrors?: boolean;
   privacy: WidgetPrivacyPrefs;
+  trustStatus: WidgetTrustStatus;
 }) {
   const limit = smallVisibleLimit(props.privacy);
   const visible = props.rows.slice(0, limit);
@@ -370,7 +396,7 @@ function SmallTextLayout(props: {
           <Spacer minLength={0} />
         )}
         <Spacer minLength={0} />
-        <ErrorHint show={props.hasErrors} />
+        <TrustHint status={props.trustStatus} size="small" />
       </HStack>
     </VStack>
   );
@@ -380,8 +406,8 @@ function MediumRingLayout(props: {
   rows: DashboardRow[];
   width: number;
   height: number;
-  hasErrors?: boolean;
   privacy: WidgetPrivacyPrefs;
+  trustStatus: WidgetTrustStatus;
 }) {
   const plan = planMediumRings(
     props.rows.length,
@@ -429,7 +455,7 @@ function MediumRingLayout(props: {
             {widgetOverflowMedium(hidden)}
           </Text>
         ) : <BuiltinEmptyView />}
-        <ErrorHint show={props.hasErrors} />
+        <TrustHint status={props.trustStatus} size="medium" />
       </HStack>
       <Spacer minLength={0} />
     </VStack>
@@ -440,8 +466,8 @@ function LargeBarLayout(props: {
   rows: DashboardRow[];
   width: number;
   height: number;
-  hasErrors?: boolean;
   privacy: WidgetPrivacyPrefs;
+  trustStatus: WidgetTrustStatus;
 }) {
   const limit = largeVisibleLimit(props.privacy, props.height);
   const visible = props.rows.slice(0, limit);
@@ -464,10 +490,13 @@ function LargeBarLayout(props: {
           {WIDGET_TITLE}
         </Text>
         <Spacer minLength={0} />
+        <TrustHint status={props.trustStatus} size="large" />
+        <Text font={9} foregroundStyle={C.secondary}>
+          ·
+        </Text>
         <Text font={9} foregroundStyle={C.secondary}>
           {widgetEntryCount(props.rows.length)}
         </Text>
-        <ErrorHint show={props.hasErrors} />
       </HStack>
       <VStack alignment="leading" spacing={dense ? 8 : 9}>
         {visible.map((row) => (
@@ -500,6 +529,10 @@ export function DashboardWidgetView(props: Props) {
   const layout = widgetLayoutSize(props.family);
   const display = widgetDisplaySize(props.family);
   const accountCount = props.cards.length;
+  const trustStatus = computeWidgetTrust(props.cards);
+  if (props.hasErrors && trustStatus.errorCount === 0) {
+    trustStatus.errorCount = 1;
+  }
 
   if (rows.length === 0) {
     return (
@@ -517,8 +550,8 @@ export function DashboardWidgetView(props: Props) {
     return (
       <SmallTextLayout
         rows={rows}
-        hasErrors={props.hasErrors}
         privacy={privacy}
+        trustStatus={trustStatus}
       />
     );
   }
@@ -529,8 +562,8 @@ export function DashboardWidgetView(props: Props) {
         rows={rows}
         width={display.width}
         height={display.height}
-        hasErrors={props.hasErrors}
         privacy={privacy}
+        trustStatus={trustStatus}
       />
     );
   }
@@ -540,8 +573,8 @@ export function DashboardWidgetView(props: Props) {
       rows={rows}
       width={display.width}
       height={display.height}
-      hasErrors={props.hasErrors}
       privacy={privacy}
+      trustStatus={trustStatus}
     />
   );
 }

@@ -1,5 +1,5 @@
 import { Widget } from "scripting";
-import { formatPercent } from "../../providers/codex/format";
+import { formatPercent } from "../../services/format";
 import {
   widgetProviderShortName,
   widgetWindowLabel,
@@ -186,4 +186,102 @@ export function largeVisibleLimit(
   const fit = Math.floor(available / rowBlock);
   const cap = dense ? 8 : 9;
   return Math.min(cap, Math.max(6, fit));
+}
+
+
+export type WidgetTrustStatus = {
+  errorCount: number;
+  cacheCount: number;
+  totalCards: number;
+  oldestFetch: Date | null;
+  newestFetch: Date | null;
+};
+
+export function computeWidgetTrust(cards: UsageCard[]): WidgetTrustStatus {
+  let errorCount = 0;
+  let cacheCount = 0;
+  let oldestFetch: Date | null = null;
+  let newestFetch: Date | null = null;
+
+  for (const card of cards) {
+    if (card.source === "error" || card.refreshStatus === "failure") {
+      errorCount++;
+    }
+    if (card.source === "cache") {
+      cacheCount++;
+    }
+    if (card.fetchedAt) {
+      const dt = new Date(card.fetchedAt);
+      if (!Number.isNaN(dt.getTime())) {
+        if (!oldestFetch || dt < oldestFetch) oldestFetch = dt;
+        if (!newestFetch || dt > newestFetch) newestFetch = dt;
+      }
+    }
+  }
+  return {
+    errorCount,
+    cacheCount,
+    totalCards: cards.length,
+    oldestFetch,
+    newestFetch,
+  };
+}
+
+export function formatWidgetTime(date: Date): string {
+  const h = date.getHours().toString().padStart(2, "0");
+  const m = date.getMinutes().toString().padStart(2, "0");
+  return `${h}:${m}`;
+}
+
+export function widgetTrustText(
+  status: WidgetTrustStatus,
+  size: WidgetLayoutSize
+): string | null {
+  if (status.totalCards === 0) return null;
+  const time = status.oldestFetch ? formatWidgetTime(status.oldestFetch) : "";
+
+  if (size === "small") {
+    if (status.errorCount > 0) {
+      return status.errorCount === status.totalCards ? "更新失败" : `${status.errorCount}项失败`;
+    }
+    if (status.cacheCount === status.totalCards) {
+      return time ? `缓存 ${time}` : "缓存数据";
+    }
+    if (status.cacheCount > 0) {
+      return "部分缓存";
+    }
+    return time ? `已更新 ${time}` : null;
+  }
+
+  if (size === "medium") {
+    if (status.errorCount > 0) {
+      return status.errorCount === status.totalCards
+        ? "更新失败"
+        : `${status.errorCount} 项部分更新失败`;
+    }
+    if (status.cacheCount === status.totalCards) {
+      return time ? `已缓存于 ${time}` : "已缓存数据";
+    }
+    if (status.cacheCount > 0) {
+      return `${status.cacheCount} 项由缓存提供`;
+    }
+    return time ? `更新时间 ${time}` : null;
+  }
+
+  if (size === "large") {
+    if (status.errorCount > 0) {
+      return status.errorCount === status.totalCards
+        ? "全部更新失败"
+        : `${status.errorCount} 项未能更新`;
+    }
+    if (status.cacheCount === status.totalCards) {
+      return time ? `缓存数据 (${time})` : "缓存数据";
+    }
+    if (status.cacheCount > 0) {
+      return `${status.cacheCount} 项未更新`;
+    }
+    return time ? `更新于 ${time}` : null;
+  }
+
+  return null;
 }

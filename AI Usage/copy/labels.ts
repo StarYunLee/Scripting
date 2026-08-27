@@ -16,7 +16,6 @@ export const PERIOD = {
 
 /** 小组件平台短名（与 PlanBadge 平台缩写对齐） */
 export function widgetProviderShortName(provider: ProviderId): string {
-  if (provider === "codex") return "ChatGPT";
   if (provider === "antigravity") return "Agy";
   return providerMeta(provider).title;
 }
@@ -33,8 +32,10 @@ export function normalizeAppWindowLabel(label: string): string {
   if (!trimmed) return trimmed;
 
   const exact: { [key: string]: string } = {
-    "所有": PERIOD.TOTAL.app,
-    "第三方模型": PERIOD.API.app,
+    "所有": "Total",
+    "总计": "Total",
+    "第三方模型": "API",
+    "第三方 API": "API",
     "周限": PERIOD.WEEKLY.app,
     "模型周限": "模型每周",
   };
@@ -52,7 +53,7 @@ export function widgetWindowLabel(label: string): string {
   const app = normalizeAppWindowLabel(label);
   const value = app.toLowerCase();
 
-  if (/gemini model|claude and gpt/.test(value)) {
+  if (/gemini model|claude\s*(?:and|\/)\s*gpt/.test(value)) {
     if (value.includes("5") && (value.includes("时") || value.includes("hour"))) {
       return PERIOD.FIVE_HOUR.widget;
     }
@@ -87,8 +88,8 @@ export function parseWidgetWindowParts(label: string): {
   if (/gemini model/.test(lower)) {
     return { group: "Gemini", periodWidget: widgetWindowLabel(normalized) };
   }
-  if (/claude and gpt/.test(lower)) {
-    return { group: "GPT", periodWidget: widgetWindowLabel(normalized) };
+  if (/claude\s*(?:and|\/)\s*gpt/.test(lower)) {
+    return { group: "Claude/GPT", periodWidget: widgetWindowLabel(normalized) };
   }
 
   return { group: null, periodWidget: widgetWindowLabel(normalized) };
@@ -128,8 +129,8 @@ export const GROK_WIDGET = {
   shortWeekly: "每周",
 };
 
-/** 总用量小组件固定文案 */
-export const WIDGET_TITLE = "总用量";
+/** 多账号桌面小组件固定文案 */
+export const WIDGET_TITLE = "多账号用量";
 
 export function widgetOverflowSmall(hidden: number): string {
   return `还有 ${hidden} 条`;
@@ -152,16 +153,16 @@ export function widgetRemainingLabel(percent: string): string {
 }
 
 export const WIDGET_EMPTY_NO_ACCOUNTS =
-  "请先在应用中连接账号，或在设置 → 小组件总览中选择展示内容。";
+  "请先在应用中连接账号，或在设置 → 桌面小组件内容中选择展示内容。";
 
 export const WIDGET_EMPTY_NO_ROWS =
-  "所选账号暂无可见额度条目，请在设置 → 小组件总览调整展示内容。";
+  "所选账号暂无可见额度条目，请在设置 → 桌面小组件内容中调整展示内容。";
 
 export const WIDGET_SIZE_DESCRIPTION =
-  "小尺寸列表（Small）/ 中尺寸圆环（Medium）/ 大尺寸进度条（Large）";
+  "小号列表 / 中号圆环 / 大号进度条";
 
 export const WIDGET_DASHBOARD_SETTINGS_FOOTER =
-  `添加 AI Usage 小组件后，将参数粘贴为 dashboard，即可显示多账号总用量。${WIDGET_SIZE_DESCRIPTION}。`;
+  `添加 AI Usage 小组件后，将参数粘贴为 dashboard，即可显示多账号用量。${WIDGET_SIZE_DESCRIPTION}。`;
 
 export const DASHBOARD_PREFS_WIDGET_PRIVACY_FOOTER =
   `默认隐藏邮箱与账号 ID，避免主屏幕泄露隐私。${WIDGET_SIZE_DESCRIPTION}。`;
@@ -171,9 +172,9 @@ export const APP_DASHBOARD_SETTINGS_FOOTER =
 
 /** Cursor 额度窗口应用内标签 */
 export const CURSOR_WINDOW = {
-  AUTO: PERIOD.AUTO.app,
-  TOTAL: PERIOD.TOTAL.app,
-  API: PERIOD.API.app,
+  AUTO: "Auto",
+  TOTAL: "Total",
+  API: "API",
   GROK_BOT: PERIOD.GROK_BOT.app,
   PLAN: "套餐额度",
   ON_DEMAND: "按需额度",
@@ -183,13 +184,13 @@ export const CURSOR_WINDOW = {
 /** Grok 额度窗口应用内标签 */
 export const GROK_WINDOW = {
   WEEKLY: PERIOD.WEEKLY.app,
-  BUILD: "Grok Build",
+  BUILD: "Grok Build · 每周",
 };
 
 /** Antigravity 模型分组名 */
 export const ANTIGRAVITY_GROUP = {
   GEMINI_MODEL: "Gemini Model",
-  CLAUDE_AND_GPT: "Claude and GPT",
+  CLAUDE_AND_GPT: "Claude / GPT",
 };
 
 /** 按窗口秒数返回标准周期中文标签 */
@@ -258,5 +259,5 @@ export function antigravityWindowLabel(
 ): string {
   const local = periodLabelForSeconds(seconds, bucketId);
   const group = antigravityGroupName(groupName, bucketId);
-  return group ? `${group} ${local}` : local;
+  return group ? `${group} · ${local}` : local;
 }

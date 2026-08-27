@@ -7,6 +7,7 @@ import {
   resolveProfile,
 } from "./accounts";
 import { refreshOAuthToken } from "./oauth";
+import { createUsageCache } from "../../services/usage-cache";
 import type {
   CodexCreditStatus,
   CodexSpendControl,
@@ -81,6 +82,23 @@ function inferName(seconds: number | null, text = ""): LimitWindowName {
 function label(name: LimitWindowName, seconds: number | null): string {
   return codexWindowLabel(name, seconds);
 }
+function slug(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+function isOrdinaryWindow(window: LimitWindow): boolean {
+  return window.id.startsWith("codex:") || window.id.startsWith("direct:");
+}
+function sameWindow(left: LimitWindow, right: LimitWindow): boolean {
+  return (
+    left.name === right.name &&
+    left.resetAtMs === right.resetAtMs &&
+    left.usedPercent === right.usedPercent
+  );
+}
 function parseWindow(
   value: unknown,
   id: string,
@@ -114,6 +132,7 @@ function collectFromRateLimit(
   rate: Record<string, unknown>,
   prefix: string,
   hint = "",
+  labelPrefix = "",
 ): LimitWindow[] {
   const out: LimitWindow[] = [];
   const keys = [
@@ -131,7 +150,10 @@ function collectFromRateLimit(
     if (!value || seen.has(value)) continue;
     seen.add(value);
     const parsed = parseWindow(value, `${prefix}:${key}`, `${hint} ${key}`);
-    if (parsed) out.push(parsed);
+    if (parsed) {
+      if (labelPrefix) parsed.label = `${labelPrefix} ${parsed.label}`;
+      if (!out.some((window) => sameWindow(window, parsed))) out.push(parsed);
+    }
   }
   return out;
 }
@@ -146,14 +168,23 @@ function extractWindows(payload: Record<string, unknown>): LimitWindow[] {
     additional.forEach((item, i) => {
       const obj = asObject(item);
       const rate = asObject(obj?.rate_limit) || obj;
-      if (rate)
+      if (rate) {
+        const limitName = toStringValue(
+          obj?.limit_name ?? obj?.metered_feature,
+        );
+        const isSpark = Boolean(limitName && /spark/i.test(limitName));
+        const featureId =
+          slug(toStringValue(obj?.metered_feature) || limitName || "") ||
+          `unknown-${i}`;
         out.push(
           ...collectFromRateLimit(
             rate,
-            `extra${i}`,
-            String(obj?.limit_name || obj?.metered_feature || ""),
+            `extra:${featureId}`,
+            limitName || "",
+            isSpark ? "Codex Spark" : limitName || "Codex 附加限额",
           ),
         );
+      }
     });
   }
   const direct: Array<[string, LimitWindowName]> = [
@@ -163,23 +194,25 @@ function extractWindows(payload: Record<string, unknown>): LimitWindow[] {
   ];
   for (const [key, name] of direct) {
     const parsed = parseWindow(payload[key], `direct:${key}`, key);
-    if (parsed && !out.some((x) => x.name === name)) out.push(parsed);
+    if (
+      parsed &&
+      !out.some((window) => isOrdinaryWindow(window) && window.name === name)
+    ) {
+      out.push(parsed);
+    }
   }
   const unique: LimitWindow[] = [];
   for (const w of out) {
-    if (
-      !unique.some(
-        (x) =>
-          x.name === w.name &&
-          x.resetAtMs === w.resetAtMs &&
-          x.usedPercent === w.usedPercent,
-      )
-    )
-      unique.push(w);
+    if (!unique.some((x) => x.id === w.id)) unique.push(w);
   }
-  return unique.sort(
-    (a, b) => (a.windowSeconds || 1e20) - (b.windowSeconds || 1e20),
-  );
+  return unique.sort((a, b) => {
+    const sourceOrder = Number(!isOrdinaryWindow(a)) - Number(!isOrdinaryWindow(b));
+    return (
+      sourceOrder ||
+      (a.windowSeconds || 1e20) - (b.windowSeconds || 1e20) ||
+      a.id.localeCompare(b.id)
+    );
+  });
 }
 function planLabel(rawPlanType: string | null): string | null {
   const raw = rawPlanType?.toLowerCase().trim() || null;
@@ -392,60 +425,41 @@ function authHeaders(
   if (accountId) h["ChatGPT-Account-Id"] = accountId;
   return h;
 }
-function cacheKey(profileId: string): string {
-  return `${CACHE_KEY}_${profileId}`;
+const usageCache = createUsageCache<UsageSnapshot>({
+  keyPrefix: `${CACHE_KEY}_`,
+  resolveProfileId: (pid) => resolveProfile(pid)?.id || null,
+  recentMs: MIN_LIVE_INTERVAL_MS,
+});
+
+function readCache(profileId?: string | null) {
+  return usageCache.read(profileId);
 }
-function readCache(profileId?: string | null): UsageSnapshot | null {
-  const profile = resolveProfile(profileId);
-  if (!profile) return null;
-  try {
-    const v = Storage.get<UsageSnapshot>(cacheKey(profile.id));
-    return v?.fetchedAt ? { ...v, source: "cache" } : null;
-  } catch {
-    return null;
-  }
+function writeCache(profileId: string, value: UsageSnapshot) {
+  usageCache.write(profileId, value);
 }
-function writeCache(profileId: string, v: UsageSnapshot): void {
-  try {
-    Storage.set(cacheKey(profileId), { ...v, source: "cache" });
-  } catch {
-    /* ignore */
-  }
-}
-export const getCachedUsage = (profileId?: string | null) =>
-  readCache(profileId);
-export function clearUsageCache(profileId?: string | null): void {
-  const profile = resolveProfile(profileId);
-  if (!profile) return;
-  try {
-    Storage.remove(cacheKey(profile.id));
-  } catch {
-    /* ignore */
-  }
+export const getCachedUsage = (profileId?: string | null) => usageCache.read(profileId);
+export function clearUsageCache(profileId?: string | null) {
+  usageCache.clear(profileId);
 }
 
 export function pickFocusWindow(
   snapshot: UsageSnapshot,
   focus: "weekly" | "five_hour" | "monthly" = "weekly",
 ): LimitWindow | null {
-  return snapshot.windows.find((w) => w.name === focus) || null;
-}
-function recent(cache: UsageSnapshot | null): boolean {
-  if (!cache?.fetchedAt) return false;
-  const fetchedAt = new Date(cache.fetchedAt).getTime();
   return (
-    Number.isFinite(fetchedAt) && Date.now() - fetchedAt < MIN_LIVE_INTERVAL_MS
+    snapshot.windows.find(
+      (window) => isOrdinaryWindow(window) && window.name === focus,
+    ) || null
   );
 }
-function recoverRecentCache(
-  profileId: string,
-  force: boolean,
-): UsageResult | null {
-  if (force) return null;
-  const latest = readCache(profileId);
-  if (!recent(latest)) return null;
-  return { ok: true, snapshot: latest! };
+
+function recent(cache: UsageSnapshot | null) {
+  return usageCache.recent(cache);
 }
+function recoverRecentCache(profileId: string, force: boolean): UsageResult | null {
+  return usageCache.recoverRecent(profileId, force) as UsageResult | null;
+}
+
 
 export async function fetchUsage(options?: {
   force?: boolean;
@@ -564,9 +578,18 @@ export async function fetchUsage(options?: {
       planLabel(rawPlanType) || cache?.planLabel || cache?.planType || null;
     const snapshot: UsageSnapshot = {
       windows,
-      fiveHour: windows.find((w) => w.name === "five_hour") || null,
-      weekly: windows.find((w) => w.name === "weekly") || null,
-      monthly: windows.find((w) => w.name === "monthly") || null,
+      fiveHour:
+        windows.find(
+          (window) => isOrdinaryWindow(window) && window.name === "five_hour",
+        ) || null,
+      weekly:
+        windows.find(
+          (window) => isOrdinaryWindow(window) && window.name === "weekly",
+        ) || null,
+      monthly:
+        windows.find(
+          (window) => isOrdinaryWindow(window) && window.name === "monthly",
+        ) || null,
       planType: rawPlanType,
       planLabel: resolvedPlanLabel,
       creditStatus,

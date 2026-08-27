@@ -8,6 +8,7 @@ import {
 import { refreshOAuthToken, ensureAccountEmail } from "./oauth";
 import { formatPlanLabel } from "./format";
 import type { LimitWindow, UsageResult, UsageSnapshot } from "./types";
+import { createUsageCache } from "../../services/usage-cache";
 
 const API_BASE = "https://api2.cursor.sh";
 const CACHE_KEY = "ai_usage_cursor_cache_v3";
@@ -425,58 +426,29 @@ function toSnapshot(
   };
 }
 
-function cacheKey(profileId: string): string {
-  return `${CACHE_KEY}_${profileId}`;
+const usageCache = createUsageCache<UsageSnapshot>({
+  keyPrefix: `${CACHE_KEY}_`,
+  resolveProfileId: (pid) => resolveProfile(pid)?.id || null,
+  recentMs: MIN_LIVE_INTERVAL_MS,
+});
+
+function readCache(profileId?: string | null) {
+  return usageCache.read(profileId);
+}
+function writeCache(profileId: string, value: UsageSnapshot) {
+  usageCache.write(profileId, value);
+}
+export const getCachedUsage = (profileId?: string | null) => usageCache.read(profileId);
+export function clearUsageCache(profileId?: string | null) {
+  usageCache.clear(profileId);
+}
+function recent(cache: UsageSnapshot | null) {
+  return usageCache.recent(cache);
+}
+function recoverRecentCache(profileId: string, force: boolean): UsageResult | null {
+  return usageCache.recoverRecent(profileId, force) as UsageResult | null;
 }
 
-function readCache(profileId?: string | null): UsageSnapshot | null {
-  const profile = resolveProfile(profileId);
-  if (!profile) return null;
-  try {
-    const value = Storage.get<UsageSnapshot>(cacheKey(profile.id));
-    return value?.fetchedAt ? { ...value, source: "cache" } : null;
-  } catch {
-    return null;
-  }
-}
-
-function writeCache(profileId: string, value: UsageSnapshot): void {
-  try {
-    Storage.set(cacheKey(profileId), { ...value, source: "cache" });
-  } catch {
-    /* ignore */
-  }
-}
-
-export const getCachedUsage = (profileId?: string | null) => readCache(profileId);
-
-export function clearUsageCache(profileId?: string | null): void {
-  const profile = resolveProfile(profileId);
-  if (!profile) return;
-  try {
-    Storage.remove(cacheKey(profile.id));
-  } catch {
-    /* ignore */
-  }
-}
-
-function recent(cache: UsageSnapshot | null): boolean {
-  if (!cache?.fetchedAt) return false;
-  const fetchedAt = new Date(cache.fetchedAt).getTime();
-  return (
-    Number.isFinite(fetchedAt) && Date.now() - fetchedAt < MIN_LIVE_INTERVAL_MS
-  );
-}
-
-function recoverRecentCache(
-  profileId: string,
-  force: boolean,
-): UsageResult | null {
-  if (force) return null;
-  const latest = readCache(profileId);
-  if (!recent(latest)) return null;
-  return { ok: true, snapshot: latest! };
-}
 
 async function fetchUsagePayload(token: string): Promise<FetchPayloadOutcome> {
   const usageResponse = await requestDashboard(

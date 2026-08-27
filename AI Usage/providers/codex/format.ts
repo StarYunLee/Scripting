@@ -1,20 +1,9 @@
-export function formatPercent(value: number | null | undefined): string {
-  if (value == null || Number.isNaN(value)) return "—";
-  const rounded = Math.round(Math.max(0, Math.min(100, value)));
-  return `${rounded}%`;
-}
-
-export function formatFetchedAt(iso: string | null | undefined): string {
-  if (!iso) return "—";
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return "—";
-
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  const hour = String(date.getHours()).padStart(2, "0");
-  const minute = String(date.getMinutes()).padStart(2, "0");
-  return `${month}月${day}日 ${hour}:${minute}`;
-}
+export {
+  formatClampedPercent as formatPercent,
+  formatFetchedAt,
+  formatResetDate,
+  formatSmallDate,
+} from "../../services/format";
 
 export function resetCreditsSummary(
   available: number | null | undefined,
@@ -37,28 +26,4 @@ export function resetCreditsSummary(
     available: effective,
     nearestExpiration: effective === 0 ? null : future[0]?.value || null,
   };
-}
-
-export function formatSmallDate(resetAtIso: string | null | undefined): string {
-  if (!resetAtIso) return "—";
-  const date = new Date(resetAtIso);
-  if (Number.isNaN(date.getTime())) return "—";
-
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  const hour = String(date.getHours()).padStart(2, "0");
-  const minute = String(date.getMinutes()).padStart(2, "0");
-  return `${month}月${day}日 ${hour}:${minute}`;
-}
-
-export function formatResetDate(resetAtIso: string | null | undefined): string {
-  if (!resetAtIso) return "—";
-  const date = new Date(resetAtIso);
-  if (Number.isNaN(date.getTime())) return "—";
-
-  const month = date.getMonth() + 1;
-  const day = date.getDate();
-  const hour = String(date.getHours()).padStart(2, "0");
-  const minute = String(date.getMinutes()).padStart(2, "0");
-  return `${month}月${day}日 ${hour}:${minute}`;
 }
