@@ -182,6 +182,7 @@ export function AccountDetailPage(props: {
                 onChanged={changed}
               />
             ) : props.provider === "grok" ||
+              props.provider === "cursor" ||
               props.provider === "kimi" ||
               props.provider === "copilot" ||
               props.provider === "zai" ||
@@ -198,6 +199,7 @@ export function AccountDetailPage(props: {
             )}
 
             {props.provider === "grok" ||
+            props.provider === "cursor" ||
             props.provider === "kimi" ||
             props.provider === "copilot" ||
             props.provider === "zai" ||

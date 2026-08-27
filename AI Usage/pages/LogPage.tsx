@@ -22,27 +22,11 @@ import {
   readRunRecords,
   type RunRecord,
 } from "../services/logger";
-import type { ProviderId } from "../models";
+import { providerMeta, type ProviderId } from "../models";
 import type { BackgroundThemeId } from "../services/settings";
 
 const providerName = (provider?: ProviderId) =>
-  provider === "codex"
-    ? "Codex"
-    : provider === "grok"
-      ? "Grok"
-      : provider === "claude"
-        ? "Claude"
-        : provider === "antigravity"
-          ? "Antigravity"
-          : provider === "kimi"
-            ? "Kimi Code"
-            : provider === "copilot"
-              ? "GitHub Copilot"
-              : provider === "zai"
-                ? "Z.ai"
-                : provider === "minimax"
-                  ? "MiniMax"
-                  : "系统";
+  provider ? providerMeta(provider).title : "系统";
 
 function recordTime(value: string): string {
   const date = new Date(value);
