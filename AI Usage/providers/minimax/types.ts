@@ -61,10 +61,4 @@ export type UsageResult =
       cache?: UsageSnapshot | null;
     };
 
-export type FocusWindow = "five_hour" | "weekly";
-export type WidgetStyle = "dual" | "single";
-export type WidgetSettings = {
-  focusWindow: FocusWindow;
-  reloadMinutes: number;
-  widgetStyle: WidgetStyle;
-};
+export type WidgetSettings = Record<string, never>;

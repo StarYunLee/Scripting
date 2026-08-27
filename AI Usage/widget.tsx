@@ -145,12 +145,7 @@ async function run() {
 
   if (loaded.provider === "minimax") {
     Widget.present(
-      <MinimaxUsageWidgetView
-        result={loaded.result}
-        family={family}
-        focusWindow={loaded.settings.focusWindow}
-        widgetStyle={loaded.settings.widgetStyle}
-      />,
+      <MinimaxUsageWidgetView result={loaded.result} family={family} />,
       { reloadPolicy },
     );
     return;
