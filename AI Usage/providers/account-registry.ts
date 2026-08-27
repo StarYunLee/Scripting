@@ -6,6 +6,7 @@ import * as CursorAccounts from "./cursor/accounts";
 import * as KimiAccounts from "./kimi/accounts";
 import * as CopilotAccounts from "./copilot/accounts";
 import * as ZaiAccounts from "./zai/accounts";
+import * as MinimaxAccounts from "./minimax/accounts";
 import type { ProviderId } from "../models";
 import type { AccountLookupProvider } from "./contracts";
 
@@ -49,6 +50,11 @@ export const ACCOUNT_PROVIDERS = {
     id: "zai",
     list: ZaiAccounts.listAccounts,
     token: ZaiAccounts.getProfileAccessToken,
+  },
+  minimax: {
+    id: "minimax",
+    list: MinimaxAccounts.listAccounts,
+    token: MinimaxAccounts.getProfileAccessToken,
   },
 } satisfies Record<ProviderId, AccountLookupProvider>;
 

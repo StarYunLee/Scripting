@@ -20,17 +20,15 @@ export function PlanBadge(props: { provider: ProviderId; label: string; size?: P
     props.provider === "cursor" ? "CURSOR" :
     props.provider === "kimi" ? "KIMI" :
     props.provider === "copilot" ? "COPILOT" :
-    props.provider === "zai" ? "Z.AI" : "ANTIGRAVITY";
+    props.provider === "zai" ? "Z.AI" :
+    props.provider === "minimax" ? "MINIMAX" : "ANTIGRAVITY";
   const text = recipe.text === providerText ? "" : recipe.text;
   return (
-    <HStack
-      spacing={layout.spacing}
+    <HStack spacing={layout.spacing}
       padding={{ horizontal: layout.horizontalPadding, vertical: layout.verticalPadding }}
       background={recipe.background}
       clipShape={{ type: "capsule", style: "continuous" }}
-      layoutPriority={1}
-      fixedSize={true}
-    >
+      layoutPriority={1} fixedSize={true}>
       <ProviderLogo provider={props.provider} size={layout.logo}
         tint={recipe.preserveLogoColor ? undefined : recipe.foreground} />
       {text ? (

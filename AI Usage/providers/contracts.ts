@@ -38,7 +38,7 @@ export type ProviderCore = AccountLookupProvider & {
   create(): ProviderAccount;
   remove(profileId: string): void;
   auth: {
-    start(profileId: string): Promise<string>;
+    start(profileId: string, input?: string): Promise<string>;
     complete(input: string): Promise<void>;
     clearPending(): void;
     pendingId(): string | null;

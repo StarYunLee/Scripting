@@ -88,9 +88,10 @@ export function getPendingRegion(): MinimaxRegion | null {
 
 export async function startMinimaxLogin(
   profileId: string,
-  region: MinimaxRegion = "intl",
+  input?: string,
 ): Promise<string> {
   if (!profileId) throw new Error("未指定要授权的账号");
+  const region: MinimaxRegion = input === "cn" ? "cn" : "intl";
   savePending({ createdAt: Date.now(), profileId, region });
   return consoleUrlForRegion(region);
 }

@@ -7,6 +7,7 @@ import { resolveCopilotBadge } from "./copilot/badge";
 import { resolveCursorBadge } from "./cursor/badge";
 import { resolveGrokBadge } from "./grok/badge";
 import { resolveKimiBadge } from "./kimi/badge";
+import { resolveMinimaxBadge } from "./minimax/badge";
 import { resolveZaiBadge } from "./zai/badge";
 
 const BADGE_RESOLVERS = {
@@ -18,6 +19,7 @@ const BADGE_RESOLVERS = {
   kimi: resolveKimiBadge,
   copilot: resolveCopilotBadge,
   zai: resolveZaiBadge,
+  minimax: resolveMinimaxBadge,
 } satisfies Record<ProviderId, PlanBadgeResolver>;
 
 export function resolvePlanBadge(provider: ProviderId, label: string) {

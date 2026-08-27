@@ -24,6 +24,11 @@ import type {
   LimitWindowName as ZaiLimitWindowName,
   UsageResult as ZaiUsageResult,
 } from "../providers/zai/types";
+import type {
+  LimitWindow as MinimaxLimitWindow,
+  LimitWindowName as MinimaxLimitWindowName,
+  UsageResult as MinimaxUsageResult,
+} from "../providers/minimax/types";
 
 const DEMO_KEY = "ai_usage_demo_mode_v1";
 
@@ -437,6 +442,29 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
     ],
     resetCredits: null,
   },
+  {
+    id: "demo_minimax_pro",
+    provider: "minimax",
+    title: "pro@minimax.demo",
+    planLabel: "Pro · 国际站",
+    windows: [
+      {
+        id: "five_hour",
+        name: "five_hour",
+        label: "5 小时",
+        usedPercent: 37,
+        resetOffsetMs: 2 * 3_600_000 + 18 * 60_000,
+      },
+      {
+        id: "weekly",
+        name: "weekly",
+        label: "每周",
+        usedPercent: 62,
+        resetOffsetMs: 4 * 86_400_000 + 7 * 3_600_000,
+      },
+    ],
+    resetCredits: null,
+  },
 ];
 
 function futureIso(offsetMs: number): string {
@@ -497,6 +525,10 @@ export function getDemoWidgetResult(
   accountId: string,
 ): ZaiUsageResult | null;
 export function getDemoWidgetResult(
+  provider: "minimax",
+  accountId: string,
+): MinimaxUsageResult | null;
+export function getDemoWidgetResult(
   provider: UsageCard["provider"],
   accountId: string,
 ):
@@ -505,6 +537,7 @@ export function getDemoWidgetResult(
   | ClaudeUsageResult
   | AntigravityUsageResult
   | ZaiUsageResult
+  | MinimaxUsageResult
   | null {
   const account = DEMO_ACCOUNTS.find(
     (item) => item.provider === provider && item.id === accountId,
@@ -617,6 +650,28 @@ export function getDemoWidgetResult(
         fiveHour: byName("five_hour"),
         weekly: byName("weekly"),
         monthly: byName("monthly"),
+        planType: account.planLabel,
+        planLabel: account.planLabel,
+        region: "intl",
+        fetchedAt,
+        source: "live",
+      },
+    };
+  }
+
+  if (provider === "minimax") {
+    const windows: MinimaxLimitWindow[] = account.windows.map((window) => ({
+      ...windowBase(window),
+      name: window.name as MinimaxLimitWindowName,
+    }));
+    const byName = (name: MinimaxLimitWindowName) =>
+      windows.find((window) => window.name === name) || null;
+    return {
+      ok: true,
+      snapshot: {
+        windows,
+        fiveHour: byName("five_hour"),
+        weekly: byName("weekly"),
         planType: account.planLabel,
         planLabel: account.planLabel,
         region: "intl",

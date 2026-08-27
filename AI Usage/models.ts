@@ -9,6 +9,7 @@ export const PROVIDER_IDS = [
   "kimi",
   "copilot",
   "zai",
+  "minimax",
 ] as const;
 
 export type ProviderId = (typeof PROVIDER_IDS)[number];
@@ -144,6 +145,17 @@ export const PROVIDERS: Array<{
     pasteHint:
       "在 z.ai 或 open.bigmodel.cn 控制台创建 API Key，复制后粘贴到下方。应用会自动识别国际站或国内站。",
     pastePlaceholder: "粘贴 Z.ai / 智谱 API Key",
+    capabilities: { widget: true },
+  },
+  {
+    id: "minimax",
+    title: "MiniMax",
+    connectTitle: "连接 MiniMax Token Plan",
+    subtitle: "明确选择国际站或国内站，查看 5 小时与每周用量。",
+    accent: "#E85D04",
+    pasteHint:
+      "先选择 international minimax.io 或国内 minimaxi.com，再从对应控制台复制 Subscription Key。应用会以非空真实额度行校验站点，跨区空响应不会被视为成功。",
+    pastePlaceholder: "粘贴所选站点的 MiniMax Subscription Key",
     capabilities: { widget: true },
   },
 ];
