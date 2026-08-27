@@ -4,51 +4,27 @@ import { resolvePlanBadge } from "../providers/badge-registry";
 import { ProviderLogo } from "./ProviderLogo";
 
 const BADGE_SIZES = {
-  small: {
-    logo: 10,
-    text: 9,
-    spacing: 5,
-    horizontalPadding: 8,
-    verticalPadding: 3,
-  },
-  regular: {
-    logo: 11,
-    text: 10,
-    spacing: 6,
-    horizontalPadding: 10,
-    verticalPadding: 4,
-  },
+  small: { logo: 10, text: 9, spacing: 5, horizontalPadding: 8, verticalPadding: 3 },
+  regular: { logo: 11, text: 10, spacing: 6, horizontalPadding: 10, verticalPadding: 4 },
 } as const;
 
 export type PlanBadgeSize = keyof typeof BADGE_SIZES;
 
-export function PlanBadge(props: {
-  provider: ProviderId;
-  label: string;
-  size?: PlanBadgeSize;
-}) {
+export function PlanBadge(props: { provider: ProviderId; label: string; size?: PlanBadgeSize }) {
   const recipe = resolvePlanBadge(props.provider, props.label);
   const layout = BADGE_SIZES[props.size ?? "regular"];
   const providerText =
-    props.provider === "codex"
-      ? "CODEX"
-      : props.provider === "grok"
-        ? "GROK"
-        : props.provider === "claude"
-          ? "CLAUDE"
-          : props.provider === "cursor"
-            ? "CURSOR"
-            : props.provider === "kimi"
-              ? "KIMI"
-              : "ANTIGRAVITY";
+    props.provider === "codex" ? "CODEX" :
+    props.provider === "grok" ? "GROK" :
+    props.provider === "claude" ? "CLAUDE" :
+    props.provider === "cursor" ? "CURSOR" :
+    props.provider === "kimi" ? "KIMI" :
+    props.provider === "copilot" ? "COPILOT" : "ANTIGRAVITY";
   const text = recipe.text === providerText ? "" : recipe.text;
   return (
     <HStack
       spacing={layout.spacing}
-      padding={{
-        horizontal: layout.horizontalPadding,
-        vertical: layout.verticalPadding,
-      }}
+      padding={{ horizontal: layout.horizontalPadding, vertical: layout.verticalPadding }}
       background={recipe.background}
       clipShape={{ type: "capsule", style: "continuous" }}
       layoutPriority={1}

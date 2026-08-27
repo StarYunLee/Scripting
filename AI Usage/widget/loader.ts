@@ -48,6 +48,13 @@ import {
 import { getEffectiveSettings as getKimiSettings } from "../providers/kimi/widget-settings";
 import type { UsageResult as KimiUsageResult } from "../providers/kimi/types";
 import type { KimiWidgetSettings } from "../providers/kimi/widget-settings";
+import {
+  fetchUsage as fetchCopilotUsage,
+  getCachedUsage as getCopilotCache,
+} from "../providers/copilot/api";
+import { getEffectiveSettings as getCopilotSettings } from "../providers/copilot/widget-settings";
+import type { UsageResult as CopilotUsageResult } from "../providers/copilot/types";
+import type { CopilotWidgetSettings } from "../providers/copilot/widget-settings";
 import { getDemoWidgetResult, isDemoAccountId } from "../services/demo";
 import { writeLog } from "../services/logger";
 import type { ProviderId } from "../models";
@@ -82,6 +89,11 @@ export type LoadedWidgetUsage =
       provider: "kimi";
       result: KimiUsageResult;
       settings: KimiWidgetSettings;
+    }
+  | {
+      provider: "copilot";
+      result: CopilotUsageResult;
+      settings: CopilotWidgetSettings;
     };
 
 type LoadedCodexWidget = Extract<LoadedWidgetUsage, { provider: "codex" }>;
@@ -93,6 +105,10 @@ type LoadedAntigravityWidget = Extract<
 >;
 type LoadedCursorWidget = Extract<LoadedWidgetUsage, { provider: "cursor" }>;
 type LoadedKimiWidget = Extract<LoadedWidgetUsage, { provider: "kimi" }>;
+type LoadedCopilotWidget = Extract<
+  LoadedWidgetUsage,
+  { provider: "copilot" }
+>;
 
 function logLoadFailure(
   provider: ProviderId,
@@ -258,6 +274,30 @@ async function loadKimi(profileId: string): Promise<LoadedKimiWidget> {
     settings: getKimiSettings(profileId),
   };
 }
+
+async function loadCopilot(profileId: string): Promise<LoadedCopilotWidget> {
+  const result = await loadProviderResult<CopilotUsageResult>({
+    provider: "copilot",
+    profileId,
+    demo: () => ({
+      ok: false,
+      error: { code: "missing_token", message: "Copilot 演示数据未启用" },
+      cache: null,
+    }),
+    fetch: () => fetchCopilotUsage({ force: false, profileId }),
+    fallback: (error) => ({
+      ok: false,
+      error: unknownError(error),
+      cache: getCopilotCache(profileId),
+    }),
+  });
+  return {
+    provider: "copilot",
+    result,
+    settings: getCopilotSettings(profileId),
+  };
+}
+
 export function loadWidgetUsage(
   provider: "codex",
   profileId: string,
@@ -283,6 +323,10 @@ export function loadWidgetUsage(
   profileId: string,
 ): Promise<LoadedKimiWidget>;
 export function loadWidgetUsage(
+  provider: "copilot",
+  profileId: string,
+): Promise<LoadedCopilotWidget>;
+export function loadWidgetUsage(
   provider: ProviderId,
   profileId: string,
 ): Promise<LoadedWidgetUsage>;
@@ -295,5 +339,6 @@ export function loadWidgetUsage(
   if (provider === "claude") return loadClaude(profileId);
   if (provider === "antigravity") return loadAntigravity(profileId);
   if (provider === "cursor") return loadCursor(profileId);
-  return loadKimi(profileId);
+  if (provider === "kimi") return loadKimi(profileId);
+  return loadCopilot(profileId);
 }

@@ -544,7 +544,7 @@ export function getDemoWidgetResult(
     };
   }
 
-  if (provider === "kimi") return null;
+  if (provider === "kimi" || provider === "copilot") return null;
 
   if (provider === "antigravity") {
     const windows: AntigravityLimitWindow[] = account.windows.map((window) => ({
