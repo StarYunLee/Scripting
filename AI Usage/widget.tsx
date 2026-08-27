@@ -5,6 +5,7 @@ import { UsageWidgetView as CodexUsageWidgetView } from "./widget/codex/UsageWid
 import { UsageWidgetView as GrokUsageWidgetView } from "./widget/grok/UsageWidgetView";
 import { UsageWidgetView as ClaudeUsageWidgetView } from "./widget/claude/UsageWidgetView";
 import { UsageWidgetView as AntigravityUsageWidgetView } from "./widget/antigravity/UsageWidgetView";
+import { UsageWidgetView as CursorUsageWidgetView } from "./widget/cursor/UsageWidgetView";
 import { getAppDisplaySettings } from "./services/settings";
 import { writeLog } from "./services/logger";
 
@@ -92,16 +93,30 @@ async function run() {
     return;
   }
 
-  Widget.present(
-    <AntigravityUsageWidgetView
-      result={loaded.result}
-      family={family}
-      focusWindow={loaded.settings.focusWindow}
-      widgetStyle={loaded.settings.widgetStyle}
-      dualQuotaPreset={loaded.settings.dualQuotaPreset}
-    />,
-    { reloadPolicy },
-  );
+  if (loaded.provider === "antigravity") {
+    Widget.present(
+      <AntigravityUsageWidgetView
+        result={loaded.result}
+        family={family}
+        focusWindow={loaded.settings.focusWindow}
+        widgetStyle={loaded.settings.widgetStyle}
+        dualQuotaPreset={loaded.settings.dualQuotaPreset}
+      />,
+      { reloadPolicy },
+    );
+    return;
+  }
+
+  if (loaded.provider === "cursor") {
+    Widget.present(
+      <CursorUsageWidgetView result={loaded.result} family={family} />,
+      { reloadPolicy },
+    );
+    return;
+  }
+
+  const exhausted: never = loaded;
+  Widget.present(<ErrorWidget message={`不支持的 Provider：${String(exhausted)}`} />);
 }
 
 void run();

@@ -36,7 +36,9 @@ export function PlanBadge(props: {
         ? "GROK"
         : props.provider === "claude"
           ? "CLAUDE"
-          : "ANTIGRAVITY";
+          : props.provider === "cursor"
+            ? "CURSOR"
+            : "ANTIGRAVITY";
   const text = recipe.text === providerText ? "" : recipe.text;
   return (
     <HStack
