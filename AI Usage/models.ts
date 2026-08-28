@@ -8,6 +8,7 @@ export const PROVIDER_IDS = [
   "cursor",
   "kimi",
   "copilot",
+  "zai",
 ] as const;
 
 export type ProviderId = (typeof PROVIDER_IDS)[number];
@@ -132,6 +133,16 @@ export const PROVIDERS: Array<{
     pasteHint:
       "记下设备码，在 GitHub 授权页输入并完成登录；返回应用后直接点击“提交并完成授权”。",
     pastePlaceholder: "无需填写，完成设备授权后提交",
+    capabilities: { widget: true },
+  },
+  {
+    id: "zai",
+    title: "Z.ai",
+    connectTitle: "连接 Z.ai 账户",
+    subtitle: "连接 Z.ai 账户，查看 5 小时、每周、每月和 Web Search 用量。",
+    accent: "#0F766E",
+    pasteHint: "在 Z.ai 或智谱控制台复制 API Key，粘贴到下方完成验证。",
+    pastePlaceholder: "粘贴 Z.ai / 智谱 API Key",
     capabilities: { widget: true },
   },
 ];

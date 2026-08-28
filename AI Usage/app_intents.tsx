@@ -80,6 +80,12 @@ export const RefreshAIUsageCopilotIntent = AppIntentManager.register({
   perform: async () => refreshProviderIntent("copilot"),
 });
 
+export const RefreshAIUsageZaiIntent = AppIntentManager.register({
+  name: "RefreshAIUsageZaiIntent",
+  protocol: AppIntentProtocol.AppIntent,
+  perform: async () => refreshProviderIntent("zai"),
+});
+
 export const RefreshAIUsageAllIntent = AppIntentManager.register({
   name: "RefreshAIUsageAllIntent",
   protocol: AppIntentProtocol.AppIntent,

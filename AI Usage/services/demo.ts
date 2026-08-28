@@ -34,6 +34,11 @@ import type {
   LimitWindowName as CopilotLimitWindowName,
   UsageResult as CopilotUsageResult,
 } from "../providers/copilot/types";
+import type {
+  LimitWindow as ZaiLimitWindow,
+  LimitWindowName as ZaiLimitWindowName,
+  UsageResult as ZaiUsageResult,
+} from "../providers/zai/types";
 
 const DEMO_KEY = "ai_usage_demo_mode_v1";
 
@@ -515,6 +520,29 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
     ],
     resetCredits: null,
   },
+  {
+    id: "demo_zai_pro_plus",
+    provider: "zai",
+    title: "pro-plus@z.ai.demo",
+    planLabel: "Pro+",
+    windows: [
+      {
+        id: "five_hour",
+        name: "five_hour",
+        label: "5 小时",
+        usedPercent: 28,
+        resetOffsetMs: 2 * 3_600_000 + 40 * 60_000,
+      },
+      {
+        id: "weekly",
+        name: "weekly",
+        label: "每周",
+        usedPercent: 46,
+        resetOffsetMs: 3 * 86_400_000 + 8 * 3_600_000,
+      },
+    ],
+    resetCredits: null,
+  },
 ];
 
 function futureIso(offsetMs: number): string {
@@ -579,6 +607,10 @@ export function getDemoWidgetResult(
   accountId: string,
 ): CopilotUsageResult | null;
 export function getDemoWidgetResult(
+  provider: "zai",
+  accountId: string,
+): ZaiUsageResult | null;
+export function getDemoWidgetResult(
   provider: "antigravity",
   accountId: string,
 ): AntigravityUsageResult | null;
@@ -592,6 +624,7 @@ export function getDemoWidgetResult(
   | CursorUsageResult
   | KimiUsageResult
   | CopilotUsageResult
+  | ZaiUsageResult
   | AntigravityUsageResult
   | null {
   const account = DEMO_ACCOUNTS.find(
@@ -729,6 +762,30 @@ export function getDemoWidgetResult(
         completions: byName("completions"),
         planType: account.planLabel,
         planLabel: account.planLabel,
+        fetchedAt,
+        source: "live",
+      },
+    };
+  }
+
+  if (provider === "zai") {
+    const windows: ZaiLimitWindow[] = account.windows.map((window) => ({
+      ...windowBase(window),
+      id: `zai:${window.id}`,
+      name: window.name as ZaiLimitWindowName,
+    }));
+    const byName = (name: ZaiLimitWindowName) =>
+      windows.find((window) => window.name === name) || null;
+    return {
+      ok: true,
+      snapshot: {
+        windows,
+        fiveHour: byName("five_hour"),
+        weekly: byName("weekly"),
+        monthly: byName("monthly"),
+        planType: account.planLabel,
+        planLabel: account.planLabel,
+        region: "intl",
         fetchedAt,
         source: "live",
       },

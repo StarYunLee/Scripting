@@ -55,6 +55,13 @@ import {
 import { getEffectiveSettings as getCopilotSettings } from "../providers/copilot/widget-settings";
 import type { UsageResult as CopilotUsageResult } from "../providers/copilot/types";
 import type { CopilotWidgetSettings } from "../providers/copilot/widget-settings";
+import {
+  fetchUsage as fetchZaiUsage,
+  getCachedUsage as getZaiCache,
+} from "../providers/zai/api";
+import { getEffectiveSettings as getZaiSettings } from "../providers/zai/widget-settings";
+import type { UsageResult as ZaiUsageResult } from "../providers/zai/types";
+import type { ZaiWidgetSettings } from "../providers/zai/widget-settings";
 import { getDemoWidgetResult, isDemoAccountId } from "../services/demo";
 import { writeLog } from "../services/logger";
 import type { ProviderId } from "../models";
@@ -94,6 +101,11 @@ export type LoadedWidgetUsage =
       provider: "copilot";
       result: CopilotUsageResult;
       settings: CopilotWidgetSettings;
+    }
+  | {
+      provider: "zai";
+      result: ZaiUsageResult;
+      settings: ZaiWidgetSettings;
     };
 
 type LoadedCodexWidget = Extract<LoadedWidgetUsage, { provider: "codex" }>;
@@ -106,6 +118,7 @@ type LoadedAntigravityWidget = Extract<
 type LoadedCursorWidget = Extract<LoadedWidgetUsage, { provider: "cursor" }>;
 type LoadedKimiWidget = Extract<LoadedWidgetUsage, { provider: "kimi" }>;
 type LoadedCopilotWidget = Extract<LoadedWidgetUsage, { provider: "copilot" }>;
+type LoadedZaiWidget = Extract<LoadedWidgetUsage, { provider: "zai" }>;
 
 function logLoadFailure(
   provider: ProviderId,
@@ -282,6 +295,25 @@ async function loadCopilot(profileId: string): Promise<LoadedCopilotWidget> {
     settings: getCopilotSettings(profileId),
   };
 }
+
+async function loadZai(profileId: string): Promise<LoadedZaiWidget> {
+  const result = await loadProviderResult<ZaiUsageResult>({
+    provider: "zai",
+    profileId,
+    demo: () => getDemoWidgetResult("zai", profileId)!,
+    fetch: () => fetchZaiUsage({ force: false, profileId }),
+    fallback: (error) => ({
+      ok: false,
+      error: unknownError(error),
+      cache: getZaiCache(profileId),
+    }),
+  });
+  return {
+    provider: "zai",
+    result,
+    settings: getZaiSettings(profileId),
+  };
+}
 export function loadWidgetUsage(
   provider: "codex",
   profileId: string,
@@ -311,6 +343,10 @@ export function loadWidgetUsage(
   profileId: string,
 ): Promise<LoadedCopilotWidget>;
 export function loadWidgetUsage(
+  provider: "zai",
+  profileId: string,
+): Promise<LoadedZaiWidget>;
+export function loadWidgetUsage(
   provider: ProviderId,
   profileId: string,
 ): Promise<LoadedWidgetUsage>;
@@ -324,5 +360,6 @@ export function loadWidgetUsage(
   if (provider === "antigravity") return loadAntigravity(profileId);
   if (provider === "cursor") return loadCursor(profileId);
   if (provider === "kimi") return loadKimi(profileId);
-  return loadCopilot(profileId);
+  if (provider === "copilot") return loadCopilot(profileId);
+  return loadZai(profileId);
 }

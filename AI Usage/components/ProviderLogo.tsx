@@ -9,6 +9,7 @@ function logoBaseName(provider: ProviderId): string {
   if (provider === "cursor") return "cursor";
   if (provider === "kimi") return "kimi";
   if (provider === "copilot") return "copilot";
+  if (provider === "zai") return "zai";
   return "antigravity";
 }
 

@@ -42,7 +42,9 @@ export function PlanBadge(props: {
               ? "KIMI"
               : props.provider === "copilot"
                 ? "COPILOT"
-                : "ANTIGRAVITY";
+                : props.provider === "zai"
+                  ? "Z.AI"
+                  : "ANTIGRAVITY";
   const text = recipe.text === providerText ? "" : recipe.text;
   return (
     <HStack

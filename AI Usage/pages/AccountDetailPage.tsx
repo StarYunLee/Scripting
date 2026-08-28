@@ -184,8 +184,8 @@ export function AccountDetailPage(props: {
             ) : props.provider === "grok" ||
               props.provider === "cursor" ||
               props.provider === "kimi" ||
-              props.provider === "copilot" ? null : props.provider ===
-              "claude" ? (
+              props.provider === "copilot" ||
+              props.provider === "zai" ? null : props.provider === "claude" ? (
               <ClaudeWidgetSettingsView
                 profileId={props.account.id}
                 onChanged={changed}
@@ -200,7 +200,8 @@ export function AccountDetailPage(props: {
             {props.provider === "grok" ||
             props.provider === "cursor" ||
             props.provider === "kimi" ||
-            props.provider === "copilot" ? null : (
+            props.provider === "copilot" ||
+            props.provider === "zai" ? null : (
               <GlassDivider />
             )}
             <Picker

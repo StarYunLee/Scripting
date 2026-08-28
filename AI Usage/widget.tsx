@@ -8,6 +8,7 @@ import { UsageWidgetView as AntigravityUsageWidgetView } from "./widget/antigrav
 import { UsageWidgetView as CursorUsageWidgetView } from "./widget/cursor/UsageWidgetView";
 import { UsageWidgetView as KimiUsageWidgetView } from "./widget/kimi/UsageWidgetView";
 import { UsageWidgetView as CopilotUsageWidgetView } from "./widget/copilot/UsageWidgetView";
+import { UsageWidgetView as ZaiUsageWidgetView } from "./widget/zai/UsageWidgetView";
 import { getAppDisplaySettings } from "./services/settings";
 import { writeLog } from "./services/logger";
 
@@ -128,6 +129,14 @@ async function run() {
   if (loaded.provider === "copilot") {
     Widget.present(
       <CopilotUsageWidgetView result={loaded.result} family={family} />,
+      { reloadPolicy },
+    );
+    return;
+  }
+
+  if (loaded.provider === "zai") {
+    Widget.present(
+      <ZaiUsageWidgetView result={loaded.result} family={family} />,
       { reloadPolicy },
     );
     return;
