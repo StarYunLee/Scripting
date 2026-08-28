@@ -29,6 +29,8 @@ import {
   type BackgroundThemeId,
 } from "../services/settings";
 import { openAuthorizationPage } from "../services/browser";
+import { getPendingAuthorizationState } from "../providers/copilot/oauth";
+import { planCopilotAuthorization } from "../providers/copilot/auth-flow";
 import {
   GlassDivider,
   GlassGroup,
@@ -86,9 +88,24 @@ export function SettingsPage(props: {
   async function startAuth(provider: ProviderId, profileId?: string) {
     if (busy) return;
     setBusy(true);
+    let activeProfileId = profileId || provider;
     try {
       const started = await beginProviderAuth(provider, profileId);
-      // 先打开授权页；关闭后再进入粘贴页。
+      activeProfileId = started.profileId;
+      if (provider === "copilot") {
+        const state = getPendingAuthorizationState();
+        if (!state) throw new Error("GitHub 设备码生成失败，请重新开始");
+        const plan = planCopilotAuthorization(state);
+        setSheet({
+          provider,
+          profileId: plan.profileId,
+          authorizationInput: "",
+          deviceCode: plan.deviceCode,
+          status: plan.status,
+        });
+        return;
+      }
+      // 其他平台保持原流程：先打开授权页，关闭后再进入粘贴页。
       const mode = await openAuthorizationPage(started.url);
       setSheet({
         provider,
@@ -102,7 +119,7 @@ export function SettingsPage(props: {
     } catch (error) {
       setSheet({
         provider,
-        profileId: profileId || provider,
+        profileId: activeProfileId,
         authorizationInput: "",
         status: "启动授权失败：" + errorText(error),
       });

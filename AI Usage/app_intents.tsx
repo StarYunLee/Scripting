@@ -74,6 +74,12 @@ export const RefreshAIUsageKimiIntent = AppIntentManager.register({
   perform: async () => refreshProviderIntent("kimi"),
 });
 
+export const RefreshAIUsageCopilotIntent = AppIntentManager.register({
+  name: "RefreshAIUsageCopilotIntent",
+  protocol: AppIntentProtocol.AppIntent,
+  perform: async () => refreshProviderIntent("copilot"),
+});
+
 export const RefreshAIUsageAllIntent = AppIntentManager.register({
   name: "RefreshAIUsageAllIntent",
   protocol: AppIntentProtocol.AppIntent,

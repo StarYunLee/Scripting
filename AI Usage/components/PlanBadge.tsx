@@ -40,7 +40,9 @@ export function PlanBadge(props: {
             ? "CURSOR"
             : props.provider === "kimi"
               ? "KIMI"
-              : "ANTIGRAVITY";
+              : props.provider === "copilot"
+                ? "COPILOT"
+                : "ANTIGRAVITY";
   const text = recipe.text === providerText ? "" : recipe.text;
   return (
     <HStack

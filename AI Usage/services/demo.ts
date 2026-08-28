@@ -29,6 +29,11 @@ import type {
   LimitWindowName as KimiLimitWindowName,
   UsageResult as KimiUsageResult,
 } from "../providers/kimi/types";
+import type {
+  LimitWindow as CopilotLimitWindow,
+  LimitWindowName as CopilotLimitWindowName,
+  UsageResult as CopilotUsageResult,
+} from "../providers/copilot/types";
 
 const DEMO_KEY = "ai_usage_demo_mode_v1";
 
@@ -480,6 +485,36 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
     ],
     resetCredits: null,
   },
+  {
+    id: "demo_copilot_layout",
+    provider: "copilot",
+    title: "demo@copilot.demo",
+    planLabel: "Demo",
+    windows: [
+      {
+        id: "credits",
+        name: "credits",
+        label: "高级请求",
+        usedPercent: 35,
+        resetOffsetMs: 12 * 86_400_000,
+      },
+      {
+        id: "chat",
+        name: "chat",
+        label: "聊天消息",
+        usedPercent: 51,
+        resetOffsetMs: 25 * 3_600_000,
+      },
+      {
+        id: "completions",
+        name: "completions",
+        label: "代码补全",
+        usedPercent: 69,
+        resetOffsetMs: 25 * 3_600_000,
+      },
+    ],
+    resetCredits: null,
+  },
 ];
 
 function futureIso(offsetMs: number): string {
@@ -540,6 +575,10 @@ export function getDemoWidgetResult(
   accountId: string,
 ): KimiUsageResult | null;
 export function getDemoWidgetResult(
+  provider: "copilot",
+  accountId: string,
+): CopilotUsageResult | null;
+export function getDemoWidgetResult(
   provider: "antigravity",
   accountId: string,
 ): AntigravityUsageResult | null;
@@ -552,6 +591,7 @@ export function getDemoWidgetResult(
   | ClaudeUsageResult
   | CursorUsageResult
   | KimiUsageResult
+  | CopilotUsageResult
   | AntigravityUsageResult
   | null {
   const account = DEMO_ACCOUNTS.find(
@@ -664,6 +704,29 @@ export function getDemoWidgetResult(
         windows,
         fiveHour: byName("five_hour"),
         weekly: byName("weekly"),
+        planType: account.planLabel,
+        planLabel: account.planLabel,
+        fetchedAt,
+        source: "live",
+      },
+    };
+  }
+
+  if (provider === "copilot") {
+    const windows: CopilotLimitWindow[] = account.windows.map((window) => ({
+      ...windowBase(window),
+      id: `copilot:${window.id}`,
+      name: window.name as CopilotLimitWindowName,
+    }));
+    const byName = (name: CopilotLimitWindowName) =>
+      windows.find((window) => window.name === name) || null;
+    return {
+      ok: true,
+      snapshot: {
+        windows,
+        credits: byName("credits"),
+        chat: byName("chat"),
+        completions: byName("completions"),
         planType: account.planLabel,
         planLabel: account.planLabel,
         fetchedAt,

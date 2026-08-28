@@ -1,14 +1,18 @@
 import {
   Button,
   HStack,
+  Image,
   List,
   NavigationStack,
   Section,
   Spacer,
   Text,
   TextField,
+  VStack,
 } from "scripting";
 import { providerMeta, type AuthSheet } from "../models";
+import { getPendingVerificationUri } from "../providers/copilot/oauth";
+import { openAuthorizationPage } from "../services/browser";
 import { PageBackground } from "./PageBackground";
 import {
   GlassDivider,
@@ -26,6 +30,39 @@ export function AuthSheetView(props: {
   onCancel: () => void;
 }) {
   const meta = providerMeta(props.authSheet.provider);
+
+  async function copyDeviceCode(code: string) {
+    await Pasteboard.setString(code);
+    await Dialog.alert({
+      title: "已复制设备码",
+      message: "现在可以手动打开 GitHub 授权页并粘贴该设备码。",
+      buttonLabel: "知道了",
+    });
+  }
+
+  async function openGitHubAuthorizationPage() {
+    const url = getPendingVerificationUri();
+    if (!url) {
+      await Dialog.alert({
+        title: "授权会话已过期",
+        message: "请取消后重新生成 GitHub 设备码。",
+        buttonLabel: "关闭",
+      });
+      return;
+    }
+    try {
+      await openAuthorizationPage(url);
+    } catch (error) {
+      await Dialog.alert({
+        title: "无法打开授权页",
+        message:
+          error instanceof Error && error.message
+            ? error.message
+            : "请稍后重试。",
+        buttonLabel: "关闭",
+      });
+    }
+  }
   return (
     <NavigationStack>
       <List
@@ -57,15 +94,70 @@ export function AuthSheetView(props: {
               </HStack>
             ) : null}
             {props.authSheet.status ? <GlassDivider /> : null}
-            <TextField
-              title="授权内容"
-              value={props.authSheet.authorizationInput}
-              onChanged={props.onChangeInput}
-              prompt={meta.pastePlaceholder}
-              padding={{ vertical: true }}
-              frame={{ minHeight: 44, maxWidth: "infinity" }}
-            />
+            {props.authSheet.deviceCode ? (
+              <Button
+                buttonStyle="plain"
+                frame={{ maxWidth: "infinity" }}
+                action={() => copyDeviceCode(props.authSheet.deviceCode!)}
+              >
+                <HStack
+                  padding={{ vertical: true }}
+                  frame={{ minHeight: 44, maxWidth: "infinity" }}
+                  contentShape="rect"
+                >
+                  <VStack alignment="leading" spacing={2}>
+                    <Text font="caption" foregroundStyle="secondaryLabel">
+                      设备码（点击复制）
+                    </Text>
+                    <Text font="headline" fontWeight="bold" monospaced>
+                      {props.authSheet.deviceCode}
+                    </Text>
+                  </VStack>
+                  <Spacer />
+                  <Image
+                    systemName="doc.on.doc"
+                    imageScale="medium"
+                    foregroundStyle="accentColor"
+                  />
+                </HStack>
+              </Button>
+            ) : (
+              <TextField
+                title="授权内容"
+                value={props.authSheet.authorizationInput}
+                onChanged={props.onChangeInput}
+                prompt={meta.pastePlaceholder}
+                padding={{ vertical: true }}
+                frame={{ minHeight: 44, maxWidth: "infinity" }}
+              />
+            )}
             <GlassDivider />
+            {props.authSheet.deviceCode ? (
+              <>
+                <Button
+                  buttonStyle="plain"
+                  frame={{ maxWidth: "infinity" }}
+                  action={() => void openGitHubAuthorizationPage()}
+                >
+                  <HStack
+                    padding={{ vertical: true }}
+                    frame={{ minHeight: 44, maxWidth: "infinity" }}
+                    contentShape="rect"
+                  >
+                    <Image
+                      systemName="safari"
+                      imageScale="medium"
+                      foregroundStyle="accentColor"
+                    />
+                    <Text foregroundStyle="accentColor">
+                      手动打开 GitHub 授权页
+                    </Text>
+                    <Spacer />
+                  </HStack>
+                </Button>
+                <GlassDivider />
+              </>
+            ) : null}
             <Button
               buttonStyle="plain"
               frame={{ maxWidth: "infinity" }}

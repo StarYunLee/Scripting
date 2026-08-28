@@ -89,6 +89,21 @@ import {
 } from "./kimi/oauth";
 import { normalizeUsageSnapshot as normalizeKimiUsage } from "./kimi/normalize";
 import { clearProfileSettings as clearKimiSettings } from "./kimi/widget-settings";
+import * as CopilotAccounts from "./copilot/accounts";
+import {
+  fetchUsage as fetchCopilotUsage,
+  getCachedUsage as getCopilotCache,
+  clearUsageCache as clearCopilotCache,
+} from "./copilot/api";
+import {
+  startCopilotLogin,
+  completeCopilotLogin,
+  clearPendingOAuth as clearCopilotPending,
+  getPendingOAuthProfileId as getCopilotPending,
+  hasPendingOAuth as hasCopilotPending,
+} from "./copilot/oauth";
+import { normalizeUsageSnapshot as normalizeCopilotUsage } from "./copilot/normalize";
+import { clearProfileSettings as clearCopilotSettings } from "./copilot/widget-settings";
 import type { ProviderId } from "../models";
 import type { ProviderCore } from "./contracts";
 
@@ -224,6 +239,28 @@ export const PROVIDER_REGISTRY = {
       clearCache: clearKimiCache,
     },
     clearSettings: clearKimiSettings,
+  },
+  copilot: {
+    ...ACCOUNT_PROVIDERS.copilot,
+    ensure: CopilotAccounts.ensureAccountMigration,
+    create: CopilotAccounts.createAccount,
+    remove: CopilotAccounts.deleteAccount,
+    auth: {
+      start: startCopilotLogin,
+      complete: completeCopilotLogin,
+      clearPending: clearCopilotPending,
+      pendingId: getCopilotPending,
+      hasPending: hasCopilotPending,
+    },
+    usage: {
+      fetch: fetchCopilotUsage,
+      cache: (profileId: string) => {
+        const snapshot = getCopilotCache(profileId);
+        return snapshot ? normalizeCopilotUsage(snapshot) : null;
+      },
+      clearCache: clearCopilotCache,
+    },
+    clearSettings: clearCopilotSettings,
   },
 } satisfies Record<ProviderId, ProviderCore>;
 

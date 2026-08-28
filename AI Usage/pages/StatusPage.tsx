@@ -20,6 +20,11 @@ import { usePageToolbar } from "../components/PageToolbar";
 import { UsageCardView } from "../components/UsageCardView";
 import { type AuthSheet, type ProviderId, type UsageCard } from "../models";
 import { openAuthorizationPage } from "../services/browser";
+import { getPendingAuthorizationState } from "../providers/copilot/oauth";
+import {
+  planCopilotAuthorization,
+  planPendingCopilotAuthorization,
+} from "../providers/copilot/auth-flow";
 import { refreshAccounts } from "../services/refresh";
 import { requestWidgetReload } from "../services/widgets";
 import { type BackgroundThemeId } from "../services/settings";
@@ -75,11 +80,17 @@ export function StatusPage(props: {
     const pending = findPendingAuth();
     if (!pending) return;
     setProvider(pending.provider);
+    const copilotState =
+      pending.provider === "copilot" ? getPendingAuthorizationState() : null;
+    const copilotPlan = copilotState
+      ? planPendingCopilotAuthorization(copilotState)
+      : null;
     setSheet({
       provider: pending.provider,
       profileId: pending.profileId,
       authorizationInput: "",
-      status: "存在未完成的授权，请粘贴回调或授权码",
+      deviceCode: copilotPlan?.deviceCode,
+      status: copilotPlan?.status || "存在未完成的授权，请粘贴回调或授权码",
     });
   }, [props.demoMode]);
 
@@ -110,9 +121,24 @@ export function StatusPage(props: {
   async function startAuth(target: ProviderId, profileId?: string) {
     if (busy) return;
     setBusy(true);
+    let activeProfileId = profileId || target;
     try {
       const started = await beginProviderAuth(target, profileId);
-      // 先打开授权页；关闭后再进入粘贴页，避免状态页被粘贴界面顶掉。
+      activeProfileId = started.profileId;
+      if (target === "copilot") {
+        const state = getPendingAuthorizationState();
+        if (!state) throw new Error("GitHub 设备码生成失败，请重新开始");
+        const plan = planCopilotAuthorization(state);
+        setSheet({
+          provider: target,
+          profileId: plan.profileId,
+          authorizationInput: "",
+          deviceCode: plan.deviceCode,
+          status: plan.status,
+        });
+        return;
+      }
+      // 其他平台保持原流程：先打开授权页，关闭后再进入粘贴页。
       const mode = await openAuthorizationPage(started.url);
       setSheet({
         provider: target,
@@ -126,7 +152,7 @@ export function StatusPage(props: {
     } catch (error) {
       setSheet({
         provider: target,
-        profileId: profileId || target,
+        profileId: activeProfileId,
         authorizationInput: "",
         status: "启动授权失败：" + errorText(error),
       });
