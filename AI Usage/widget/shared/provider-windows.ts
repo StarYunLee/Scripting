@@ -51,7 +51,8 @@ function windowTitle(
     if (id.includes("3p_weekly")) return `Claude/GPT ${PERIOD.WEEKLY.widget}`;
   }
 
-  // ChatGPT 的附加额度（例如 Spark）可与通用 weekly 同周期；限定词不可丢。
+  // ChatGPT 的附加额度（例如 Spark）可与通用 weekly 同周期；
+  // 产品限定词必须保留，绝不能退化成裸 7D。
   if (provider === "codex" && /spark/i.test(`${rawId} ${label}`)) {
     const lower = label.toLowerCase();
     if (name === "weekly" || /周|week|7\s*d/.test(lower)) {

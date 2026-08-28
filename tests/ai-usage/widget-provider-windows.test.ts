@@ -66,6 +66,34 @@ test("preserves product qualifiers while compacting only the period", () => {
   ]);
 });
 
+test("qualified labels never collapse to bare or internal shorthand", () => {
+  const rows = [
+    ...providerWidgetWindowRows(
+      "codex",
+      snapshot("codex", [
+        window("weekly", {
+          id: "codex:spark-weekly",
+          label: "Spark 每周",
+        }),
+      ]),
+    ),
+    ...providerWidgetWindowRows(
+      "antigravity",
+      snapshot("other", [
+        window("3p_5h", { label: "Claude and GPT 5 小时" }),
+        window("3p_weekly", { label: "Claude and GPT 每周" }),
+      ]),
+    ),
+  ];
+  assert.deepEqual(rows.map((row) => row.label), [
+    "Spark 7D",
+    "Claude/GPT 5H",
+    "Claude/GPT 7D",
+  ]);
+  assert.equal(rows.some((row) => row.label === "7D"), false);
+  assert.equal(rows.some((row) => /\b3P\b/.test(row.label)), false);
+});
+
 test("maps generic five hour and weekly windows to single-line 5H and 7D titles", () => {
   const rows = providerWidgetWindowRows(
     "kimi",
