@@ -19,6 +19,7 @@ import { PageBackground } from "../components/PageBackground";
 import { usePageToolbar } from "../components/PageToolbar";
 import { UsageCardView } from "../components/UsageCardView";
 import { type AuthSheet, type ProviderId, type UsageCard } from "../models";
+import { parseMinimaxAuthChoice } from "../providers/minimax/auth-choice";
 import { openAuthorizationPage } from "../services/browser";
 import { getPendingAuthorizationState } from "../providers/copilot/oauth";
 import {
@@ -123,7 +124,27 @@ export function StatusPage(props: {
     setBusy(true);
     let activeProfileId = profileId || target;
     try {
-      const started = await beginProviderAuth(target, profileId);
+      const minimaxRegion =
+        target === "minimax"
+          ? parseMinimaxAuthChoice(
+              (await Dialog.actionSheet({
+                title: "选择 MiniMax 站点",
+                message:
+                  "Subscription Key 必须从对应站点获取；稍后仍会用真实额度行校验区域。",
+                actions: [
+                  { label: "国际站 · minimax.io" },
+                  { label: "国内站 · minimaxi.com" },
+                ],
+                cancelButton: true,
+              })) ?? -1,
+            )
+          : null;
+      if (target === "minimax" && !minimaxRegion) return;
+      const started = await beginProviderAuth(
+        target,
+        profileId,
+        minimaxRegion || undefined,
+      );
       activeProfileId = started.profileId;
       if (target === "copilot") {
         const state = getPendingAuthorizationState();
@@ -145,13 +166,17 @@ export function StatusPage(props: {
         profileId: started.profileId,
         authorizationInput: "",
         status:
-          target === "zai"
+          target === "minimax"
             ? mode === "present"
-              ? "关闭控制台后，把 API Key 粘贴到下方并提交"
-              : "已打开 API Key 控制台，复制 Key 后粘贴到下方并提交"
-            : mode === "present"
-              ? "关闭授权页后，把回调地址或授权码粘贴到下方"
-              : "已在系统 Safari 打开授权页，完成后把回调地址或授权码粘贴到下方",
+              ? `关闭 ${minimaxRegion === "cn" ? "国内站" : "国际站"}控制台后，粘贴 Subscription Key`
+              : `已打开 MiniMax ${minimaxRegion === "cn" ? "国内站" : "国际站"}控制台，复制 Subscription Key 后粘贴`
+            : target === "zai"
+              ? mode === "present"
+                ? "关闭控制台后，把 API Key 粘贴到下方并提交"
+                : "已打开 API Key 控制台，复制 Key 后粘贴到下方并提交"
+              : mode === "present"
+                ? "关闭授权页后，把回调地址或授权码粘贴到下方"
+                : "已在系统 Safari 打开授权页，完成后把回调地址或授权码粘贴到下方",
       });
     } catch (error) {
       setSheet({

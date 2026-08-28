@@ -7,6 +7,7 @@ import { fetchUsage as fetchCursorUsage } from "./cursor/api";
 import { fetchUsage as fetchKimiUsage } from "./kimi/api";
 import { fetchUsage as fetchCopilotUsage } from "./copilot/api";
 import { fetchUsage as fetchZaiUsage } from "./zai/api";
+import { fetchUsage as fetchMinimaxUsage } from "./minimax/api";
 import type { ProviderId } from "../models";
 import type { UsageProvider } from "./contracts";
 
@@ -42,6 +43,10 @@ export const USAGE_PROVIDERS = {
   zai: {
     ...ACCOUNT_PROVIDERS.zai,
     fetch: fetchZaiUsage,
+  },
+  minimax: {
+    ...ACCOUNT_PROVIDERS.minimax,
+    fetch: fetchMinimaxUsage,
   },
 } satisfies Record<ProviderId, UsageProvider>;
 

@@ -86,6 +86,12 @@ export const RefreshAIUsageZaiIntent = AppIntentManager.register({
   perform: async () => refreshProviderIntent("zai"),
 });
 
+export const RefreshAIUsageMinimaxIntent = AppIntentManager.register({
+  name: "RefreshAIUsageMinimaxIntent",
+  protocol: AppIntentProtocol.AppIntent,
+  perform: async () => refreshProviderIntent("minimax"),
+});
+
 export const RefreshAIUsageAllIntent = AppIntentManager.register({
   name: "RefreshAIUsageAllIntent",
   protocol: AppIntentProtocol.AppIntent,

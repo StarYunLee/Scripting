@@ -77,12 +77,13 @@ export function listAuthorizedCards(): UsageCard[] {
 export async function beginProviderAuth(
   provider: ProviderId,
   profileId?: string,
+  input?: string,
 ): Promise<{ profileId: string; url: string }> {
   if (isDemoMode()) throw new Error("演示模式不会发起真实授权");
   const api = getProvider(provider);
   const account = profileId ? { id: profileId } : api.create();
   try {
-    const url = await api.auth.start(account.id);
+    const url = await api.auth.start(account.id, input);
     writeLog({
       level: "info",
       source: "app",

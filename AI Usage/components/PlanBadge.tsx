@@ -44,7 +44,9 @@ export function PlanBadge(props: {
                 ? "COPILOT"
                 : props.provider === "zai"
                   ? "Z.AI"
-                  : "ANTIGRAVITY";
+                  : props.provider === "minimax"
+                    ? "MINIMAX"
+                    : "ANTIGRAVITY";
   const text = recipe.text === providerText ? "" : recipe.text;
   return (
     <HStack
