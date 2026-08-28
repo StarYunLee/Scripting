@@ -9,7 +9,7 @@
 - **直接安装**：点击项目下的安装链接，下载当前包并用 Scripting 打开。适合第一次安装。
 - **远程导入**：复制项目下的远程地址，在 Scripting 中选择「导入远程脚本」并粘贴导入。
 
-直接安装只拿到当时那一份，之后更新仓库不会自动同步。远程导入由 Scripting 记住该地址；只有安装包启用了自动更新，才会定期检查新版本。目前仅 AI Usage 与 GitHub Stars 会每日检查，其余项目仍需重新导入。
+直接安装只拿到当时那一份，之后更新仓库不会自动同步。远程导入由 Scripting 记住该地址；只有安装包启用了自动更新，才会定期检查新版本。目前 AI Usage、GitHub Stars 与 Icon Library 会每日检查，其余项目仍需重新导入。
 
 ## 目录
 
@@ -17,6 +17,7 @@
 
 - [AI Usage](#ai-usage)
 - [GitHub Stars](#github-stars)
+- [Icon Library](#icon-library)
 - [Surge Metrics](#surge-metrics)
 
 ### 已归档
@@ -70,6 +71,28 @@ https://raw.githubusercontent.com/StarYunLee/Scripting/main/AI-Usage.scripting
 
 ```text
 https://raw.githubusercontent.com/StarYunLee/Scripting/main/GitHub-Stars.scripting
+```
+
+### Icon Library
+
+用 GitHub 公开仓库托管自建图标库，按仓库独立授权，支持浏览、上传、删除和自动生成订阅索引。可从相册、文件、Lobe 品牌图标和 App Store 应用图标导入；也可订阅别人的公开图标索引，只读浏览、复制引用或导出 PNG。
+
+<table>
+  <tr>
+    <td align="center" width="25%"><img src="./Icon%20Library/assets/icon-library-preview-icons.jpeg" alt="Icon Library 图标页预览" /></td>
+    <td align="center" width="25%"><img src="./Icon%20Library/assets/icon-library-preview-subscriptions.jpeg" alt="Icon Library 订阅页预览" /></td>
+    <td align="center" width="25%"><img src="./Icon%20Library/assets/icon-library-preview-upload.jpeg" alt="Icon Library 上传页预览" /></td>
+    <td align="center" width="25%"><img src="./Icon%20Library/assets/icon-library-preview-settings.jpeg" alt="Icon Library 设置页预览" /></td>
+  </tr>
+</table>
+
+- [查看源码与使用说明](./Icon%20Library/)
+- [直接安装 Icon-Library.scripting](https://raw.githubusercontent.com/StarYunLee/Scripting/main/Icon-Library.scripting)
+
+远程导入地址：
+
+```text
+https://raw.githubusercontent.com/StarYunLee/Scripting/main/Icon-Library.scripting
 ```
 
 ### Surge Metrics

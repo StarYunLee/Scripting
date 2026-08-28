@@ -1,0 +1,53 @@
+# macOS / iOS metadata
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Node tooling and local caches
+node_modules/
+.npm/
+.pnpm-store/
+.yarn/
+.esbuild/
+
+# Build and coverage output
+dist/
+build/
+out/
+coverage/
+*.map
+*.tsbuildinfo
+
+# Local environment and credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.mobileprovision
+
+# Logs, diagnostics, and temporary data
+*.log
+*.tmp
+*.temp
+.cache/
+.learnings/
+local/
+exports/
+downloads/
+
+# Packaged artifacts
+*.scripting
+*.zip
+
+# Host-synced Scripting type stubs
+types/device/

@@ -1,0 +1,30 @@
+{
+  "icon": "square.grid.2x2.fill",
+  "name": "Icon Library",
+  "color": "rgba(52, 120, 246, 1)",
+  "entry": "index.tsx",
+  "permissions": null,
+  "runInApp": true,
+  "contributors": [],
+  "version": "1.0.0",
+  "intentInputTypes": [],
+  "localizedNames": {
+    "zh": "Icon Library",
+    "en": "Icon Library"
+  },
+  "description": "Manage multiple public GitHub icon libraries with profile-scoped access tokens.",
+  "remoteResource": {
+    "url": "https://raw.githubusercontent.com/StarYunLee/Scripting/main/Icon-Library.scripting",
+    "autoUpdateInterval": 86400
+  },
+  "author": {
+    "name": "StarYunLee",
+    "email": null,
+    "homepage": "https://github.com/StarYunLee"
+  },
+  "localizedDescriptions": {
+    "zh": "管理多个 GitHub 公开图标库，按仓库独立授权、浏览和上传图标。",
+    "en": "Manage multiple public GitHub icon libraries with separate access tokens."
+  },
+  "iconImage": null
+}
