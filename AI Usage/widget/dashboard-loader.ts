@@ -9,6 +9,7 @@ import {
   type DashboardRefreshResult,
 } from "../services/dashboard-widget-refresh";
 import { refreshAccounts } from "../services/refresh";
+import { partitionDashboardCards } from "../services/refresh-policy";
 import { getProvider } from "../providers/registry";
 import type { UsageCard } from "../models";
 
@@ -43,8 +44,17 @@ export async function loadDashboardWidgetUsage(): Promise<DashboardWidgetData> {
     };
   }
 
+  // Cache-first：已有缓存的卡片绝不联网；仅补「无缓存」的卡片。
+  const { missing } = partitionDashboardCards(selected);
+  if (!missing.length) {
+    return {
+      cards: applyDashboardPrefs(selected, prefs),
+      hasErrors: selected.some((card) => card.source === "error"),
+    };
+  }
+
   const summary = await refreshAccounts(
-    selected.map((card) => ({
+    missing.map((card) => ({
       provider: card.provider,
       profileId: card.accountId,
     })),

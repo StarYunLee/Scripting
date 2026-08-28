@@ -28,8 +28,12 @@ import {
   planPendingCopilotAuthorization,
 } from "../providers/copilot/auth-flow";
 import { refreshAccounts } from "../services/refresh";
+import { selectAutoRefreshTargets } from "../services/refresh-policy";
 import { requestWidgetReload } from "../services/widgets";
-import { type BackgroundThemeId } from "../services/settings";
+import {
+  getAppDisplaySettings,
+  type BackgroundThemeId,
+} from "../services/settings";
 
 function errorText(error: unknown): string {
   if (error instanceof Error && error.message) return error.message;
@@ -101,21 +105,57 @@ export function StatusPage(props: {
   useEffect(() => {
     const authorized = listAllAuthorizedCards();
     if (!authorized.length || props.demoMode) return;
+    // 首帧直接用缓存渲染（cards 初值即来自 usage.cache）；
+    // 后台只补「无缓存」或「缓存已超过全局 reloadMinutes」的账号，有界并发。
+    const targets = selectAutoRefreshTargets(
+      authorized.map((card) => ({
+        provider: card.provider,
+        profileId: card.accountId,
+        fetchedAt: card.fetchedAt,
+      })),
+      {
+        now: Date.now(),
+        reloadMinutes: getAppDisplaySettings().reloadMinutes,
+      },
+    );
+    if (!targets.length) return;
     let cancelled = false;
     (async () => {
-      for (const card of authorized) {
-        if (cancelled) return;
-        try {
-          const next = await refreshCard(card.provider, card.accountId, false);
-          if (!cancelled) {
-            setCards((current) =>
-              current.map((item) => (item.key === next.key ? next : item)),
+      await refreshAccounts(
+        targets.map((target) => ({
+          provider: target.provider,
+          profileId: target.profileId,
+        })),
+        { force: false, source: "app" },
+        {
+          onStart: (target) => {
+            if (cancelled) return;
+            setCardRefreshState(`${target.provider}:${target.profileId}`, true);
+          },
+          onResult: (outcome) => {
+            if (cancelled) return;
+            const key = `${outcome.provider}:${outcome.profileId}`;
+            if (!outcome.ok) {
+              setCardRefreshState(key, false, "failure");
+              return;
+            }
+            const account = listProviderAccounts(outcome.provider).find(
+              (item) => item.id === outcome.profileId,
             );
-          }
-        } catch {
-          /* keep cache card */
-        }
-      }
+            if (!account) {
+              setCardRefreshState(key, false, "failure");
+              return;
+            }
+            const next = buildCard(outcome.provider, account, {
+              source: outcome.source || "live",
+            });
+            setCards((current) =>
+              current.map((item) => (item.key === key ? next : item)),
+            );
+            setCardRefreshState(key, false, "success");
+          },
+        },
+      );
     })();
     return () => {
       cancelled = true;

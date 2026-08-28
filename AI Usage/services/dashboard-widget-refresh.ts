@@ -29,7 +29,9 @@ export function mergeDashboardRefreshOutcomes(
   const merged = cards.map((card) => {
     const outcome = byKey.get(card.key);
     if (!outcome) {
-      hasErrors = true;
+      // 未参与本轮刷新的卡片（cache-first 下已有缓存的卡）原样保留；
+      // 只有卡片本身已处于错误态才计入 hasErrors。
+      if (card.source === "error") hasErrors = true;
       return card;
     }
     if (!outcome.ok) {

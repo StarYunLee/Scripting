@@ -8,6 +8,7 @@ import {
 import { parseZaiQuota, parseZaiSubscription } from "./usage-parser";
 import { refreshOAuthToken, zaiRequestHeaders } from "./oauth";
 import { createUsageCache } from "../../services/usage-cache";
+import { shouldServeCache } from "../../services/refresh-policy";
 import type { UsageResult, UsageSnapshot, ZaiRegion } from "./types";
 
 const CACHE_KEY = "ai_usage_zai_cache_v1";
@@ -64,9 +65,6 @@ export const getCachedUsage = (profileId?: string | null) => usageCache.read(pro
 export function clearUsageCache(profileId?: string | null) {
   usageCache.clear(profileId);
 }
-function recent(cache: UsageSnapshot | null) {
-  return usageCache.recent(cache);
-}
 function recoverRecentCache(profileId: string, force: boolean): UsageResult | null {
   return usageCache.recoverRecent(profileId, force) as UsageResult | null;
 }
@@ -107,7 +105,8 @@ export async function fetchUsage(options?: {
     };
 
   const cache = readCache(profile.id);
-  if (!options?.force && recent(cache)) return { ok: true, snapshot: cache! };
+  if (shouldServeCache(cache, options, MIN_LIVE_INTERVAL_MS))
+    return { ok: true, snapshot: cache! };
 
   let token = await refreshOAuthToken(profile.id);
   if (!token) token = getProfileAccessToken(profile.id);

@@ -9,6 +9,8 @@ import { formatPlanLabel, inferPlanFromLimit } from "./format";
 import { minimaxRequestHeaders, refreshOAuthToken } from "./oauth";
 import { quotaUrls, regionProbeOrder } from "./regions";
 import { hasMinimaxQuotaRows, parseMinimaxQuota } from "./usage-parser";
+import { createUsageCache } from "../../services/usage-cache";
+import { shouldServeCache } from "../../services/refresh-policy";
 import type {
   MinimaxRegion,
   UsageResult,
@@ -17,65 +19,32 @@ import type {
 
 const CACHE_KEY = "ai_usage_minimax_cache_v1";
 const MIN_LIVE_INTERVAL_MS = 3 * 60_000;
-const memoryCache = new Map<string, UsageSnapshot | null>();
 
-function cacheKey(profileId: string): string {
-  return `${CACHE_KEY}_${profileId}`;
-}
+const usageCache = createUsageCache<UsageSnapshot>({
+  keyPrefix: `${CACHE_KEY}_`,
+  resolveProfileId: (profileId) => resolveProfile(profileId)?.id || null,
+  recentMs: MIN_LIVE_INTERVAL_MS,
+});
 
 function readCache(profileId?: string | null): UsageSnapshot | null {
-  const profile = resolveProfile(profileId);
-  if (!profile) return null;
-  if (memoryCache.has(profile.id)) return memoryCache.get(profile.id) || null;
-  try {
-    const value = Storage.get<UsageSnapshot>(cacheKey(profile.id));
-    const snapshot = value?.fetchedAt
-      ? ({ ...value, source: "cache" } as UsageSnapshot)
-      : null;
-    memoryCache.set(profile.id, snapshot);
-    return snapshot;
-  } catch {
-    memoryCache.set(profile.id, null);
-    return null;
-  }
+  return usageCache.read(profileId);
 }
 
 function writeCache(profileId: string, value: UsageSnapshot): void {
-  const snapshot = { ...value, source: "cache" } as UsageSnapshot;
-  try {
-    if (Storage.set(cacheKey(profileId), snapshot))
-      memoryCache.set(profileId, snapshot);
-  } catch {
-    /* ignore */
-  }
+  usageCache.write(profileId, value);
 }
 
 export const getCachedUsage = readCache;
 
 export function clearUsageCache(profileId?: string | null): void {
-  const profile = resolveProfile(profileId);
-  if (!profile) return;
-  try {
-    Storage.remove(cacheKey(profile.id));
-    memoryCache.set(profile.id, null);
-  } catch {
-    /* ignore */
-  }
-}
-
-function recent(cache: UsageSnapshot | null): boolean {
-  if (!cache?.fetchedAt) return false;
-  const fetchedAt = new Date(cache.fetchedAt).getTime();
-  return Number.isFinite(fetchedAt) && Date.now() - fetchedAt < MIN_LIVE_INTERVAL_MS;
+  usageCache.clear(profileId);
 }
 
 function recoverRecentCache(
   profileId: string,
   force: boolean,
 ): UsageResult | null {
-  if (force) return null;
-  const snapshot = readCache(profileId);
-  return recent(snapshot) ? { ok: true, snapshot: snapshot! } : null;
+  return usageCache.recoverRecent(profileId, force) as UsageResult | null;
 }
 
 type QuotaRequestResult =
@@ -125,7 +94,8 @@ export async function fetchUsage(options?: {
     };
 
   const cache = readCache(profile.id);
-  if (!options?.force && recent(cache)) return { ok: true, snapshot: cache! };
+  if (shouldServeCache(cache, options, MIN_LIVE_INTERVAL_MS))
+    return { ok: true, snapshot: cache! };
 
   let token = await refreshOAuthToken(profile.id);
   if (!token) token = getProfileAccessToken(profile.id);

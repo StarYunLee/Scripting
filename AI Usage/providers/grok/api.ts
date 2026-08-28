@@ -1,4 +1,6 @@
 import { fetch, Response } from "scripting";
+import { createUsageCache } from "../../services/usage-cache";
+import { shouldServeCache } from "../../services/refresh-policy";
 import { GROK_WINDOW } from "../../copy/labels";
 import {
   getProfileAccessToken,
@@ -276,52 +278,27 @@ function parseWeekly(payload: Record<string, unknown>): ParsedWeekly | null {
     planLabel: planLabel(config.subscriptionTier ?? payload.subscriptionTier),
   };
 }
-function cacheKey(profileId: string): string {
-  return `${CACHE_KEY}_${profileId}`;
-}
+const usageCache = createUsageCache<UsageSnapshot>({
+  keyPrefix: `${CACHE_KEY}_`,
+  resolveProfileId: (profileId) => resolveProfile(profileId)?.id || null,
+  recentMs: MIN_LIVE_INTERVAL_MS,
+});
 function readCache(profileId?: string | null): UsageSnapshot | null {
-  const profile = resolveProfile(profileId);
-  if (!profile) return null;
-  try {
-    const v = Storage.get<UsageSnapshot>(cacheKey(profile.id));
-    return v?.fetchedAt ? { ...v, source: "cache" } : null;
-  } catch {
-    return null;
-  }
+  return usageCache.read(profileId);
 }
 function writeCache(profileId: string, value: UsageSnapshot): void {
-  try {
-    Storage.set(cacheKey(profileId), { ...value, source: "cache" });
-  } catch {
-    /* ignore */
-  }
+  usageCache.write(profileId, value);
 }
 export const getCachedUsage = (profileId?: string | null) =>
   readCache(profileId);
 export function clearUsageCache(profileId?: string | null): void {
-  const p = resolveProfile(profileId);
-  if (p)
-    try {
-      Storage.remove(cacheKey(p.id));
-    } catch {
-      /* ignore */
-    }
-}
-function recent(cache: UsageSnapshot | null): boolean {
-  if (!cache?.fetchedAt) return false;
-  const fetchedAt = new Date(cache.fetchedAt).getTime();
-  return (
-    Number.isFinite(fetchedAt) && Date.now() - fetchedAt < MIN_LIVE_INTERVAL_MS
-  );
+  usageCache.clear(profileId);
 }
 function recoverRecentCache(
   profileId: string,
   force: boolean,
 ): UsageResult | null {
-  if (force) return null;
-  const latest = readCache(profileId);
-  if (!recent(latest)) return null;
-  return { ok: true, snapshot: latest! };
+  return usageCache.recoverRecent(profileId, force) as UsageResult | null;
 }
 
 export async function fetchUsage(options?: {
@@ -337,8 +314,7 @@ export async function fetchUsage(options?: {
     };
   const cache = readCache(profile.id);
   const userId = getProfileAccountId(profile.id);
-  const cacheIsRecent = recent(cache);
-  if (!options?.force && cacheIsRecent) {
+  if (shouldServeCache(cache, options, MIN_LIVE_INTERVAL_MS)) {
     return { ok: true, snapshot: cache! };
   }
   let token = await refreshOAuthToken(

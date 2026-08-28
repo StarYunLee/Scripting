@@ -7,6 +7,7 @@ import {
 } from "./oauth";
 import { parseCopilotUsage } from "./usage-parser";
 import { createUsageCache } from "../../services/usage-cache";
+import { shouldServeCache } from "../../services/refresh-policy";
 import type { UsageResult, UsageSnapshot } from "./types";
 
 const USAGE_URL = "https://api.github.com/copilot_internal/user";
@@ -44,7 +45,7 @@ export async function fetchUsage(options?: {
     };
   }
   const cache = usageCache.read(profile.id);
-  if (!options?.force && usageCache.recent(cache)) {
+  if (shouldServeCache(cache, options, MIN_LIVE_INTERVAL_MS)) {
     return { ok: true, snapshot: cache! };
   }
   let token = await refreshOAuthToken(profile.id, Boolean(options?.force));

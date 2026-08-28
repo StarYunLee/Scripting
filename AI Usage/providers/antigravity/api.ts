@@ -1,4 +1,6 @@
 import { fetch, Response } from "scripting";
+import { createUsageCache } from "../../services/usage-cache";
+import { shouldServeCache } from "../../services/refresh-policy";
 import {
   getProfileAccessToken,
   resolveProfile,
@@ -32,46 +34,25 @@ function upstreamError(message: string, status?: number): UpstreamError {
   return error;
 }
 
-function cacheKey(profileId: string): string {
-  return `${CACHE_KEY}_${profileId}`;
-}
+const usageCache = createUsageCache<UsageSnapshot>({
+  keyPrefix: `${CACHE_KEY}_`,
+  resolveProfileId: (profileId) => resolveProfile(profileId)?.id || null,
+  recentMs: MIN_LIVE_INTERVAL_MS,
+});
 
 function readCache(profileId?: string | null): UsageSnapshot | null {
-  const profile = resolveProfile(profileId);
-  if (!profile) return null;
-  try {
-    const value = Storage.get<UsageSnapshot>(cacheKey(profile.id));
-    return value?.fetchedAt ? { ...value, source: "cache" } : null;
-  } catch {
-    return null;
-  }
+  return usageCache.read(profileId);
 }
 
 function writeCache(profileId: string, value: UsageSnapshot): void {
-  try {
-    Storage.set(cacheKey(profileId), { ...value, source: "cache" });
-  } catch {
-    /* ignore */
-  }
+  usageCache.write(profileId, value);
 }
 
 export const getCachedUsage = (profileId?: string | null) =>
   readCache(profileId);
 
 export function clearUsageCache(profileId?: string | null): void {
-  const profile = resolveProfile(profileId);
-  if (!profile) return;
-  try {
-    Storage.remove(cacheKey(profile.id));
-  } catch {
-    /* ignore */
-  }
-}
-
-function recent(cache: UsageSnapshot | null): boolean {
-  if (!cache?.fetchedAt) return false;
-  const time = new Date(cache.fetchedAt).getTime();
-  return Number.isFinite(time) && Date.now() - time < MIN_LIVE_INTERVAL_MS;
+  usageCache.clear(profileId);
 }
 
 function authHeaders(token: string): Record<string, string> {
@@ -217,7 +198,8 @@ export async function fetchUsage(options?: {
     };
   }
   const cache = readCache(profile.id);
-  if (!options?.force && recent(cache)) return { ok: true, snapshot: cache! };
+  if (shouldServeCache(cache, options, MIN_LIVE_INTERVAL_MS))
+    return { ok: true, snapshot: cache! };
 
   let token = await refreshOAuthToken(profile.id);
   if (!token) token = getProfileAccessToken(profile.id);

@@ -1,12 +1,16 @@
 import { fetch, Response } from "scripting";
+import { createUsageCache } from "../../services/usage-cache";
+import { shouldServeCache } from "../../services/refresh-policy";
 import { claudeScopedAppLabel, PERIOD } from "../../copy/labels";
 import { getProfileAccessToken, resolveProfile } from "./accounts";
 import { refreshOAuthToken } from "./oauth";
+import { planLabelFromProfile, planLabelFromUsage } from "./plan-label";
 import type { LimitWindow, UsageResult, UsageSnapshot } from "./types";
 
 const CACHE_KEY = "ai_usage_claude_cache_v1";
 const RATE_LIMIT_KEY = "ai_usage_claude_rate_limit_v1";
 const USAGE_URL = "https://api.anthropic.com/api/oauth/usage";
+const PROFILE_URL = "https://api.anthropic.com/api/oauth/profile";
 const MIN_LIVE_INTERVAL_MS = 3 * 60_000;
 const DEFAULT_RATE_LIMIT_MS = 5 * 60_000;
 const CLIENT_USER_AGENT = "claude-code/2.1.239";
@@ -152,31 +156,26 @@ function mergeScopedLimits(
   }
   return windows;
 }
-function planLabel(payload: Record<string, unknown>): string | null {
-  for (const key of [
-    "subscription_type",
-    "rate_limit_tier",
-    "plan_type",
-    "plan",
-  ]) {
-    const value = payload[key];
-    if (typeof value === "string" && value.trim()) {
-      const clean = value
-        .replace(/^default_claude_?/i, "")
-        .replace(/[_-]+/g, " ")
-        .trim();
-      if (/^max\s*20x$/i.test(clean)) return "Claude Max 20×";
-      if (/^max\s*5x$/i.test(clean)) return "Claude Max 5×";
-      if (/^pro$/i.test(clean)) return "Claude Pro";
-      if (/^team/i.test(clean)) return "Claude Team";
-      return clean.replace(/\b\w/g, (c) => c.toUpperCase());
-    }
+async function fetchPlanFromProfile(token: string): Promise<string | null> {
+  try {
+    const response = await fetch(PROFILE_URL, {
+      method: "GET",
+      headers: usageHeaders(token),
+      timeout: 15,
+      debugLabel: "ClaudeOAuthProfile",
+    });
+    if (!response.ok) return null;
+    const payload = asObject(JSON.parse(await response.text()));
+    return payload ? planLabelFromProfile(payload) : null;
+  } catch {
+    return null;
   }
-  return null;
 }
-function cacheKey(profileId: string): string {
-  return `${CACHE_KEY}_${profileId}`;
-}
+const usageCache = createUsageCache<UsageSnapshot>({
+  keyPrefix: `${CACHE_KEY}_`,
+  resolveProfileId: (profileId) => resolveProfile(profileId)?.id || null,
+  recentMs: MIN_LIVE_INTERVAL_MS,
+});
 function rateLimitKey(profileId: string): string {
   return `${RATE_LIMIT_KEY}_${profileId}`;
 }
@@ -219,29 +218,18 @@ function parseRetryAfter(response: Response): number {
   return Date.now() + DEFAULT_RATE_LIMIT_MS;
 }
 function readCache(profileId?: string | null): UsageSnapshot | null {
-  const profile = resolveProfile(profileId);
-  if (!profile) return null;
-  try {
-    const v = Storage.get<UsageSnapshot>(cacheKey(profile.id));
-    return v?.fetchedAt ? { ...v, source: "cache" } : null;
-  } catch {
-    return null;
-  }
+  return usageCache.read(profileId);
 }
 function writeCache(profileId: string, value: UsageSnapshot): void {
-  try {
-    Storage.set(cacheKey(profileId), { ...value, source: "cache" });
-  } catch {
-    /* ignore */
-  }
+  usageCache.write(profileId, value);
 }
 export const getCachedUsage = (profileId?: string | null) =>
   readCache(profileId);
 export function clearUsageCache(profileId?: string | null): void {
+  usageCache.clear(profileId);
   const p = resolveProfile(profileId);
   if (!p) return;
   try {
-    Storage.remove(cacheKey(p.id));
     Storage.remove(rateLimitKey(p.id));
   } catch {
     /* ignore */
@@ -252,13 +240,6 @@ export function pickFocusWindow(
   focus: "five_hour" | "weekly" | "weekly_fable" = "five_hour",
 ): LimitWindow | null {
   return snapshot.windows.find((w) => w.name === focus) || null;
-}
-function recent(cache: UsageSnapshot | null): boolean {
-  if (!cache?.fetchedAt) return false;
-  const fetchedAt = new Date(cache.fetchedAt).getTime();
-  return (
-    Number.isFinite(fetchedAt) && Date.now() - fetchedAt < MIN_LIVE_INTERVAL_MS
-  );
 }
 async function requestUsage(token: string): Promise<Response> {
   return fetch(USAGE_URL, {
@@ -298,8 +279,7 @@ export async function fetchUsage(options?: {
       cache,
     };
   }
-  const cacheIsRecent = recent(cache);
-  if (!options?.force && cacheIsRecent) {
+  if (shouldServeCache(cache, options, MIN_LIVE_INTERVAL_MS)) {
     return { ok: true, snapshot: cache! };
   }
 
@@ -402,7 +382,11 @@ export async function fetchUsage(options?: {
     }
 
     const plan =
-      planLabel(payload) || cache?.planLabel || cache?.planType || "Claude";
+      (await fetchPlanFromProfile(token)) ||
+      planLabelFromUsage(payload) ||
+      cache?.planLabel ||
+      cache?.planType ||
+      "Claude";
     const snapshot: UsageSnapshot = {
       windows,
       fiveHour,

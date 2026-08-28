@@ -6,6 +6,7 @@ import {
 } from "./accounts";
 import { ensureAccountEmail, refreshOAuthToken } from "./oauth";
 import { createUsageCache } from "../../services/usage-cache";
+import { shouldServeCache } from "../../services/refresh-policy";
 import {
   cursorSnapshot,
   parseCursorCurrentUsage,
@@ -247,7 +248,7 @@ export async function fetchUsage(options?: {
       }
     }
   }
-  if (!options?.force && usageCache.recent(cache)) {
+  if (shouldServeCache(cache, options, MIN_LIVE_INTERVAL_MS)) {
     return { ok: true, snapshot: cache! };
   }
   let token = await refreshOAuthToken(

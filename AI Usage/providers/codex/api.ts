@@ -6,6 +6,9 @@ import {
   resolveProfile,
 } from "./accounts";
 import { refreshOAuthToken } from "./oauth";
+import { codexPlanLabel } from "./plan-label";
+import { createUsageCache } from "../../services/usage-cache";
+import { shouldServeCache } from "../../services/refresh-policy";
 import type {
   CodexCreditStatus,
   CodexSpendControl,
@@ -180,37 +183,6 @@ function extractWindows(payload: Record<string, unknown>): LimitWindow[] {
     (a, b) => (a.windowSeconds || 1e20) - (b.windowSeconds || 1e20),
   );
 }
-function planLabel(payload: Record<string, unknown>): string | null {
-  const raw = toStringValue(payload.plan_type)?.toLowerCase();
-  if (!raw) return null;
-  const labels: Record<string, string> = {
-    guest: "Guest",
-    free: "Free",
-    go: "Go",
-    plus: "Plus",
-    pro: "Pro",
-    prolite: "Pro Lite",
-    free_workspace: "Free Workspace",
-    team: "Team",
-    self_serve_business_prolite: "Business Pro Lite",
-    self_serve_business_usage_based: "Business",
-    business: "Business",
-    ent26: "Enterprise",
-    enterprise_cbp_automation: "Enterprise",
-    enterprise_cbp_usage_based: "Enterprise",
-    enterprise: "Enterprise",
-    education: "Education",
-    edu: "Education",
-    edu_plus: "Education Plus",
-    edu_pro: "Education Pro",
-    quorum: "Quorum",
-    k12: "Education",
-  };
-  return (
-    labels[raw] ||
-    raw.replace(/(^|_)(\w)/g, (_, __, c) => ` ${c.toUpperCase()}`).trim()
-  );
-}
 function parseCreditStatus(
   payload: Record<string, unknown>,
 ): CodexCreditStatus | null {
@@ -349,36 +321,21 @@ function authHeaders(
   if (accountId) h["ChatGPT-Account-Id"] = accountId;
   return h;
 }
-function cacheKey(profileId: string): string {
-  return `${CACHE_KEY}_${profileId}`;
-}
+const usageCache = createUsageCache<UsageSnapshot>({
+  keyPrefix: `${CACHE_KEY}_`,
+  resolveProfileId: (profileId) => resolveProfile(profileId)?.id || null,
+  recentMs: MIN_LIVE_INTERVAL_MS,
+});
 function readCache(profileId?: string | null): UsageSnapshot | null {
-  const profile = resolveProfile(profileId);
-  if (!profile) return null;
-  try {
-    const v = Storage.get<UsageSnapshot>(cacheKey(profile.id));
-    return v?.fetchedAt ? { ...v, source: "cache" } : null;
-  } catch {
-    return null;
-  }
+  return usageCache.read(profileId);
 }
 function writeCache(profileId: string, v: UsageSnapshot): void {
-  try {
-    Storage.set(cacheKey(profileId), { ...v, source: "cache" });
-  } catch {
-    /* ignore */
-  }
+  usageCache.write(profileId, v);
 }
 export const getCachedUsage = (profileId?: string | null) =>
   readCache(profileId);
 export function clearUsageCache(profileId?: string | null): void {
-  const profile = resolveProfile(profileId);
-  if (!profile) return;
-  try {
-    Storage.remove(cacheKey(profile.id));
-  } catch {
-    /* ignore */
-  }
+  usageCache.clear(profileId);
 }
 
 export function pickFocusWindow(
@@ -387,21 +344,11 @@ export function pickFocusWindow(
 ): LimitWindow | null {
   return snapshot.windows.find((w) => w.name === focus) || null;
 }
-function recent(cache: UsageSnapshot | null): boolean {
-  if (!cache?.fetchedAt) return false;
-  const fetchedAt = new Date(cache.fetchedAt).getTime();
-  return (
-    Number.isFinite(fetchedAt) && Date.now() - fetchedAt < MIN_LIVE_INTERVAL_MS
-  );
-}
 function recoverRecentCache(
   profileId: string,
   force: boolean,
 ): UsageResult | null {
-  if (force) return null;
-  const latest = readCache(profileId);
-  if (!recent(latest)) return null;
-  return { ok: true, snapshot: latest! };
+  return usageCache.recoverRecent(profileId, force) as UsageResult | null;
 }
 
 export async function fetchUsage(options?: {
@@ -417,8 +364,7 @@ export async function fetchUsage(options?: {
     };
   const cache = readCache(profile.id);
   const accountId = getProfileAccountId(profile.id);
-  const cacheIsRecent = recent(cache);
-  if (!options?.force && cacheIsRecent) {
+  if (shouldServeCache(cache, options, MIN_LIVE_INTERVAL_MS)) {
     return { ok: true, snapshot: cache! };
   }
   let token = await refreshOAuthToken(
@@ -522,7 +468,7 @@ export async function fetchUsage(options?: {
       weekly: windows.find((w) => w.name === "weekly") || null,
       monthly: windows.find((w) => w.name === "monthly") || null,
       planType: rawPlanType,
-      planLabel: planLabel(payload),
+      planLabel: codexPlanLabel(payload),
       creditStatus,
       spendControl,
       rateLimitAllowed: status.allowed,

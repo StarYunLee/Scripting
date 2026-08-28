@@ -2,74 +2,57 @@ import {
   fetchUsage as fetchCodexUsage,
   getCachedUsage as getCodexCache,
 } from "../providers/codex/api";
-import { getEffectiveSettings as getCodexSettings } from "../providers/codex/credentials";
+import { cacheFirstResult } from "../services/refresh-policy";
 import type {
   UsageResult as CodexUsageResult,
-  WidgetSettings as CodexWidgetSettings,
 } from "../providers/codex/types";
 import {
   fetchUsage as fetchGrokUsage,
   getCachedUsage as getGrokCache,
 } from "../providers/grok/api";
-import { getEffectiveSettings as getGrokSettings } from "../providers/grok/credentials";
 import type {
   UsageResult as GrokUsageResult,
-  WidgetSettings as GrokWidgetSettings,
 } from "../providers/grok/types";
 import {
   fetchUsage as fetchClaudeUsage,
   getCachedUsage as getClaudeCache,
 } from "../providers/claude/api";
-import { getEffectiveSettings as getClaudeSettings } from "../providers/claude/credentials";
 import type {
   UsageResult as ClaudeUsageResult,
-  WidgetSettings as ClaudeWidgetSettings,
 } from "../providers/claude/types";
 import {
   fetchUsage as fetchAntigravityUsage,
   getCachedUsage as getAntigravityCache,
 } from "../providers/antigravity/api";
-import { getEffectiveSettings as getAntigravitySettings } from "../providers/antigravity/credentials";
 import type {
   UsageResult as AntigravityUsageResult,
-  WidgetSettings as AntigravityWidgetSettings,
 } from "../providers/antigravity/types";
 import {
   fetchUsage as fetchCursorUsage,
   getCachedUsage as getCursorCache,
 } from "../providers/cursor/api";
-import { getEffectiveSettings as getCursorSettings } from "../providers/cursor/widget-settings";
 import type { UsageResult as CursorUsageResult } from "../providers/cursor/types";
-import type { CursorWidgetSettings } from "../providers/cursor/widget-settings";
 import {
   fetchUsage as fetchKimiUsage,
   getCachedUsage as getKimiCache,
 } from "../providers/kimi/api";
-import { getEffectiveSettings as getKimiSettings } from "../providers/kimi/widget-settings";
 import type { UsageResult as KimiUsageResult } from "../providers/kimi/types";
-import type { KimiWidgetSettings } from "../providers/kimi/widget-settings";
 import {
   fetchUsage as fetchCopilotUsage,
   getCachedUsage as getCopilotCache,
 } from "../providers/copilot/api";
-import { getEffectiveSettings as getCopilotSettings } from "../providers/copilot/widget-settings";
 import type { UsageResult as CopilotUsageResult } from "../providers/copilot/types";
-import type { CopilotWidgetSettings } from "../providers/copilot/widget-settings";
 import {
   fetchUsage as fetchZaiUsage,
   getCachedUsage as getZaiCache,
 } from "../providers/zai/api";
-import { getEffectiveSettings as getZaiSettings } from "../providers/zai/widget-settings";
 import type { UsageResult as ZaiUsageResult } from "../providers/zai/types";
-import type { ZaiWidgetSettings } from "../providers/zai/widget-settings";
 import {
   fetchUsage as fetchMinimaxUsage,
   getCachedUsage as getMinimaxCache,
 } from "../providers/minimax/api";
-import { getEffectiveSettings as getMinimaxSettings } from "../providers/minimax/credentials";
 import type {
   UsageResult as MinimaxUsageResult,
-  WidgetSettings as MinimaxWidgetSettings,
 } from "../providers/minimax/types";
 import { getDemoWidgetResult, isDemoAccountId } from "../services/demo";
 import { writeLog } from "../services/logger";
@@ -79,47 +62,38 @@ export type LoadedWidgetUsage =
   | {
       provider: "codex";
       result: CodexUsageResult;
-      settings: CodexWidgetSettings;
     }
   | {
       provider: "grok";
       result: GrokUsageResult;
-      settings: GrokWidgetSettings;
     }
   | {
       provider: "claude";
       result: ClaudeUsageResult;
-      settings: ClaudeWidgetSettings;
     }
   | {
       provider: "antigravity";
       result: AntigravityUsageResult;
-      settings: AntigravityWidgetSettings;
     }
   | {
       provider: "cursor";
       result: CursorUsageResult;
-      settings: CursorWidgetSettings;
     }
   | {
       provider: "kimi";
       result: KimiUsageResult;
-      settings: KimiWidgetSettings;
     }
   | {
       provider: "copilot";
       result: CopilotUsageResult;
-      settings: CopilotWidgetSettings;
     }
   | {
       provider: "zai";
       result: ZaiUsageResult;
-      settings: ZaiWidgetSettings;
     }
   | {
       provider: "minimax";
       result: MinimaxUsageResult;
-      settings: MinimaxWidgetSettings;
     };
 
 type LoadedCodexWidget = Extract<LoadedWidgetUsage, { provider: "codex" }>;
@@ -184,7 +158,10 @@ async function loadCodex(profileId: string): Promise<LoadedCodexWidget> {
     provider: "codex",
     profileId,
     demo: () => getDemoWidgetResult("codex", profileId)!,
-    fetch: () => fetchCodexUsage({ force: false, profileId }),
+    fetch: () =>
+      cacheFirstResult(getCodexCache(profileId), () =>
+        fetchCodexUsage({ force: false, profileId }),
+      ),
     fallback: (error) => ({
       ok: false,
       error: unknownError(error),
@@ -194,7 +171,6 @@ async function loadCodex(profileId: string): Promise<LoadedCodexWidget> {
   return {
     provider: "codex",
     result,
-    settings: getCodexSettings(profileId),
   };
 }
 
@@ -203,7 +179,10 @@ async function loadGrok(profileId: string): Promise<LoadedGrokWidget> {
     provider: "grok",
     profileId,
     demo: () => getDemoWidgetResult("grok", profileId)!,
-    fetch: () => fetchGrokUsage({ force: false, profileId }),
+    fetch: () =>
+      cacheFirstResult(getGrokCache(profileId), () =>
+        fetchGrokUsage({ force: false, profileId }),
+      ),
     fallback: (error) => ({
       ok: false,
       error: unknownError(error),
@@ -213,7 +192,6 @@ async function loadGrok(profileId: string): Promise<LoadedGrokWidget> {
   return {
     provider: "grok",
     result,
-    settings: getGrokSettings(profileId),
   };
 }
 
@@ -222,7 +200,10 @@ async function loadClaude(profileId: string): Promise<LoadedClaudeWidget> {
     provider: "claude",
     profileId,
     demo: () => getDemoWidgetResult("claude", profileId)!,
-    fetch: () => fetchClaudeUsage({ force: false, profileId }),
+    fetch: () =>
+      cacheFirstResult(getClaudeCache(profileId), () =>
+        fetchClaudeUsage({ force: false, profileId }),
+      ),
     fallback: (error) => ({
       ok: false,
       error: unknownError(error),
@@ -232,7 +213,6 @@ async function loadClaude(profileId: string): Promise<LoadedClaudeWidget> {
   return {
     provider: "claude",
     result,
-    settings: getClaudeSettings(profileId),
   };
 }
 
@@ -243,7 +223,10 @@ async function loadAntigravity(
     provider: "antigravity",
     profileId,
     demo: () => getDemoWidgetResult("antigravity", profileId)!,
-    fetch: () => fetchAntigravityUsage({ force: false, profileId }),
+    fetch: () =>
+      cacheFirstResult(getAntigravityCache(profileId), () =>
+        fetchAntigravityUsage({ force: false, profileId }),
+      ),
     fallback: (error) => ({
       ok: false,
       error: unknownError(error),
@@ -253,7 +236,6 @@ async function loadAntigravity(
   return {
     provider: "antigravity",
     result,
-    settings: getAntigravitySettings(profileId),
   };
 }
 
@@ -261,12 +243,11 @@ async function loadCursor(profileId: string): Promise<LoadedCursorWidget> {
   const result = await loadProviderResult<CursorUsageResult>({
     provider: "cursor",
     profileId,
-    demo: () => ({
-      ok: false,
-      error: { code: "missing_token", message: "Cursor 演示数据未启用" },
-      cache: null,
-    }),
-    fetch: () => fetchCursorUsage({ force: false, profileId }),
+    demo: () => getDemoWidgetResult("cursor", profileId)!,
+    fetch: () =>
+      cacheFirstResult(getCursorCache(profileId), () =>
+        fetchCursorUsage({ force: false, profileId }),
+      ),
     fallback: (error) => ({
       ok: false,
       error: unknownError(error),
@@ -276,7 +257,6 @@ async function loadCursor(profileId: string): Promise<LoadedCursorWidget> {
   return {
     provider: "cursor",
     result,
-    settings: getCursorSettings(profileId),
   };
 }
 
@@ -284,12 +264,11 @@ async function loadKimi(profileId: string): Promise<LoadedKimiWidget> {
   const result = await loadProviderResult<KimiUsageResult>({
     provider: "kimi",
     profileId,
-    demo: () => ({
-      ok: false,
-      error: { code: "missing_token", message: "Kimi 演示数据未启用" },
-      cache: null,
-    }),
-    fetch: () => fetchKimiUsage({ force: false, profileId }),
+    demo: () => getDemoWidgetResult("kimi", profileId)!,
+    fetch: () =>
+      cacheFirstResult(getKimiCache(profileId), () =>
+        fetchKimiUsage({ force: false, profileId }),
+      ),
     fallback: (error) => ({
       ok: false,
       error: unknownError(error),
@@ -299,7 +278,6 @@ async function loadKimi(profileId: string): Promise<LoadedKimiWidget> {
   return {
     provider: "kimi",
     result,
-    settings: getKimiSettings(profileId),
   };
 }
 
@@ -307,12 +285,11 @@ async function loadCopilot(profileId: string): Promise<LoadedCopilotWidget> {
   const result = await loadProviderResult<CopilotUsageResult>({
     provider: "copilot",
     profileId,
-    demo: () => ({
-      ok: false,
-      error: { code: "missing_token", message: "Copilot 演示数据未启用" },
-      cache: null,
-    }),
-    fetch: () => fetchCopilotUsage({ force: false, profileId }),
+    demo: () => getDemoWidgetResult("copilot", profileId)!,
+    fetch: () =>
+      cacheFirstResult(getCopilotCache(profileId), () =>
+        fetchCopilotUsage({ force: false, profileId }),
+      ),
     fallback: (error) => ({
       ok: false,
       error: unknownError(error),
@@ -322,7 +299,6 @@ async function loadCopilot(profileId: string): Promise<LoadedCopilotWidget> {
   return {
     provider: "copilot",
     result,
-    settings: getCopilotSettings(profileId),
   };
 }
 
@@ -331,7 +307,10 @@ async function loadZai(profileId: string): Promise<LoadedZaiWidget> {
     provider: "zai",
     profileId,
     demo: () => getDemoWidgetResult("zai", profileId)!,
-    fetch: () => fetchZaiUsage({ force: false, profileId }),
+    fetch: () =>
+      cacheFirstResult(getZaiCache(profileId), () =>
+        fetchZaiUsage({ force: false, profileId }),
+      ),
     fallback: (error) => ({
       ok: false,
       error: unknownError(error),
@@ -341,7 +320,6 @@ async function loadZai(profileId: string): Promise<LoadedZaiWidget> {
   return {
     provider: "zai",
     result,
-    settings: getZaiSettings(profileId),
   };
 }
 
@@ -350,7 +328,10 @@ async function loadMinimax(profileId: string): Promise<LoadedMinimaxWidget> {
     provider: "minimax",
     profileId,
     demo: () => getDemoWidgetResult("minimax", profileId)!,
-    fetch: () => fetchMinimaxUsage({ force: false, profileId }),
+    fetch: () =>
+      cacheFirstResult(getMinimaxCache(profileId), () =>
+        fetchMinimaxUsage({ force: false, profileId }),
+      ),
     fallback: (error) => ({
       ok: false,
       error: unknownError(error),
@@ -360,7 +341,6 @@ async function loadMinimax(profileId: string): Promise<LoadedMinimaxWidget> {
   return {
     provider: "minimax",
     result,
-    settings: getMinimaxSettings(profileId),
   };
 }
 
