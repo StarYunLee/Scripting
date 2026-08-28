@@ -13,14 +13,19 @@
 
 ## 目录
 
+### 当前维护
+
 - [AI Usage](#ai-usage)
 - [GitHub Stars](#github-stars)
 - [Surge Metrics](#surge-metrics)
-- [Codex Usage](#codex-usage)（不再更新，请用 [AI Usage](#ai-usage)）
-- [Claude Usage](#claude-usage)（不再更新，请用 [AI Usage](#ai-usage)）
-- [Grok Usage](#grok-usage)（不再更新，请用 [AI Usage](#ai-usage)）
 
-## 项目
+### 已归档
+
+- [Codex Usage](#已归档项目)
+- [Claude Usage](#已归档项目)
+- [Grok Usage](#已归档项目)
+
+## 当前维护项目
 
 ### AI Usage
 
@@ -82,50 +87,17 @@ Surge iOS 运行指标小组件，通过官方 Prometheus Metrics 端点展示�
 https://raw.githubusercontent.com/StarYunLee/Scripting/main/Surge-Metrics.scripting
 ```
 
-### Codex Usage
+## 已归档项目
 
-OpenAI Codex 用量小组件，支持 OpenAI OAuth、多账号、账号级显示设置、额度窗口、用量限额重置权益及最近到期时间，以及双额度概览和单额度详情布局。
+以下项目已停止维护，相关功能已整合至 [AI Usage](#ai-usage)。为保持历史源码和安装链接可用，仓库继续保留其最终版本，但不会继续适配接口变化或修复问题；旧安装包保持最终发布版本的原始内容，不代表重新发布。
 
-![Codex Usage 小组件预览](./Codex%20Usage/assets/codex-usage-preview.png)
+| 项目 | 最终版本 | 源码 | 安装包 |
+|---|---:|---|---|
+| Codex Usage | `1.5.1` | [查看源码](./Codex%20Usage/) | [下载安装](https://raw.githubusercontent.com/StarYunLee/Scripting/main/Codex-Usage.scripting) |
+| Claude Usage | `1.3.5` | [查看源码](./Claude%20Usage/) | [下载安装](https://raw.githubusercontent.com/StarYunLee/Scripting/main/Claude-Usage.scripting) |
+| Grok Usage | `1.5.1` | [查看源码](./Grok%20Usage/) | [下载安装](https://raw.githubusercontent.com/StarYunLee/Scripting/main/Grok-Usage.scripting) |
 
-- [查看源码与使用说明](./Codex%20Usage/)
-- [直接安装 Codex-Usage.scripting](https://raw.githubusercontent.com/StarYunLee/Scripting/main/Codex-Usage.scripting)
-
-远程导入地址：
-
-```text
-https://raw.githubusercontent.com/StarYunLee/Scripting/main/Codex-Usage.scripting
-```
-
-### Claude Usage
-
-Claude Code 用量小组件，支持 Anthropic OAuth、多账号、账号级显示设置、5 小时/周限/Fable 周限、双额度概览和单额度详情布局，以及可复制的脱敏诊断报告（便于反馈 429 / 空窗）。
-
-![Claude Usage 小组件预览](./Claude%20Usage/assets/claude-usage-preview.png)
-
-- [查看源码与使用说明](./Claude%20Usage/)
-- [直接安装 Claude-Usage.scripting](https://raw.githubusercontent.com/StarYunLee/Scripting/main/Claude-Usage.scripting)
-
-远程导入地址：
-
-```text
-https://raw.githubusercontent.com/StarYunLee/Scripting/main/Claude-Usage.scripting
-```
-
-### Grok Usage
-
-Grok Build 额度小组件，支持 xAI OAuth、多账号、账号级显示设置、统一每周额度、用量限额重置权益，以及 Small、Medium 两种尺寸。
-
-![Grok Usage 小组件预览](./Grok%20Usage/assets/grok-usage-preview.png)
-
-- [查看源码与使用说明](./Grok%20Usage/)
-- [直接安装 Grok-Usage.scripting](https://raw.githubusercontent.com/StarYunLee/Scripting/main/Grok-Usage.scripting)
-
-远程导入地址：
-
-```text
-https://raw.githubusercontent.com/StarYunLee/Scripting/main/Grok-Usage.scripting
-```
+> 旧项目仅为兼容和历史参考保留。新安装和问题反馈请统一使用 AI Usage。
 
 ## 隐私
 

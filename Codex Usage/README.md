@@ -1,5 +1,8 @@
 # Codex Usage
 
+> [!WARNING]
+> 本项目已停止维护，最终版本为 `1.5.1`。相关功能已整合至 [AI Usage](../AI%20Usage/)。本目录与安装包仅为兼容旧链接和历史参考保留，不再适配平台接口变化，也不再接受功能更新。
+
 ![Codex Usage 小组件预览](assets/codex-usage-preview.png)
 
 面向 [Scripting App](https://scriptingapp.github.io/) 的非官方 Codex 用量桌面小组件。支持 OpenAI OAuth、多账号、5 小时/每周/每月额度窗口，以及 Small、Medium 两种尺寸。
