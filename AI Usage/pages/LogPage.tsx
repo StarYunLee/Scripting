@@ -1,7 +1,6 @@
-import type { ShapeStyle, VStackProps } from "scripting";
+import type { ShapeStyle } from "scripting";
 import {
   Button,
-  Divider,
   HStack,
   Image,
   List,
@@ -11,6 +10,12 @@ import {
   useState,
 } from "scripting";
 import { PageBackground } from "../components/PageBackground";
+import {
+  GlassDivider,
+  GlassGroup,
+  GlassSectionHeader,
+  glassRowBackground,
+} from "../components/GlassList";
 import { ProviderLogo } from "../components/ProviderLogo";
 import {
   clearRunRecords,
@@ -133,7 +138,12 @@ function RecordContent({ item }: { item: RunRecord }) {
         spacing={2}
         frame={{ maxWidth: "infinity", alignment: "leading" }}
       >
-        <Text font={14} fontWeight="semibold" lineLimit={1}>
+        <Text
+          font={14}
+          fontWeight="semibold"
+          lineLimit={1}
+          truncationMode="tail"
+        >
           {providerName(item.provider)}
           {item.accountLabel ? ` · ${item.accountLabel}` : ""}
         </Text>
@@ -170,32 +180,6 @@ function RecordRow({ item }: { item: RunRecord }) {
     </Button>
   ) : (
     <RecordContent item={item} />
-  );
-}
-
-function LogRowBackground() {
-  return (
-    <VStack
-      frame={{ maxWidth: "infinity", maxHeight: "infinity" }}
-      glassEffect={{
-        glass: UIGlass.regular(),
-        shape: { type: "rect", cornerRadius: 20, style: "continuous" },
-      }}
-    />
-  );
-}
-
-const logRowBackground = <LogRowBackground />;
-
-function RecordGroup(props: { children: VStackProps["children"] }) {
-  return (
-    <VStack
-      spacing={0}
-      frame={{ maxWidth: "infinity" }}
-      listRowInsets={{ top: 0, bottom: 0, leading: 16, trailing: 16 }}
-    >
-      {props.children}
-    </VStack>
   );
 }
 
@@ -247,8 +231,8 @@ export function LogPage(props: { backgroundTheme: BackgroundThemeId }) {
       }}
     >
       {!items.length ? (
-        <Section listRowBackground={logRowBackground}>
-          <RecordGroup>
+        <Section listRowBackground={glassRowBackground}>
+          <GlassGroup>
             <Text
               foregroundStyle="secondaryLabel"
               padding={{ vertical: true }}
@@ -256,16 +240,16 @@ export function LogPage(props: { backgroundTheme: BackgroundThemeId }) {
             >
               暂无运行记录
             </Text>
-          </RecordGroup>
+          </GlassGroup>
         </Section>
       ) : (
         Object.entries(grouped).map(([date, list]) => (
           <Section
             key={date}
-            header={<Text foregroundStyle="secondaryLabel">{date}</Text>}
-            listRowBackground={logRowBackground}
+            header={<GlassSectionHeader title={date} />}
+            listRowBackground={glassRowBackground}
           >
-            <RecordGroup>
+            <GlassGroup>
               {list.map((item, index) => (
                 <VStack
                   key={item.id}
@@ -273,10 +257,10 @@ export function LogPage(props: { backgroundTheme: BackgroundThemeId }) {
                   frame={{ maxWidth: "infinity" }}
                 >
                   <RecordRow item={item} />
-                  {index < list.length - 1 ? <Divider /> : null}
+                  {index < list.length - 1 ? <GlassDivider /> : null}
                 </VStack>
               ))}
-            </RecordGroup>
+            </GlassGroup>
           </Section>
         ))
       )}

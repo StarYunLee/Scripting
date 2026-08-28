@@ -42,8 +42,7 @@ function jwtEmail(token: string | null): string | null {
       ),
     ) as Record<string, unknown>;
     const profile = payload["https://api.openai.com/profile"] as
-      | Record<string, unknown>
-      | undefined;
+      Record<string, unknown> | undefined;
     const value = payload.email ?? profile?.email;
     return typeof value === "string" && value.includes("@") ? value : null;
   } catch {

@@ -13,6 +13,7 @@ import type {
   UsageResult,
   UsageSnapshot,
 } from "./types";
+import { codexWindowTitle } from "./window-titles";
 
 const CACHE_KEY = "ai_usage_codex_cache_v1";
 const USAGE_URL = "https://chatgpt.com/backend-api/wham/usage";
@@ -77,11 +78,9 @@ function inferName(seconds: number | null, text = ""): LimitWindowName {
   return "unknown";
 }
 function label(name: LimitWindowName, seconds: number | null): string {
-  if (name === "five_hour") return "5 小时";
-  if (name === "weekly") return "每周";
-  if (name === "monthly") return "每月";
+  if (name !== "unknown") return codexWindowTitle(name);
   if (seconds && seconds >= 86400) return `${Math.round(seconds / 86400)} 天`;
-  return "限额";
+  return codexWindowTitle("unknown");
 }
 function parseWindow(
   value: unknown,

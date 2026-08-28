@@ -1,6 +1,5 @@
 import {
   Button,
-  Divider,
   HStack,
   List,
   NavigationStack,
@@ -8,25 +7,16 @@ import {
   Spacer,
   Text,
   TextField,
-  VStack,
 } from "scripting";
 import { providerMeta, type AuthSheet } from "../models";
 import { PageBackground } from "./PageBackground";
+import {
+  GlassDivider,
+  GlassGroup,
+  GlassNoteRow,
+  glassRowBackground,
+} from "./GlassList";
 import type { BackgroundThemeId } from "../services/settings";
-
-function AuthRowBackground() {
-  return (
-    <VStack
-      frame={{ maxWidth: "infinity", maxHeight: "infinity" }}
-      glassEffect={{
-        glass: UIGlass.regular(),
-        shape: { type: "rect", cornerRadius: 20, style: "continuous" },
-      }}
-    />
-  );
-}
-
-const authRowBackground = <AuthRowBackground />;
 
 export function AuthSheetView(props: {
   authSheet: AuthSheet;
@@ -55,19 +45,8 @@ export function AuthSheetView(props: {
           cancellationAction: <Button title="取消" action={props.onCancel} />,
         }}
       >
-        <Section
-          listRowBackground={authRowBackground}
-          footer={
-            <Text font="caption" foregroundStyle="secondaryLabel">
-              {meta.pasteHint}
-            </Text>
-          }
-        >
-          <VStack
-            spacing={0}
-            frame={{ maxWidth: "infinity" }}
-            listRowInsets={{ top: 0, bottom: 0, leading: 16, trailing: 16 }}
-          >
+        <Section listRowBackground={glassRowBackground}>
+          <GlassGroup>
             {props.authSheet.status ? (
               <HStack
                 padding={{ vertical: true }}
@@ -77,7 +56,7 @@ export function AuthSheetView(props: {
                 <Spacer />
               </HStack>
             ) : null}
-            {props.authSheet.status ? <Divider /> : null}
+            {props.authSheet.status ? <GlassDivider /> : null}
             <TextField
               title="授权内容"
               value={props.authSheet.authorizationInput}
@@ -86,7 +65,7 @@ export function AuthSheetView(props: {
               padding={{ vertical: true }}
               frame={{ minHeight: 44, maxWidth: "infinity" }}
             />
-            <Divider />
+            <GlassDivider />
             <Button
               buttonStyle="plain"
               frame={{ maxWidth: "infinity" }}
@@ -101,7 +80,9 @@ export function AuthSheetView(props: {
                 <Spacer />
               </HStack>
             </Button>
-          </VStack>
+            <GlassDivider />
+            <GlassNoteRow text={meta.pasteHint} />
+          </GlassGroup>
         </Section>
       </List>
     </NavigationStack>

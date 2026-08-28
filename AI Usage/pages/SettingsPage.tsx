@@ -1,7 +1,5 @@
-import type { VStackProps } from "scripting";
 import {
   Button,
-  Divider,
   HStack,
   Image,
   List,
@@ -17,6 +15,7 @@ import {
 import { PROVIDERS, type ProviderId } from "../models";
 import {
   beginProviderAuth,
+  cachedPlanLabel,
   cancelProviderAuth,
   completeProviderAuth,
   deleteAuthorizedAccount,
@@ -30,6 +29,12 @@ import {
   type BackgroundThemeId,
 } from "../services/settings";
 import { openAuthorizationPage } from "../services/browser";
+import {
+  GlassDivider,
+  GlassGroup,
+  GlassSectionHeader,
+  glassRowBackground,
+} from "../components/GlassList";
 import { AuthSheetView } from "../components/AuthSheetView";
 import { PageBackground } from "../components/PageBackground";
 import { ProviderLogo } from "../components/ProviderLogo";
@@ -51,40 +56,15 @@ type SelectedDestination =
   | {
       kind: "account";
       provider: ProviderId;
-      account: { id: string; name: string; email: string | null };
+      account: {
+        id: string;
+        name: string;
+        email: string | null;
+        planLabel?: string | null;
+      };
     }
   | { kind: "log" }
   | { kind: "changelog" };
-
-function SettingsRowBackground() {
-  return (
-    <VStack
-      frame={{ maxWidth: "infinity", maxHeight: "infinity" }}
-      glassEffect={{
-        glass: UIGlass.regular(),
-        shape: { type: "rect", cornerRadius: 20, style: "continuous" },
-      }}
-    />
-  );
-}
-
-const settingsRowBackground = <SettingsRowBackground />;
-
-function SettingsGroup(props: { children: VStackProps["children"] }) {
-  return (
-    <VStack
-      spacing={0}
-      frame={{ maxWidth: "infinity" }}
-      listRowInsets={{ top: 0, bottom: 0, leading: 16, trailing: 16 }}
-    >
-      {props.children}
-    </VStack>
-  );
-}
-
-function CardDivider() {
-  return <Divider />;
-}
 
 export function SettingsPage(props: {
   demoMode: boolean;
@@ -101,17 +81,6 @@ export function SettingsPage(props: {
 
   function refresh() {
     setTick((value) => value + 1);
-  }
-
-  async function reloadHomeScreenWidgets() {
-    const requested = requestWidgetReload();
-    await Dialog.alert({
-      title: requested ? "已请求刷新" : "请求刷新失败",
-      message: requested
-        ? "已请求重新加载 Scripting 的所有小组件，实际显示更新时间由 iOS 决定。"
-        : "无法请求系统重新加载小组件，请稍后重试。",
-      buttonLabel: "关闭",
-    });
   }
 
   async function startAuth(provider: ProviderId, profileId?: string) {
@@ -247,10 +216,10 @@ export function SettingsPage(props: {
         }}
       >
         <Section
-          listRowBackground={settingsRowBackground}
-          header={<Text foregroundStyle="secondaryLabel">演示</Text>}
+          listRowBackground={glassRowBackground}
+          header={<GlassSectionHeader title="演示" />}
         >
-          <SettingsGroup>
+          <GlassGroup>
             <Toggle
               title="演示模式"
               value={props.demoMode}
@@ -261,7 +230,7 @@ export function SettingsPage(props: {
               padding={{ vertical: true }}
               frame={{ minHeight: 44, maxWidth: "infinity" }}
             />
-          </SettingsGroup>
+          </GlassGroup>
         </Section>
 
         {PROVIDERS.map((meta) => {
@@ -273,14 +242,14 @@ export function SettingsPage(props: {
           return (
             <Section
               key={meta.id}
-              listRowBackground={settingsRowBackground}
+              listRowBackground={glassRowBackground}
               header={
                 meta.id === "codex" ? (
-                  <Text foregroundStyle="secondaryLabel">账号</Text>
+                  <GlassSectionHeader title="账号" />
                 ) : undefined
               }
             >
-              <SettingsGroup>
+              <GlassGroup>
                 <HStack
                   spacing={8}
                   padding={{ vertical: true }}
@@ -289,8 +258,11 @@ export function SettingsPage(props: {
                   <ProviderLogo provider={meta.id} size={18} />
                   <Text fontWeight="semibold">{meta.title}</Text>
                   <Spacer />
+                  <Text font={13} foregroundStyle="secondaryLabel">
+                    {accounts.length}个账号
+                  </Text>
                 </HStack>
-                <CardDivider />
+                <GlassDivider />
                 {accounts.length > 0 ? (
                   accounts.map((account, index) => (
                     <VStack
@@ -306,7 +278,15 @@ export function SettingsPage(props: {
                           setSelectedDestination({
                             kind: "account",
                             provider: meta.id,
-                            account,
+                            account: {
+                              id: account.id,
+                              name: account.name,
+                              email: account.email,
+                              planLabel:
+                                "planLabel" in account
+                                  ? account.planLabel
+                                  : cachedPlanLabel(meta.id, account.id),
+                            },
                           })
                         }
                       >
@@ -325,7 +305,7 @@ export function SettingsPage(props: {
                           />
                         </HStack>
                       </Button>
-                      {index < accounts.length - 1 ? <CardDivider /> : null}
+                      {index < accounts.length - 1 ? <GlassDivider /> : null}
                     </VStack>
                   ))
                 ) : (
@@ -339,16 +319,16 @@ export function SettingsPage(props: {
                     <Spacer />
                   </HStack>
                 )}
-              </SettingsGroup>
+              </GlassGroup>
             </Section>
           );
         })}
 
         <Section
-          listRowBackground={settingsRowBackground}
-          header={<Text foregroundStyle="secondaryLabel">显示</Text>}
+          listRowBackground={glassRowBackground}
+          header={<GlassSectionHeader title="显示" />}
         >
-          <SettingsGroup>
+          <GlassGroup>
             <Picker
               title="背景主题"
               value={props.backgroundTheme}
@@ -366,7 +346,7 @@ export function SettingsPage(props: {
                 </Text>
               ))}
             </Picker>
-            <CardDivider />
+            <GlassDivider />
             <Picker
               title="刷新间隔"
               value={String(settings.reloadMinutes)}
@@ -385,31 +365,14 @@ export function SettingsPage(props: {
               <Text tag="30">30 分钟</Text>
               <Text tag="60">60 分钟</Text>
             </Picker>
-          </SettingsGroup>
+          </GlassGroup>
         </Section>
 
         <Section
-          listRowBackground={settingsRowBackground}
-          header={<Text foregroundStyle="secondaryLabel">运行与支持</Text>}
+          listRowBackground={glassRowBackground}
+          header={<GlassSectionHeader title="运行与支持" />}
         >
-          <SettingsGroup>
-            <Button
-              buttonStyle="plain"
-              frame={{ maxWidth: "infinity" }}
-              action={() => {
-                void reloadHomeScreenWidgets();
-              }}
-            >
-              <HStack
-                padding={{ vertical: true }}
-                frame={{ minHeight: 44, maxWidth: "infinity" }}
-                contentShape="rect"
-              >
-                <Text foregroundStyle="accentColor">刷新桌面小组件</Text>
-                <Spacer />
-              </HStack>
-            </Button>
-            <CardDivider />
+          <GlassGroup>
             <Button
               buttonStyle="plain"
               frame={{ maxWidth: "infinity" }}
@@ -428,7 +391,7 @@ export function SettingsPage(props: {
                 />
               </HStack>
             </Button>
-            <CardDivider />
+            <GlassDivider />
             <Button
               buttonStyle="plain"
               frame={{ maxWidth: "infinity" }}
@@ -448,7 +411,7 @@ export function SettingsPage(props: {
                 />
               </HStack>
             </Button>
-          </SettingsGroup>
+          </GlassGroup>
         </Section>
       </List>
     </NavigationStack>

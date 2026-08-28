@@ -1,5 +1,6 @@
 import { Divider, Picker, Text, useState } from "scripting";
 import * as ClaudeSettings from "./credentials";
+import { claudeWindowTitle } from "./window-titles";
 
 export function ClaudeWidgetSettingsView(props: {
   profileId: string;
@@ -46,8 +47,12 @@ export function ClaudeWidgetSettingsView(props: {
           padding={{ vertical: true }}
           frame={{ minHeight: 44, maxWidth: "infinity" }}
         >
-          <Text tag="five_hour_weekly">5 小时 + 周限</Text>
-          <Text tag="weekly_fable">周限 + Fable 周限</Text>
+          <Text tag="five_hour_weekly">
+            {claudeWindowTitle("five_hour")} + {claudeWindowTitle("weekly")}
+          </Text>
+          <Text tag="weekly_fable">
+            {claudeWindowTitle("weekly")} + {claudeWindowTitle("weekly_fable")}
+          </Text>
         </Picker>
       ) : (
         <Picker
@@ -63,9 +68,9 @@ export function ClaudeWidgetSettingsView(props: {
           padding={{ vertical: true }}
           frame={{ minHeight: 44, maxWidth: "infinity" }}
         >
-          <Text tag="five_hour">5 小时额度</Text>
-          <Text tag="weekly">周限</Text>
-          <Text tag="weekly_fable">Fable 周限</Text>
+          <Text tag="five_hour">{claudeWindowTitle("five_hour")}</Text>
+          <Text tag="weekly">{claudeWindowTitle("weekly")}</Text>
+          <Text tag="weekly_fable">{claudeWindowTitle("weekly_fable")}</Text>
         </Picker>
       )}
     </>

@@ -9,26 +9,30 @@ import {
   useState,
 } from "scripting";
 import * as AntigravitySettings from "./credentials";
+import { antigravityWindowTitle } from "./window-titles";
 import type { DualQuotaPreset, FocusWindow, WidgetStyle } from "./types";
 
 const DUAL_PRESETS: Array<{ value: DualQuotaPreset; label: string }> = [
   {
     value: "gemini_five_hour_weekly",
-    label: "Gemini Model 5 小时 + Gemini Model 每周",
+    label: `${antigravityWindowTitle("gemini_five_hour")} + ${antigravityWindowTitle("gemini_weekly")}`,
   },
   {
     value: "third_party_five_hour_weekly",
-    label: "Claude and GPT 5 小时 + Claude and GPT 每周",
+    label: `${antigravityWindowTitle("third_party_five_hour")} + ${antigravityWindowTitle("third_party_weekly")}`,
   },
   {
     value: "weekly_both",
-    label: "Gemini Model 每周 + Claude and GPT 每周",
+    label: `${antigravityWindowTitle("gemini_weekly")} + ${antigravityWindowTitle("third_party_weekly")}`,
   },
 ];
 
 const FOCUS_WINDOWS: Array<{ value: FocusWindow; label: string }> = [
-  { value: "gemini_weekly", label: "Gemini Model 每周" },
-  { value: "third_party_weekly", label: "Claude and GPT 每周" },
+  { value: "gemini_weekly", label: antigravityWindowTitle("gemini_weekly") },
+  {
+    value: "third_party_weekly",
+    label: antigravityWindowTitle("third_party_weekly"),
+  },
 ];
 
 function optionLabel<T extends string>(

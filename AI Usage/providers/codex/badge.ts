@@ -1,41 +1,8 @@
-import { HStack, Text } from "scripting";
-import type { Color, DynamicShapeStyle } from "scripting";
-import { ProviderLogo } from "../../components/ProviderLogo";
+import type { PlanBadgeRecipe } from "../badge-contract";
+import { dynamic, linear, normalizePlan } from "../badge-contract";
 
-const dynamic = (light: Color, dark: Color): DynamicShapeStyle => ({
-  light,
-  dark,
-});
-const linear = (light: Color[], dark: Color[] = light): DynamicShapeStyle => ({
-  light: {
-    gradient: light.map((color, index) => ({
-      color,
-      location: index / (light.length - 1),
-    })),
-    startPoint: "leading" as const,
-    endPoint: "trailing" as const,
-  },
-  dark: {
-    gradient: dark.map((color, index) => ({
-      color,
-      location: index / (dark.length - 1),
-    })),
-    startPoint: "leading" as const,
-    endPoint: "trailing" as const,
-  },
-});
-
-type BadgePalette = {
-  text: string;
-  background: DynamicShapeStyle;
-  foreground: Color | DynamicShapeStyle;
-};
-
-function palette(label: string): BadgePalette {
-  const normalized = label
-    .trim()
-    .toLowerCase()
-    .replace(/[\s_]+/g, "-");
+export function resolveCodexBadge(label: string): PlanBadgeRecipe {
+  const normalized = normalizePlan(label);
   if (normalized === "plus")
     return {
       text: "PLUS",
@@ -107,38 +74,4 @@ function palette(label: string): BadgePalette {
     background: linear(["#94A3B8", "#64748B"], ["#64748B", "#475569"]),
     foreground: "#FFFFFF",
   };
-}
-
-export function PlanBadge({
-  label,
-  small = false,
-}: {
-  label: string;
-  small?: boolean;
-}) {
-  const p = palette(label);
-  return (
-    <HStack
-      spacing={small ? 5 : 6}
-      padding={{ horizontal: small ? 5 : 10, vertical: small ? 3 : 4 }}
-      background={p.background}
-      clipShape={{ type: "capsule", style: "continuous" }}
-    >
-      <ProviderLogo
-        provider="codex"
-        size={small ? 9 : 11}
-        tint={p.foreground}
-      />
-      <Text
-        fontDesign="default"
-        fontWidth="standard"
-        font={small ? 9 : 10}
-        fontWeight="bold"
-        foregroundStyle={p.foreground}
-        lineLimit={1}
-      >
-        {p.text}
-      </Text>
-    </HStack>
-  );
 }

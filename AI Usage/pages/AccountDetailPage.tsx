@@ -1,12 +1,9 @@
-import type { VStackProps } from "scripting";
 import {
   Button,
-  Divider,
   HStack,
   List,
   Navigation,
   Picker,
-  Rectangle,
   Section,
   Spacer,
   Text,
@@ -20,40 +17,24 @@ import { AntigravityWidgetSettingsView } from "../providers/antigravity/WidgetSe
 import { providerMeta, type ProviderId } from "../models";
 import { widgetParameter } from "../widget/parameter";
 import { PageBackground } from "../components/PageBackground";
+import { PlanBadge } from "../components/PlanBadge";
+import { ProviderLogo } from "../components/ProviderLogo";
+import {
+  GlassDivider,
+  GlassGroup,
+  GlassNoteRow,
+  GlassSectionHeader,
+  glassRowBackground,
+} from "../components/GlassList";
 import type { BackgroundThemeId } from "../services/settings";
 import { requestWidgetReload } from "../services/widgets";
 
-type Account = { id: string; name: string; email: string | null };
-
-function DetailRowBackground() {
-  return (
-    <VStack
-      frame={{ maxWidth: "infinity", maxHeight: "infinity" }}
-      glassEffect={{
-        glass: UIGlass.regular(),
-        shape: { type: "rect", cornerRadius: 20, style: "continuous" },
-      }}
-    />
-  );
-}
-
-const detailRowBackground = <DetailRowBackground />;
-
-function DetailGroup(props: { children: VStackProps["children"] }) {
-  return (
-    <VStack
-      spacing={0}
-      frame={{ maxWidth: "infinity" }}
-      listRowInsets={{ top: 0, bottom: 0, leading: 16, trailing: 16 }}
-    >
-      {props.children}
-    </VStack>
-  );
-}
-
-function DetailDivider() {
-  return <Divider />;
-}
+type Account = {
+  id: string;
+  name: string;
+  email: string | null;
+  planLabel?: string | null;
+};
 
 function DetailActionRow(props: {
   title: string;
@@ -78,18 +59,6 @@ function DetailActionRow(props: {
         <Spacer />
       </HStack>
     </Button>
-  );
-}
-
-function DetailFooter(props: { children: string }) {
-  return (
-    <Text
-      font="caption"
-      foregroundStyle="secondaryLabel"
-      listRowBackground={<Rectangle fill="clear" />}
-    >
-      {props.children}
-    </Text>
   );
 }
 
@@ -136,6 +105,18 @@ export function AccountDetailPage(props: {
     }
   }
 
+  async function confirmDelete() {
+    const confirmed = await Dialog.confirm({
+      title: "删除账号",
+      message: `确定要删除“${title}”吗？账号凭据、缓存和小组件设置将一并清除。`,
+      cancelLabel: "取消",
+      confirmLabel: "删除",
+    });
+    if (!confirmed) return;
+    props.onDelete();
+    dismiss();
+  }
+
   return (
     <List
       navigationTitle={meta.title}
@@ -152,63 +133,49 @@ export function AccountDetailPage(props: {
       background={<PageBackground theme={props.backgroundTheme} />}
     >
       <Section
-        listRowBackground={detailRowBackground}
-        header={<Text foregroundStyle="secondaryLabel">账号信息</Text>}
-        footer={
-          props.demo ? (
-            <DetailFooter>
-              演示账号使用本地样例数据，不发起授权或网络请求。
-            </DetailFooter>
-          ) : undefined
-        }
+        listRowBackground={glassRowBackground}
+        header={<GlassSectionHeader title="账号信息" />}
       >
-        <DetailGroup>
+        <GlassGroup>
           <HStack
+            alignment="center"
+            spacing={12}
             padding={{ vertical: true }}
-            frame={{ minHeight: 44, maxWidth: "infinity" }}
+            frame={{ maxWidth: "infinity" }}
           >
-            <Text font="body" lineLimit={1} truncationMode="tail">
-              {title}
-            </Text>
+            <ProviderLogo provider={props.provider} size={28} />
+            <VStack alignment="leading" spacing={4}>
+              <PlanBadge
+                provider={props.provider}
+                label={props.account.planLabel || meta.title}
+                size="regular"
+              />
+              <Text font="body" lineLimit={1} truncationMode="tail">
+                {title}
+              </Text>
+            </VStack>
             <Spacer />
           </HStack>
-          {props.demo ? null : (
+          {props.demo ? (
             <>
-              <DetailDivider />
+              <GlassDivider />
+              <GlassNoteRow text="演示账号使用本地样例数据，不发起授权或网络请求。" />
+            </>
+          ) : (
+            <>
+              <GlassDivider />
               <DetailActionRow title="重新授权" action={props.onReauthorize} />
-              <DetailDivider />
-              <DetailActionRow
-                title="删除账号…"
-                destructive={true}
-                action={async () => {
-                  const confirmed = await Dialog.confirm({
-                    title: "删除账号",
-                    message: `确定要删除“${title}”吗？账号凭据、缓存和小组件设置将一并清除。`,
-                    cancelLabel: "取消",
-                    confirmLabel: "删除",
-                  });
-                  if (!confirmed) return;
-                  props.onDelete();
-                  dismiss();
-                }}
-              />
             </>
           )}
-        </DetailGroup>
+        </GlassGroup>
       </Section>
 
       {meta.capabilities.widget ? (
         <Section
-          listRowBackground={detailRowBackground}
-          header={<Text foregroundStyle="secondaryLabel">小组件设置</Text>}
-          footer={
-            <DetailFooter>
-              长按主屏幕上的 AI Usage 小组件 →
-              编辑小组件，将复制的内容粘贴到“参数”。同一账号的多个小组件共享这里的显示设置。
-            </DetailFooter>
-          }
+          listRowBackground={glassRowBackground}
+          header={<GlassSectionHeader title="小组件设置" />}
         >
-          <DetailGroup>
+          <GlassGroup>
             {props.provider === "codex" ? (
               <CodexWidgetSettingsView
                 profileId={props.account.id}
@@ -227,7 +194,7 @@ export function AccountDetailPage(props: {
               />
             )}
 
-            {props.provider === "grok" ? null : <DetailDivider />}
+            {props.provider === "grok" ? null : <GlassDivider />}
             <Picker
               title="组件预览"
               value={previewFamily}
@@ -248,7 +215,7 @@ export function AccountDetailPage(props: {
               <Text tag="systemSmall">Small 小组件</Text>
               <Text tag="systemMedium">Medium 小组件</Text>
             </Picker>
-            <DetailDivider />
+            <GlassDivider />
             <DetailActionRow
               title="复制组件参数"
               action={async () => {
@@ -263,9 +230,26 @@ export function AccountDetailPage(props: {
                 });
               }}
             />
-          </DetailGroup>
+            <GlassDivider />
+            <GlassNoteRow text="长按主屏幕上的 AI Usage 小组件 → 编辑小组件，将复制的内容粘贴到“参数”。同一账号的多个小组件共享这里的显示设置。" />
+          </GlassGroup>
         </Section>
       ) : null}
+
+      {props.demo ? null : (
+        <Section
+          listRowBackground={glassRowBackground}
+          header={<GlassSectionHeader title="删除账号" />}
+        >
+          <GlassGroup>
+            <DetailActionRow
+              title="删除此账号…"
+              destructive={true}
+              action={confirmDelete}
+            />
+          </GlassGroup>
+        </Section>
+      )}
     </List>
   );
 }

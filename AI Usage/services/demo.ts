@@ -208,7 +208,7 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
       {
         id: "weekly",
         name: "weekly",
-        label: "周限",
+        label: "每周",
         usedPercent: 41,
         resetOffsetMs: 4 * 86_400_000 + 7 * 3_600_000,
       },
@@ -231,14 +231,14 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
       {
         id: "weekly",
         name: "weekly",
-        label: "周限",
+        label: "每周",
         usedPercent: 88,
         resetOffsetMs: 2 * 86_400_000 + 8 * 3_600_000,
       },
       {
         id: "weekly_fable",
         name: "weekly_fable",
-        label: "Fable 周限",
+        label: "Fable 每周",
         usedPercent: 63,
         resetOffsetMs: 5 * 86_400_000 + 2 * 3_600_000,
       },
@@ -261,14 +261,14 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
       {
         id: "weekly",
         name: "weekly",
-        label: "周限",
+        label: "每周",
         usedPercent: 27,
         resetOffsetMs: 6 * 86_400_000 + 3 * 3_600_000,
       },
       {
         id: "weekly_fable",
         name: "weekly_fable",
-        label: "Fable 周限",
+        label: "Fable 每周",
         usedPercent: 12,
         resetOffsetMs: 6 * 86_400_000 + 3 * 3_600_000,
       },
@@ -291,7 +291,7 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
       {
         id: "weekly",
         name: "weekly",
-        label: "周限",
+        label: "每周",
         usedPercent: 48,
         resetOffsetMs: 5 * 86_400_000 + 12 * 3_600_000,
       },
@@ -307,28 +307,28 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
       {
         id: "gemini_5h",
         name: "five_hour",
-        label: "Gemini Model 5 小时",
+        label: "Gemini 5 小时",
         usedPercent: 32,
         resetOffsetMs: 3 * 3_600_000 + 15 * 60_000,
       },
       {
         id: "gemini_weekly",
         name: "weekly",
-        label: "Gemini Model 每周",
+        label: "Gemini 每周",
         usedPercent: 55,
         resetOffsetMs: 4 * 86_400_000 + 3 * 3_600_000,
       },
       {
         id: "3p_5h",
         name: "five_hour",
-        label: "Claude and GPT 5 小时",
+        label: "Claude/GPT 5 小时",
         usedPercent: 78,
         resetOffsetMs: 2 * 3_600_000 + 20 * 60_000,
       },
       {
         id: "3p_weekly",
         name: "weekly",
-        label: "Claude and GPT 每周",
+        label: "Claude/GPT 每周",
         usedPercent: 91,
         resetOffsetMs: 2 * 86_400_000 + 6 * 3_600_000,
       },
@@ -344,28 +344,28 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
       {
         id: "gemini_5h",
         name: "five_hour",
-        label: "Gemini Model 5 小时",
+        label: "Gemini 5 小时",
         usedPercent: 18,
         resetOffsetMs: 4 * 3_600_000 + 8 * 60_000,
       },
       {
         id: "gemini_weekly",
         name: "weekly",
-        label: "Gemini Model 每周",
+        label: "Gemini 每周",
         usedPercent: 72,
         resetOffsetMs: 5 * 86_400_000 + 4 * 3_600_000,
       },
       {
         id: "3p_5h",
         name: "five_hour",
-        label: "Claude and GPT 5 小时",
+        label: "Claude/GPT 5 小时",
         usedPercent: 44,
         resetOffsetMs: 3 * 3_600_000 + 35 * 60_000,
       },
       {
         id: "3p_weekly",
         name: "weekly",
-        label: "Claude and GPT 每周",
+        label: "Claude/GPT 每周",
         usedPercent: 83,
         resetOffsetMs: 3 * 86_400_000 + 9 * 3_600_000,
       },
@@ -381,28 +381,28 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
       {
         id: "gemini_5h",
         name: "five_hour",
-        label: "Gemini Model 5 小时",
+        label: "Gemini 5 小时",
         usedPercent: 8,
         resetOffsetMs: 4 * 3_600_000 + 44 * 60_000,
       },
       {
         id: "gemini_weekly",
         name: "weekly",
-        label: "Gemini Model 每周",
+        label: "Gemini 每周",
         usedPercent: 26,
         resetOffsetMs: 6 * 86_400_000 + 2 * 3_600_000,
       },
       {
         id: "3p_5h",
         name: "five_hour",
-        label: "Claude and GPT 5 小时",
+        label: "Claude/GPT 5 小时",
         usedPercent: 64,
         resetOffsetMs: 1 * 3_600_000 + 52 * 60_000,
       },
       {
         id: "3p_weekly",
         name: "weekly",
-        label: "Claude and GPT 每周",
+        label: "Claude/GPT 每周",
         usedPercent: 39,
         resetOffsetMs: 5 * 86_400_000 + 7 * 3_600_000,
       },
@@ -431,6 +431,7 @@ export type DemoAccountView = {
   provider: UsageCard["provider"];
   name: string;
   email: string;
+  planLabel: string;
 };
 
 export function listDemoAccounts(
@@ -443,6 +444,7 @@ export function listDemoAccounts(
     provider: account.provider,
     name: account.planLabel,
     email: account.title,
+    planLabel: account.planLabel,
   }));
 }
 

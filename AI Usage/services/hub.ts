@@ -196,3 +196,10 @@ export function listProviderAccounts(provider: ProviderId): AccountLike[] {
 export function isAuthorized(provider: ProviderId, profileId: string): boolean {
   return Boolean(getProvider(provider).token(profileId));
 }
+
+export function cachedPlanLabel(
+  provider: ProviderId,
+  profileId: string,
+): string | null {
+  return getProvider(provider).usage.cache(profileId)?.planLabel || null;
+}

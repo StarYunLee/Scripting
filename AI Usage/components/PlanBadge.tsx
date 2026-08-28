@@ -1,189 +1,34 @@
 import { HStack, Text } from "scripting";
-import type { Color, DynamicShapeStyle } from "scripting";
 import type { ProviderId } from "../models";
+import { resolvePlanBadge } from "../providers/badge-registry";
 import { ProviderLogo } from "./ProviderLogo";
 
-const linear = (light: Color[], dark: Color[] = light): DynamicShapeStyle => ({
-  light: {
-    gradient: light.map((color, index) => ({
-      color,
-      location: index / (light.length - 1),
-    })),
-    startPoint: "leading" as const,
-    endPoint: "trailing" as const,
+const BADGE_SIZES = {
+  small: {
+    logo: 10,
+    text: 9,
+    spacing: 5,
+    horizontalPadding: 8,
+    verticalPadding: 3,
   },
-  dark: {
-    gradient: dark.map((color, index) => ({
-      color,
-      location: index / (dark.length - 1),
-    })),
-    startPoint: "leading" as const,
-    endPoint: "trailing" as const,
+  regular: {
+    logo: 11,
+    text: 10,
+    spacing: 6,
+    horizontalPadding: 10,
+    verticalPadding: 4,
   },
-});
+} as const;
 
-function normalize(label: string): string {
-  return label
-    .replace(/DEMO\s*[·•|-]?\s*/i, "")
-    .trim()
-    .toLowerCase()
-    .replace(/^claude\s+/, "")
-    .replace(/×/g, "x")
-    .replace(/[\s_]+/g, "-");
-}
-
-type BadgePalette = {
-  text: string;
-  background: DynamicShapeStyle;
-  foreground: Color;
-};
-
-function palette(provider: ProviderId, label: string): BadgePalette {
-  const normalized = normalize(label);
-
-  if (provider === "grok") {
-    if (
-      normalized === "supergrok-heavy" ||
-      normalized === "supergrokheavy" ||
-      normalized === "heavy"
-    ) {
-      return {
-        text: "SUPERGROK HEAVY",
-        background: linear(
-          ["#000000", "#064E3B", "#0F766E"],
-          ["#000000", "#065F46", "#0D9488"],
-        ),
-        foreground: "#ECFDF5",
-      };
-    }
-    if (normalized === "supergrok") {
-      return {
-        text: "SUPERGROK",
-        background: linear(["#171717", "#047857"], ["#262626", "#059669"]),
-        foreground: "#ECFDF5",
-      };
-    }
-    return {
-      text: label.trim().toUpperCase() || "GROK",
-      background: linear(["#94A3B8", "#64748B"], ["#64748B", "#475569"]),
-      foreground: "#FFFFFF",
-    };
-  }
-
-  if (provider === "antigravity") {
-    return {
-      text: label.trim().toUpperCase() || "ANTIGRAVITY",
-      background: linear(["#475569", "#2563EB"], ["#64748B", "#3B82F6"]),
-      foreground: "#FFFFFF",
-    };
-  }
-
-  if (provider === "claude") {
-    if (normalized === "max-20x") {
-      return {
-        text: "MAX 20X",
-        background: linear(
-          ["#F59E0B", "#EA580C", "#E5254F"],
-          ["#FBBF24", "#F97316", "#F43F5E"],
-        ),
-        foreground: "#000000",
-      };
-    }
-    if (normalized === "max-5x") {
-      return {
-        text: "MAX 5X",
-        background: linear(
-          ["#F97316", "#F59E0B", "#F43F5E"],
-          ["#FB923C", "#FBBF24", "#FB7185"],
-        ),
-        foreground: "#000000",
-      };
-    }
-    if (normalized === "pro") {
-      return {
-        text: "PRO",
-        background: linear(["#FCD34D", "#FACC15", "#F59E0B"]),
-        foreground: "#000000",
-      };
-    }
-    if (normalized.startsWith("team")) {
-      return {
-        text: "TEAM",
-        background: linear(["#8B5CF6", "#4F46E5"], ["#A78BFA", "#6366F1"]),
-        foreground: "#FFFFFF",
-      };
-    }
-    return {
-      text:
-        label
-          .replace(/^Claude\s+/i, "")
-          .trim()
-          .toUpperCase() || "CLAUDE",
-      background: linear(["#94A3B8", "#64748B"], ["#64748B", "#475569"]),
-      foreground: "#FFFFFF",
-    };
-  }
-
-  if (normalized === "plus") {
-    return {
-      text: "PLUS",
-      background: linear(
-        ["#F1F5F9", "#E4E4E7", "#CBD5E1"],
-        ["#D4D4D8", "#94A3B8", "#71717A"],
-      ),
-      foreground: "#1E293B",
-    };
-  }
-  if (normalized === "pro-20x") {
-    return {
-      text: "PRO 20X",
-      background: linear(
-        ["#FDE047", "#F59E0B", "#EA580C"],
-        ["#FDE047", "#FBBF24", "#F97316"],
-      ),
-      foreground: "#000000",
-    };
-  }
-  if (normalized === "pro-5x") {
-    return {
-      text: "PRO 5X",
-      background: linear(
-        ["#FBBF24", "#EAB308", "#FB923C"],
-        ["#FBBF24", "#FACC15", "#FB923C"],
-      ),
-      foreground: "#000000",
-    };
-  }
-  if (normalized === "pro" || normalized === "chatgptpro") {
-    return {
-      text: "PRO",
-      background: linear(["#FCD34D", "#FACC15", "#F59E0B"]),
-      foreground: "#000000",
-    };
-  }
-  if (normalized === "team") {
-    return {
-      text: "TEAM",
-      background: linear(["#8B5CF6", "#4F46E5"], ["#A78BFA", "#6366F1"]),
-      foreground: "#FFFFFF",
-    };
-  }
-  return {
-    text: label.trim().toUpperCase() || "CODEX",
-    background: linear(["#94A3B8", "#64748B"], ["#64748B", "#475569"]),
-    foreground: "#FFFFFF",
-  };
-}
+export type PlanBadgeSize = keyof typeof BADGE_SIZES;
 
 export function PlanBadge(props: {
   provider: ProviderId;
   label: string;
-  small?: boolean;
+  size?: PlanBadgeSize;
 }) {
-  const providerId = props.provider;
-  const p = palette(providerId, props.label);
-  const rawPlanText =
-    props.small && p.text === "SUPERGROK HEAVY" ? "HEAVY" : p.text;
+  const recipe = resolvePlanBadge(props.provider, props.label);
+  const layout = BADGE_SIZES[props.size ?? "regular"];
   const providerText =
     props.provider === "codex"
       ? "CODEX"
@@ -192,33 +37,35 @@ export function PlanBadge(props: {
         : props.provider === "claude"
           ? "CLAUDE"
           : "ANTIGRAVITY";
-  const planText = rawPlanText === providerText ? "" : rawPlanText;
+  const text = recipe.text === providerText ? "" : recipe.text;
   return (
     <HStack
-      spacing={props.small ? 5 : 6}
+      spacing={layout.spacing}
       padding={{
-        horizontal: props.small ? 8 : 10,
-        vertical: props.small ? 3 : 4,
+        horizontal: layout.horizontalPadding,
+        vertical: layout.verticalPadding,
       }}
-      background={p.background}
+      background={recipe.background}
       clipShape={{ type: "capsule", style: "continuous" }}
+      layoutPriority={1}
+      fixedSize={true}
     >
       <ProviderLogo
-        provider={providerId}
-        size={props.small ? 10 : 11}
-        tint={providerId === "antigravity" ? undefined : p.foreground}
+        provider={props.provider}
+        size={layout.logo}
+        tint={recipe.preserveLogoColor ? undefined : recipe.foreground}
       />
-      {planText ? (
+      {text ? (
         <Text
           fontDesign="default"
           fontWidth="standard"
-          font={props.small ? 9 : 10}
+          font={layout.text}
           fontWeight="bold"
-          foregroundStyle={p.foreground}
+          foregroundStyle={recipe.foreground}
           lineLimit={1}
-          minScaleFactor={0.65}
+          minScaleFactor={props.size === "small" ? 0.7 : 1}
         >
-          {planText}
+          {text}
         </Text>
       ) : null}
     </HStack>

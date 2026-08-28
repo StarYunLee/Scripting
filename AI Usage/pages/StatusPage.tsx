@@ -346,6 +346,7 @@ export function StatusPage(props: {
                 id: openedCard.accountId,
                 name: openedCard.title,
                 email: openedCard.title.includes("@") ? openedCard.title : null,
+                planLabel: openedCard.planLabel,
               }}
               demo={props.demoMode}
               backgroundTheme={props.backgroundTheme}
@@ -378,7 +379,9 @@ export function StatusPage(props: {
         ))}
         <Text
           font={12}
-          foregroundStyle="tertiaryLabel"
+          foregroundStyle="secondaryLabel"
+          multilineTextAlignment="center"
+          frame={{ maxWidth: "infinity" }}
           listRowBackground={<></>}
           listRowSeparator="hidden"
         >

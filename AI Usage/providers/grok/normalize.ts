@@ -1,4 +1,5 @@
 import type { UsageSnapshot } from "./types";
+import { grokWindowTitle } from "./window-titles";
 import {
   isUsageWindowView,
   normalizeResetCredits,
@@ -15,6 +16,10 @@ export function normalizeUsageSnapshot(
       .filter(
         (window) => window.name === "weekly" || window.name === "weekly_build",
       )
+      .map((window) => ({
+        ...window,
+        label: grokWindowTitle(window.name),
+      }))
       .map(toUsageWindowView)
       .filter(isUsageWindowView),
     resetCredits: normalizeResetCredits(

@@ -1,4 +1,5 @@
 import type { UsageSnapshot } from "./types";
+import { codexWindowTitle } from "./window-titles";
 import {
   isUsageWindowView,
   normalizeResetCredits,
@@ -15,7 +16,16 @@ export function normalizeUsageSnapshot(
   );
   return {
     planLabel: snapshot.planLabel || snapshot.planType || null,
-    windows: snapshot.windows.map(toUsageWindowView).filter(isUsageWindowView),
+    windows: snapshot.windows
+      .map((window) => ({
+        ...window,
+        label:
+          window.name === "unknown"
+            ? window.label
+            : codexWindowTitle(window.name),
+      }))
+      .map(toUsageWindowView)
+      .filter(isUsageWindowView),
     resetCredits,
     fetchedAt: snapshot.fetchedAt,
     source: snapshot.source,

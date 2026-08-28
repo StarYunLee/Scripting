@@ -1,5 +1,6 @@
 import { Divider, Picker, Text, useState } from "scripting";
 import * as CodexSettings from "./credentials";
+import { codexWindowTitle } from "./window-titles";
 
 export function CodexWidgetSettingsView(props: {
   profileId: string;
@@ -48,9 +49,9 @@ export function CodexWidgetSettingsView(props: {
             padding={{ vertical: true }}
             frame={{ minHeight: 44, maxWidth: "infinity" }}
           >
-            <Text tag="five_hour">5 小时额度</Text>
-            <Text tag="weekly">每周额度</Text>
-            <Text tag="monthly">每月额度</Text>
+            <Text tag="five_hour">{codexWindowTitle("five_hour")}</Text>
+            <Text tag="weekly">{codexWindowTitle("weekly")}</Text>
+            <Text tag="monthly">{codexWindowTitle("monthly")}</Text>
           </Picker>
         </>
       ) : null}

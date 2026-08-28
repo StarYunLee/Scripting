@@ -2,6 +2,7 @@ import { fetch, Response } from "scripting";
 import { getProfileAccessToken, resolveProfile } from "./accounts";
 import { refreshOAuthToken } from "./oauth";
 import type { LimitWindow, UsageResult, UsageSnapshot } from "./types";
+import { claudeScopedWindowTitle, claudeWindowTitle } from "./window-titles";
 
 const CACHE_KEY = "ai_usage_claude_cache_v1";
 const RATE_LIMIT_KEY = "ai_usage_claude_rate_limit_v1";
@@ -81,8 +82,7 @@ function parseWindow(
   );
 }
 function scopedLabel(value: string): string {
-  const normalized = value.trim();
-  return normalized ? `${normalized} 周限` : "模型周限";
+  return claudeScopedWindowTitle(value);
 }
 function scopedId(value: string, index: number): string {
   const normalized = value
@@ -119,12 +119,16 @@ function parseFlatScopedLimits(
   payload: Record<string, unknown>,
 ): LimitWindow[] {
   const definitions: Array<[string, string, LimitWindow["name"]]> = [
-    ["seven_day_sonnet", "Sonnet 周限", "weekly_scoped"],
-    ["seven_day_opus", "Opus 周限", "weekly_scoped"],
-    ["seven_day_oauth_apps", "OAuth Apps 周限", "weekly_scoped"],
-    ["seven_day_fable", "Fable 周限", "weekly_fable"],
-    ["seven_day_fable_5", "Fable 周限", "weekly_fable"],
-    ["fable_seven_day", "Fable 周限", "weekly_fable"],
+    ["seven_day_sonnet", claudeScopedWindowTitle("Sonnet"), "weekly_scoped"],
+    ["seven_day_opus", claudeScopedWindowTitle("Opus"), "weekly_scoped"],
+    [
+      "seven_day_oauth_apps",
+      claudeScopedWindowTitle("OAuth Apps"),
+      "weekly_scoped",
+    ],
+    ["seven_day_fable", claudeWindowTitle("weekly_fable"), "weekly_fable"],
+    ["seven_day_fable_5", claudeWindowTitle("weekly_fable"), "weekly_fable"],
+    ["fable_seven_day", claudeWindowTitle("weekly_fable"), "weekly_fable"],
   ];
   const windows: LimitWindow[] = [];
   for (const [key, label, name] of definitions) {
@@ -368,14 +372,14 @@ export async function fetchUsage(options?: {
       payload,
       "five_hour",
       "five_hour",
-      "5 小时",
+      claudeWindowTitle("five_hour"),
       5 * 3600,
     );
     const weekly = parseWindow(
       payload,
       "seven_day",
       "weekly",
-      "周限",
+      claudeWindowTitle("weekly"),
       7 * 86400,
     );
     const dynamicScoped = parseScopedLimits(payload);

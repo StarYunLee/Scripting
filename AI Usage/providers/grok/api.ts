@@ -6,6 +6,7 @@ import {
 } from "./accounts";
 import { refreshOAuthToken } from "./oauth";
 import type { LimitWindow, UsageResult, UsageSnapshot } from "./types";
+import { grokWindowTitle } from "./window-titles";
 
 const CACHE_KEY = "ai_usage_grok_cache_v1";
 const BILLING_URL = "https://cli-chat-proxy.grok.com/v1/billing";
@@ -249,7 +250,7 @@ function parseWeekly(payload: Record<string, unknown>): ParsedWeekly | null {
   const weekly: LimitWindow = {
     id: "grok:weekly",
     name: "weekly",
-    label: "每周",
+    label: grokWindowTitle("weekly"),
     usedPercent,
     remainingPercent: clamp(100 - usedPercent),
     resetAt: reset.iso,
@@ -262,7 +263,7 @@ function parseWeekly(payload: Record<string, unknown>): ParsedWeekly | null {
       : {
           id: "grok:weekly-build",
           name: "weekly_build" as const,
-          label: "Grok Build",
+          label: grokWindowTitle("weekly_build"),
           usedPercent: clamp(productUsagePercent),
           remainingPercent: clamp(100 - productUsagePercent),
           resetAt: reset.iso,

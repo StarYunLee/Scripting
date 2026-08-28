@@ -8,15 +8,48 @@ import {
   VStack,
 } from "scripting";
 import {
-  formatFetchedAt,
   formatPercent,
+  formatRelativeFetchedAt,
+  formatRelativeResetAt,
   formatResetDate,
 } from "../providers/codex/format";
 import { providerMeta, type UsageCard } from "../models";
 import { usageTint } from "../services/usage-colors";
 import { PlanBadge } from "./PlanBadge";
+import { ProviderLogo } from "./ProviderLogo";
 
 const CARD_RADIUS = 20;
+
+function footerText(card: UsageCard): {
+  text: string;
+  color: "secondaryLabel" | "systemRed";
+} {
+  if (
+    card.errorMessage ||
+    card.source === "error" ||
+    card.refreshStatus === "failure"
+  ) {
+    return {
+      text: card.errorMessage || "刷新失败",
+      color: "systemRed",
+    };
+  }
+  const sourceLabel =
+    card.source === "live"
+      ? "在线"
+      : card.source === "cache"
+        ? "缓存"
+        : card.source === "empty"
+          ? "暂无数据"
+          : "暂无数据";
+  if (!card.fetchedAt || sourceLabel === "暂无数据") {
+    return { text: sourceLabel, color: "secondaryLabel" };
+  }
+  return {
+    text: `${sourceLabel} · ${formatRelativeFetchedAt(card.fetchedAt)}`,
+    color: "secondaryLabel",
+  };
+}
 
 export function UsageCardView(props: {
   card: UsageCard;
@@ -33,6 +66,7 @@ export function UsageCardView(props: {
       : props.card.refreshStatus === "failure"
         ? "刷新失败"
         : "刷新";
+  const footer = footerText(props.card);
   return (
     <VStack
       alignment="leading"
@@ -50,37 +84,48 @@ export function UsageCardView(props: {
       onTapGesture={() => props.onOpen?.()}
     >
       <HStack alignment="top">
-        <VStack alignment="leading" spacing={8}>
-          <Text font={17} fontWeight="semibold">
-            {props.card.title}
-          </Text>
+        <VStack alignment="leading" spacing={4}>
           <HStack spacing={6}>
+            <ProviderLogo provider={props.card.provider} size={16} />
+            <Text font={17} fontWeight="semibold">
+              {meta.title}
+            </Text>
             <PlanBadge
               provider={props.card.provider}
               label={props.card.planLabel || meta.title}
+              size="regular"
             />
           </HStack>
+          <Text font={15} foregroundStyle="secondaryLabel" lineLimit={1}>
+            {props.card.title}
+          </Text>
         </VStack>
         <Spacer />
         <Button
           title={refreshTitle}
+          systemImage={
+            props.card.refreshing
+              ? "arrow.triangle.2.circlepath"
+              : props.card.refreshStatus === "success"
+                ? "checkmark"
+                : props.card.refreshStatus === "failure"
+                  ? "exclamationmark.triangle"
+                  : "arrow.clockwise"
+          }
+          labelStyle="iconOnly"
           action={props.onRefresh}
           buttonStyle="glass"
+          disabled={props.card.refreshing}
+          frame={{ width: 44, height: 44 }}
         />
       </HStack>
 
       {props.card.resetCredits ? (
         <Text font={13} foregroundStyle="secondaryLabel">
-          重置次数 {props.card.resetCredits.available} 次
+          可用重置 {props.card.resetCredits.available} 次
           {props.card.resetCredits.nearestExpiration
             ? ` · 最近到期 ${formatResetDate(props.card.resetCredits.nearestExpiration)}`
             : ""}
-        </Text>
-      ) : null}
-
-      {props.card.errorMessage ? (
-        <Text font={13} foregroundStyle="systemRed">
-          {props.card.errorMessage}
         </Text>
       ) : null}
 
@@ -97,12 +142,17 @@ export function UsageCardView(props: {
           return (
             <VStack key={window.id} alignment="leading" spacing={6}>
               <HStack>
-                <Text font={15}>{window.label}</Text>
+                <Text font={15} fontWeight="medium">
+                  {window.label}
+                </Text>
                 <Spacer />
                 <Text font={15} fontWeight="medium" monospacedDigit>
                   {percentLabel} {formatPercent(value)}
                 </Text>
               </HStack>
+              <Text font={12} foregroundStyle="secondaryLabel">
+                {formatRelativeResetAt(window.resetAt)}
+              </Text>
               {value == null ? (
                 <Text font={12} foregroundStyle="secondaryLabel">
                   暂无进度
@@ -116,9 +166,6 @@ export function UsageCardView(props: {
                   scaleEffect={{ x: 1, y: 1.4 }}
                 />
               )}
-              <Text font={12} foregroundStyle="secondaryLabel">
-                重置 {formatResetDate(window.resetAt)}
-              </Text>
             </VStack>
           );
         })
@@ -126,29 +173,15 @@ export function UsageCardView(props: {
 
       <VStack spacing={6}>
         <Divider />
-        <HStack>
-          <Text font={12} foregroundStyle="tertiaryLabel">
-            更新 {formatFetchedAt(props.card.fetchedAt)}
-          </Text>
-          <Spacer />
-          {props.card.source === "live" ? (
-            <Text font={12} foregroundStyle="tertiaryLabel">
-              实时
-            </Text>
-          ) : props.card.source === "cache" ? (
-            <Text font={12} foregroundStyle="tertiaryLabel">
-              缓存
-            </Text>
-          ) : props.card.source === "error" ? (
-            <Text font={12} foregroundStyle="systemRed">
-              刷新失败
-            </Text>
-          ) : (
-            <Text font={12} foregroundStyle="tertiaryLabel">
-              暂无数据
-            </Text>
-          )}
-        </HStack>
+        <Text
+          font={12}
+          foregroundStyle={footer.color}
+          lineLimit={2}
+          multilineTextAlignment="center"
+          frame={{ maxWidth: "infinity" }}
+        >
+          {footer.text}
+        </Text>
       </VStack>
     </VStack>
   );

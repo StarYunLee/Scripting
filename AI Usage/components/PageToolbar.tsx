@@ -9,7 +9,7 @@ export function usePageToolbar(options?: {
 
   return (
     <Toolbar>
-      <ToolbarItem placement="cancellationAction">
+      <ToolbarItem placement="topBarLeading">
         <Button
           title="返回"
           systemImage="chevron.left"

@@ -1,4 +1,5 @@
 import type { AntigravityProjectInfo, LimitWindow } from "./types";
+import { antigravityWindowTitle } from "./window-titles";
 
 export type JsonObject = Record<string, unknown>;
 
@@ -96,8 +97,8 @@ function localWindowLabel(seconds: number | null, fallback: string): string {
 
 function displayGroupName(groupName: string, bucketId: string): string {
   const bucket = bucketId.toLowerCase();
-  if (bucket.startsWith("gemini-")) return "Gemini Model";
-  if (bucket.startsWith("3p-")) return "Claude and GPT";
+  if (bucket.startsWith("gemini-")) return "Gemini";
+  if (bucket.startsWith("3p-")) return "Claude/GPT";
   return groupName;
 }
 
@@ -106,6 +107,17 @@ function windowLabel(
   bucketId: string,
   seconds: number | null,
 ): string {
+  const bucket = bucketId.toLowerCase();
+  if (bucket.startsWith("gemini-")) {
+    if (seconds === 5 * 3600) return antigravityWindowTitle("gemini_five_hour");
+    if (seconds === 7 * 86400) return antigravityWindowTitle("gemini_weekly");
+  }
+  if (bucket.startsWith("3p-")) {
+    if (seconds === 5 * 3600)
+      return antigravityWindowTitle("third_party_five_hour");
+    if (seconds === 7 * 86400)
+      return antigravityWindowTitle("third_party_weekly");
+  }
   const local = localWindowLabel(seconds, bucketId);
   const group = displayGroupName(groupName, bucketId);
   return group ? `${group} ${local}` : local;

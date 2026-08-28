@@ -2,15 +2,15 @@
 
 <table>
   <tr>
-    <td align="center" width="33%"><img src="assets/ai-usage-preview-small.jpeg" alt="AI Usage Small 小组件预览" /></td>
-    <td align="center" width="33%"><img src="assets/ai-usage-preview-medium.jpeg" alt="AI Usage Medium 小组件预览" /></td>
+    <td align="center" width="33%"><img src="assets/ai-usage-preview-widgets-light.jpeg" alt="AI Usage 浅色小组件总览" /></td>
+    <td align="center" width="33%"><img src="assets/ai-usage-preview-widgets-dark.jpeg" alt="AI Usage 深色小组件总览" /></td>
     <td align="center" width="33%"><img src="assets/ai-usage-preview-app.jpeg" alt="AI Usage 应用预览" /></td>
   </tr>
 </table>
 
 面向 [Scripting App](https://scriptingapp.github.io/) 的非官方多平台用量查看应用。在一个项目里管理 Codex、Grok、Claude 与 Antigravity 的多账号用量、主屏幕小组件和自动化刷新。
 
-当前版本：`1.1.2`
+当前版本：`1.2.0`
 
 > 本项目不是 OpenAI、xAI、Anthropic、Google 或 Scripting App 官方产品，与上述平台无隶属或合作关系。
 
@@ -20,12 +20,13 @@
 - Access Token、Refresh Token 和相关身份凭据保存在本机 Keychain
 - Token 到期前自动刷新
 - 主屏幕小组件支持 Small、Medium，并按账号独立保存布局
+- Small 与 Medium 在各平台之间统一额度层级、刷新 / 重置时间和套餐标签；Small 对长窗口名使用紧凑标题
 - 小组件主数值和进度条固定显示剩余额度
 - 统一绿 / 橙 / 红风险配色：剩余不高于 40% 显示橙色，不高于 15% 显示红色
 - 网络失败或接口限流时回退最近一次成功缓存
 - 内置只读演示模式，可在未授权时预览界面和小组件
 - 支持快捷指令与 App Intent，手动或定时刷新全部账号
-- 运行记录已脱敏，不输出 Token 或完整账号标识
+- 运行记录不包含 Token、授权码、Cookie 或完整接口响应；账号仅显示本机已保存的邮箱或账号名
 
 ## 系统要求
 
@@ -110,6 +111,7 @@ provider:profileId
 - Codex / Claude / Antigravity：可按账号选择单额度详情或双额度概览
 - Grok：固定展示每周额度
 - 单额度详情同时列出已用和剩余百分比，主数字与进度条仍表示剩余
+- Small 优先使用平台定义的紧凑窗口标题；没有紧凑标题时使用标准标题
 
 ### Medium
 
@@ -134,8 +136,8 @@ provider:profileId
 
 ### Antigravity
 
-- 单额度详情：Gemini Model 每周、Claude and GPT 每周
-- 双额度概览：Gemini 5 小时 + 每周、Claude and GPT 5 小时 + 每周、双方每周额度
+- 单额度详情：Gemini 每周、Claude/GPT 每周
+- 双额度概览：Gemini 5 小时 + 每周、Claude/GPT 5 小时 + 每周、双方每周额度
 
 ### Grok
 
@@ -179,7 +181,7 @@ iOS WidgetKit 可能根据系统调度延后刷新。所选时间是请求的最
 - 账号注册表、小组件设置和用量缓存仅保存在本机 Scripting Storage
 - 项目不通过作者服务器转发登录或用量数据
 - 源代码和正常导出的安装包不包含你的账号、邮箱、Token 或用量缓存
-- 运行记录只保留请求状态和脱敏摘要，不输出 Token、完整邮箱或完整响应
+- 运行记录保留请求状态、本机账号标签和必要错误摘要，不输出 Token、授权码、Cookie 或完整接口响应
 - 删除账号时会同时删除该账号的本机凭证、用量缓存和独立布局设置
 - 不要分享 OAuth 回调 URL、一次性授权码、Token、Keychain 导出或完整 App 容器备份
 - Antigravity 使用 Google 已公开的官方桌面客户端 OAuth 凭据完成登录，不是作者个人云项目密钥；你的账号 Token 仍只保存在本机

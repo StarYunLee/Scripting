@@ -1,4 +1,6 @@
 import type { ProviderId } from "../models";
+import { getAccountProvider } from "../providers/account-registry";
+import { listDemoAccounts } from "./demo";
 
 type Input = {
   level: "info" | "warning" | "error";
@@ -35,10 +37,38 @@ function clean(v: unknown, max = 120): string {
     .trim();
   return s.length > max ? `${s.slice(0, max)}…` : s;
 }
-function account(value?: string | null): string | undefined {
-  if (!value) return undefined;
-  const s = clean(value, 80);
-  return s.length <= 8 ? s : `…${s.slice(-6)}`;
+function sanitizeAccountLabel(value: string): string {
+  return value.replace(/[\u0000-\u001f\u007f]/g, " ").trim();
+}
+
+function resolveAccountLabel(
+  provider?: ProviderId,
+  accountId?: string | null,
+): string | undefined {
+  if (!accountId) return undefined;
+  const id = String(accountId).trim();
+  if (!id) return undefined;
+
+  if (provider) {
+    try {
+      const found = getAccountProvider(provider)
+        .list()
+        .find((item) => item.id === id);
+      const label = found?.email || found?.name;
+      if (label) return sanitizeAccountLabel(label);
+    } catch {
+      /* logging must never break app */
+    }
+    try {
+      const demo = listDemoAccounts(provider).find((item) => item.id === id);
+      const label = demo?.email || demo?.name;
+      if (label) return sanitizeAccountLabel(label);
+    } catch {
+      /* logging must never break app */
+    }
+  }
+
+  return id.includes("@") ? sanitizeAccountLabel(id) : undefined;
 }
 function records(): RunRecord[] {
   try {
@@ -77,7 +107,7 @@ export function writeLog(input: Input): void {
     at: new Date().toISOString(),
     kind: kind(input),
     provider: input.provider,
-    accountLabel: account(input.accountId),
+    accountLabel: resolveAccountLabel(input.provider, input.accountId),
     status: status(input),
     summary: clean(input.message),
     detail:
