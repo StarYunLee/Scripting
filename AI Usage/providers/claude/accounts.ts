@@ -10,7 +10,7 @@ function jwtEmail(token: string | null): string | null {
 const store = createAccountStore<ClaudeAccountProfile>({
   registryKey: "ai_usage_claude_account_registry_v1",
   secretPrefix: "ai_usage_claude_profile",
-  createProfile: ({ id, name, index, now }) => ({
+  createProfile: ({ id, name, now }) => ({
     id,
     name,
     email: null,

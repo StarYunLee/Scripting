@@ -4,7 +4,7 @@ import type { AccountRegistry, CopilotAccountProfile } from "./types";
 const store = createAccountStore<CopilotAccountProfile>({
   registryKey: "ai_usage_copilot_account_registry_v1",
   secretPrefix: "ai_usage_copilot_profile",
-  createProfile: ({ id, name, index, now }) => ({
+  createProfile: ({ id, name, now }) => ({
     id,
     name,
     email: null,

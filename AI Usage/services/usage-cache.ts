@@ -3,14 +3,14 @@ type UsageSnapshotBase = {
   source: "live" | "cache";
 };
 
-type UsageCacheOptions<TSnapshot extends UsageSnapshotBase> = {
+type UsageCacheOptions = {
   keyPrefix: string;
   resolveProfileId(profileId?: string | null): string | null;
   recentMs?: number;
 };
 
 export function createUsageCache<TSnapshot extends UsageSnapshotBase>(
-  options: UsageCacheOptions<TSnapshot>,
+  options: UsageCacheOptions,
 ) {
   const memory = new Map<string, TSnapshot | null>();
   const recentMs = options.recentMs ?? 3 * 60_000;

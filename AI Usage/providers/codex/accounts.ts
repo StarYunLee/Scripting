@@ -13,7 +13,7 @@ function jwtEmail(token: string | null): string | null {
 const store = createAccountStore<CodexAccountProfile>({
   registryKey: "ai_usage_codex_account_registry_v1",
   secretPrefix: "ai_usage_codex_profile",
-  createProfile: ({ id, name, index, now }) => ({
+  createProfile: ({ id, name, now }) => ({
     id,
     name,
     email: null,

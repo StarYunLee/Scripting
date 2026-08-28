@@ -6,7 +6,7 @@ const DEVICE_ID_KEY = "ai_usage_kimi_device_id_v1";
 const store = createAccountStore<KimiAccountProfile>({
   registryKey: "ai_usage_kimi_account_registry_v1",
   secretPrefix: "ai_usage_kimi_profile",
-  createProfile: ({ id, name, index, now }) => ({
+  createProfile: ({ id, name, now }) => ({
     id,
     name,
     email: null,

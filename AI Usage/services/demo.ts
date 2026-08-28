@@ -747,6 +747,7 @@ export function getDemoWidgetResult(
         total: byName("total"),
         api: byName("api"),
         grokBot: byName("grok_bot"),
+        plan: null,
         weekly: byName("weekly"),
         planType: account.planLabel,
         planLabel: account.planLabel,
