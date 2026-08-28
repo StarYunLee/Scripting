@@ -29,6 +29,21 @@ import type {
   LimitWindowName as MinimaxLimitWindowName,
   UsageResult as MinimaxUsageResult,
 } from "../providers/minimax/types";
+import type {
+  LimitWindow as CursorLimitWindow,
+  LimitWindowName as CursorLimitWindowName,
+  UsageResult as CursorUsageResult,
+} from "../providers/cursor/types";
+import type {
+  LimitWindow as KimiLimitWindow,
+  LimitWindowName as KimiLimitWindowName,
+  UsageResult as KimiUsageResult,
+} from "../providers/kimi/types";
+import type {
+  LimitWindow as CopilotLimitWindow,
+  LimitWindowName as CopilotLimitWindowName,
+  UsageResult as CopilotUsageResult,
+} from "../providers/copilot/types";
 
 const DEMO_KEY = "ai_usage_demo_mode_v1";
 
@@ -420,6 +435,97 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
     resetCredits: null,
   },
   {
+    // 中性演示套餐：不臆造真实套餐分层，仅用于账号页预览与布局验收。
+    id: "demo_cursor_layout",
+    provider: "cursor",
+    title: "demo@cursor.demo",
+    planLabel: "Demo",
+    windows: [
+      {
+        id: "auto",
+        name: "auto",
+        label: "Auto",
+        usedPercent: 41,
+        resetOffsetMs: 1 * 3_600_000 + 26 * 60_000,
+      },
+      {
+        id: "total",
+        name: "total",
+        label: "Total",
+        usedPercent: 57,
+        resetOffsetMs: 4 * 86_400_000 + 2 * 3_600_000,
+      },
+      {
+        id: "api",
+        name: "api",
+        label: "API",
+        usedPercent: 73,
+        resetOffsetMs: 4 * 86_400_000 + 2 * 3_600_000,
+      },
+      {
+        id: "requests",
+        name: "weekly",
+        label: "每周",
+        usedPercent: 24,
+        resetOffsetMs: 5 * 86_400_000 + 6 * 3_600_000,
+      },
+    ],
+    resetCredits: null,
+  },
+  {
+    id: "demo_kimi_layout",
+    provider: "kimi",
+    title: "demo@kimi.demo",
+    planLabel: "Demo",
+    windows: [
+      {
+        id: "rolling_18000",
+        name: "five_hour",
+        label: "5 小时",
+        usedPercent: 48,
+        resetOffsetMs: 2 * 3_600_000 + 9 * 60_000,
+      },
+      {
+        id: "weekly",
+        name: "weekly",
+        label: "每周",
+        usedPercent: 66,
+        resetOffsetMs: 3 * 86_400_000 + 11 * 3_600_000,
+      },
+    ],
+    resetCredits: null,
+  },
+  {
+    id: "demo_copilot_layout",
+    provider: "copilot",
+    title: "demo@copilot.demo",
+    planLabel: "Demo",
+    windows: [
+      {
+        id: "credits",
+        name: "credits",
+        label: "额度",
+        usedPercent: 35,
+        resetOffsetMs: 12 * 86_400_000,
+      },
+      {
+        id: "chat",
+        name: "chat",
+        label: "对话",
+        usedPercent: 51,
+        resetOffsetMs: 25 * 3_600_000,
+      },
+      {
+        id: "completions",
+        name: "completions",
+        label: "补全",
+        usedPercent: 69,
+        resetOffsetMs: 25 * 3_600_000,
+      },
+    ],
+    resetCredits: null,
+  },
+  {
     id: "demo_zai_pro_plus",
     provider: "zai",
     title: "pro-plus@z.ai.demo",
@@ -505,6 +611,20 @@ export function listDemoAccounts(
 }
 
 export function getDemoWidgetResult(
+  provider: UsageCard["provider"],
+  accountId: string,
+):
+  | CodexUsageResult
+  | GrokUsageResult
+  | ClaudeUsageResult
+  | AntigravityUsageResult
+  | CursorUsageResult
+  | KimiUsageResult
+  | CopilotUsageResult
+  | ZaiUsageResult
+  | MinimaxUsageResult
+  | null;
+export function getDemoWidgetResult(
   provider: "codex",
   accountId: string,
 ): CodexUsageResult | null;
@@ -516,6 +636,18 @@ export function getDemoWidgetResult(
   provider: "claude",
   accountId: string,
 ): ClaudeUsageResult | null;
+export function getDemoWidgetResult(
+  provider: "cursor",
+  accountId: string,
+): CursorUsageResult | null;
+export function getDemoWidgetResult(
+  provider: "kimi",
+  accountId: string,
+): KimiUsageResult | null;
+export function getDemoWidgetResult(
+  provider: "copilot",
+  accountId: string,
+): CopilotUsageResult | null;
 export function getDemoWidgetResult(
   provider: "antigravity",
   accountId: string,
@@ -536,6 +668,9 @@ export function getDemoWidgetResult(
   | GrokUsageResult
   | ClaudeUsageResult
   | AntigravityUsageResult
+  | CursorUsageResult
+  | KimiUsageResult
+  | CopilotUsageResult
   | ZaiUsageResult
   | MinimaxUsageResult
   | null {
@@ -610,7 +745,6 @@ export function getDemoWidgetResult(
     };
   }
 
-  if (provider === "kimi" || provider === "copilot") return null;
 
   if (provider === "antigravity") {
     const windows: AntigravityLimitWindow[] = account.windows.map((window) => ({
@@ -630,6 +764,76 @@ export function getDemoWidgetResult(
         planType: account.planLabel,
         planLabel: account.planLabel,
         projectId: "demo-antigravity-project",
+        fetchedAt,
+        source: "live",
+      },
+    };
+  }
+
+  if (provider === "cursor") {
+    const windows: CursorLimitWindow[] = account.windows.map((window) => ({
+      ...windowBase(window),
+      id: `cursor:${window.id}`,
+      name: window.name as CursorLimitWindowName,
+    }));
+    const byName = (name: CursorLimitWindowName) =>
+      windows.find((window) => window.name === name) || null;
+    return {
+      ok: true,
+      snapshot: {
+        windows,
+        auto: byName("auto"),
+        total: byName("total"),
+        api: byName("api"),
+        grokBot: byName("grok_bot"),
+        weekly: byName("weekly"),
+        planType: account.planLabel,
+        planLabel: account.planLabel,
+        fetchedAt,
+        source: "live",
+      },
+    };
+  }
+
+  if (provider === "kimi") {
+    const windows: KimiLimitWindow[] = account.windows.map((window) => ({
+      ...windowBase(window),
+      id: `kimi:${window.id}`,
+      name: window.name as KimiLimitWindowName,
+    }));
+    const byName = (name: KimiLimitWindowName) =>
+      windows.find((window) => window.name === name) || null;
+    return {
+      ok: true,
+      snapshot: {
+        windows,
+        fiveHour: byName("five_hour"),
+        weekly: byName("weekly"),
+        planType: account.planLabel,
+        planLabel: account.planLabel,
+        fetchedAt,
+        source: "live",
+      },
+    };
+  }
+
+  if (provider === "copilot") {
+    const windows: CopilotLimitWindow[] = account.windows.map((window) => ({
+      ...windowBase(window),
+      id: `copilot:${window.id}`,
+      name: window.name as CopilotLimitWindowName,
+    }));
+    const byName = (name: CopilotLimitWindowName) =>
+      windows.find((window) => window.name === name) || null;
+    return {
+      ok: true,
+      snapshot: {
+        windows,
+        credits: byName("credits"),
+        chat: byName("chat"),
+        completions: byName("completions"),
+        planType: account.planLabel,
+        planLabel: account.planLabel,
         fetchedAt,
         source: "live",
       },

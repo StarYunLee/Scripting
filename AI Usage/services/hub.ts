@@ -7,6 +7,7 @@ import {
   refreshDemoCard,
 } from "./demo";
 import { writeLog } from "./logger";
+import { clearWidgetWindowSettings } from "./widget-window-settings";
 import { refreshAccount } from "./refresh";
 import { applyDashboardPrefs } from "./dashboard-prefs";
 import { PROVIDER_IDS, type ProviderId, type UsageCard } from "../models";
@@ -152,6 +153,7 @@ export function cancelProviderAuth(
   if (!api.token(profileId)) {
     api.usage.clearCache(profileId);
     api.clearSettings(profileId);
+    clearWidgetWindowSettings(provider, profileId);
     api.remove(profileId);
   }
 }
@@ -192,6 +194,7 @@ export function deleteAuthorizedAccount(
   const api = getProvider(provider);
   api.usage.clearCache(profileId);
   api.clearSettings(profileId);
+  clearWidgetWindowSettings(provider, profileId);
   api.remove(profileId);
 }
 

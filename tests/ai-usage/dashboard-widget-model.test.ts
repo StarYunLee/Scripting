@@ -99,8 +99,8 @@ test("plans bounded readable content for Small Medium and Large", () => {
 
 test("shortens account and representative provider window labels without losing fallbacks", () => {
   assert.equal(shortAccountTitle("verylongaccountname@example.com"), "verylo…@example.com");
-  assert.equal(shortWindowLabel("每周高级请求"), "Weekly");
-  assert.equal(shortWindowLabel("5 小时滚动窗口"), "5h");
+  assert.equal(shortWindowLabel("每周高级请求"), "7D");
+  assert.equal(shortWindowLabel("5 小时滚动窗口"), "5H");
   assert.equal(shortWindowLabel("API 调用额度"), "API");
   assert.equal(shortWindowLabel("Allegretto credits"), "Allegrett…");
 });

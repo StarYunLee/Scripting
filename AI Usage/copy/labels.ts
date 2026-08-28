@@ -3,8 +3,8 @@ import { providerMeta } from "../models";
 
 /** 额度周期：应用内中文 + 小组件英文缩写 */
 export const PERIOD = {
-  FIVE_HOUR: { app: "5 小时", widget: "5h" },
-  WEEKLY: { app: "每周", widget: "Weekly" },
+  FIVE_HOUR: { app: "5 小时", widget: "5H" },
+  WEEKLY: { app: "每周", widget: "7D" },
   MONTHLY: { app: "每月", widget: "Monthly" },
   DAILY: { app: "每天", widget: "Daily" },
   AUTO: { app: "Auto", widget: "Auto" },
@@ -104,6 +104,15 @@ export function widgetQuotaTitle(provider: ProviderId, windowLabel: string): str
   return `${platform} · ${parts.periodWidget}`;
 }
 
+/** 大尺寸行内标题：只含 [子类型 ·] 额度缩写，不重复 provider（provider 在 Badge/Logo 槽位）。 */
+export function widgetWindowOnlyTitle(windowLabel: string): string {
+  const parts = parseWidgetWindowParts(windowLabel);
+  if (parts.group) {
+    return `${parts.group} · ${parts.periodWidget}`;
+  }
+  return parts.periodWidget;
+}
+
 /** Claude 单账号小组件专用文案 */
 export const CLAUDE_WIDGET = {
   fiveHourQuota: "5 小时额度",
@@ -113,7 +122,7 @@ export const CLAUDE_WIDGET = {
   dualWeeklyFable: "每周 + Fable 每周",
   shortFiveHour: PERIOD.FIVE_HOUR.widget,
   shortWeekly: PERIOD.WEEKLY.widget,
-  shortFableWeekly: "Fable 每周",
+  shortFableWeekly: `Fable · ${PERIOD.WEEKLY.widget}`,
 };
 
 /** 总用量小组件固定文案 */
@@ -129,6 +138,11 @@ export function widgetOverflowMedium(hidden: number): string {
 
 export function widgetOverflowLarge(hidden: number): string {
   return `还有 ${hidden} 条未显示`;
+}
+
+/** 大尺寸 9 行之外的超短溢出标记。 */
+export function widgetOverflowLargeShort(hidden: number): string {
+  return `+${hidden}`;
 }
 
 export function widgetAccountOverflow(hidden: number): string {
@@ -179,6 +193,37 @@ export const CURSOR_WINDOW = {
   REQUEST: "请求额度",
 };
 
+export type CursorWindowCopyName =
+  | "auto"
+  | "total"
+  | "api"
+  | "grok_bot"
+  | "plan"
+  | "weekly";
+
+export function cursorWindowLabel(
+  name: CursorWindowCopyName,
+  fallback = "",
+): string {
+  if (name === "auto") return CURSOR_WINDOW.AUTO;
+  if (name === "total") return CURSOR_WINDOW.TOTAL;
+  if (name === "api") return CURSOR_WINDOW.API;
+  if (name === "grok_bot") return CURSOR_WINDOW.GROK_BOT;
+  if (name === "plan") return fallback || CURSOR_WINDOW.PLAN;
+  if (name === "weekly") return CURSOR_WINDOW.REQUEST;
+  return fallback;
+}
+
+/** Cursor Small 使用紧凑术语，避免 Weekly/请求额度与百分比互相挤压。 */
+export function cursorWidgetWindowLabel(
+  name: CursorWindowCopyName,
+  fallback: string,
+  small: boolean,
+): string {
+  if (small && name === "weekly") return PERIOD.WEEKLY.widget;
+  return cursorWindowLabel(name, fallback);
+}
+
 /** Grok 额度窗口应用内标签 */
 export const GROK_WINDOW = {
   WEEKLY: PERIOD.WEEKLY.app,
@@ -190,6 +235,25 @@ export const CODEX_WIDGET = {
   fiveHourQuota: "5 小时额度",
   weeklyQuota: "每周额度",
   monthlyQuota: "每月额度",
+  shortFiveHour: PERIOD.FIVE_HOUR.widget,
+  shortWeekly: PERIOD.WEEKLY.widget,
+  shortMonthly: PERIOD.MONTHLY.widget,
+};
+
+/** 两窗口单账号小组件的完整标题。 */
+export const KIMI_WIDGET = {
+  fiveHourQuota: "5 小时额度",
+  weeklyQuota: "每周额度",
+};
+
+export const COPILOT_WIDGET = {
+  fiveHourQuota: "5 小时额度",
+  weeklyQuota: "每周额度",
+};
+
+export const ZAI_WIDGET = {
+  fiveHourQuota: "5 小时额度",
+  weeklyQuota: "每周额度",
 };
 
 /** Grok 单账号小组件专用文案 */
@@ -202,6 +266,10 @@ export const GROK_WIDGET = {
 export const CURSOR_WIDGET = {
   autoQuota: `${CURSOR_WINDOW.AUTO} 额度`,
   totalQuota: `${CURSOR_WINDOW.TOTAL} 额度`,
+  resetPrefix: "重置",
+  updatedPrefix: "更新",
+  noWindows: "暂无用量窗口",
+  noWindowsSelected: "未选择用量窗口",
 };
 
 /** Antigravity 模型分组名 */

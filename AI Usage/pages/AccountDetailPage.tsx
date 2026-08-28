@@ -11,11 +11,9 @@ import {
   Widget,
   useState,
 } from "scripting";
-import { CodexWidgetSettingsView } from "../providers/codex/WidgetSettingsView";
-import { ClaudeWidgetSettingsView } from "../providers/claude/WidgetSettingsView";
-import { AntigravityWidgetSettingsView } from "../providers/antigravity/WidgetSettingsView";
 import { providerMeta, type ProviderId } from "../models";
 import { widgetParameter } from "../widget/parameter";
+import { WindowSettingsSection } from "../widget/shared/WindowSettingsSection";
 import { PageBackground } from "../components/PageBackground";
 import { PlanBadge } from "../components/PlanBadge";
 import { ProviderLogo } from "../components/ProviderLogo";
@@ -176,36 +174,13 @@ export function AccountDetailPage(props: {
           header={<GlassSectionHeader title="小组件设置" />}
         >
           <GlassGroup>
-            {props.provider === "codex" ? (
-              <CodexWidgetSettingsView
-                profileId={props.account.id}
-                onChanged={changed}
-              />
-            ) : props.provider === "grok" ||
-              props.provider === "cursor" ||
-              props.provider === "kimi" ||
-              props.provider === "copilot" ||
-              props.provider === "zai" ||
-              props.provider === "minimax" ? null : props.provider === "claude" ? (
-              <ClaudeWidgetSettingsView
-                profileId={props.account.id}
-                onChanged={changed}
-              />
-            ) : (
-              <AntigravityWidgetSettingsView
-                profileId={props.account.id}
-                onChanged={changed}
-              />
-            )}
+            <WindowSettingsSection
+              provider={props.provider}
+              profileId={props.account.id}
+              onChanged={changed}
+            />
 
-            {props.provider === "grok" ||
-            props.provider === "cursor" ||
-            props.provider === "kimi" ||
-            props.provider === "copilot" ||
-            props.provider === "zai" ||
-            props.provider === "minimax" ? null : (
-              <GlassDivider />
-            )}
+            <GlassDivider />
             <Picker
               title="组件预览"
               value={previewFamily}

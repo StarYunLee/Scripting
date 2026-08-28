@@ -188,7 +188,13 @@ export function parseCursorLegacyUsage(
     planLabel: "Enterprise",
     windows: [
       {
-        ...makeWindow("weekly", "请求", (used / max) * 100, reset, 30 * 86400),
+        ...makeWindow(
+          "weekly",
+          CURSOR_WINDOW.REQUEST,
+          (used / max) * 100,
+          reset,
+          30 * 86400,
+        ),
         id: "cursor:requests",
       },
     ],
@@ -208,7 +214,6 @@ export function cursorSnapshot(
     total: byName("total"),
     api: byName("api"),
     grokBot: byName("grok_bot"),
-    plan: byName("plan"),
     weekly: byName("weekly"),
     planType: parsed.planLabel,
     planLabel: parsed.planLabel,

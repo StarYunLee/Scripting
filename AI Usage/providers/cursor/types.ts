@@ -39,13 +39,26 @@ export type UsageSnapshot = {
   total: LimitWindow | null;
   api: LimitWindow | null;
   grokBot: LimitWindow | null;
-  plan: LimitWindow | null;
   weekly: LimitWindow | null;
   planType: string | null;
   planLabel: string | null;
   fetchedAt: string;
   source: "live" | "cache";
 };
+
+export type ConfigurableCursorWindowName = Exclude<
+  LimitWindowName,
+  "unknown" | "plan"
+>;
+
+// 只公开当前 parser 确实能产出的窗口；套餐额度由 plan badge 表达，不是用量窗口。
+export const CURSOR_WINDOW_NAMES: ConfigurableCursorWindowName[] = [
+  "auto",
+  "total",
+  "api",
+  "grok_bot",
+  "weekly",
+];
 
 export type UsageResult =
   | { ok: true; snapshot: UsageSnapshot }

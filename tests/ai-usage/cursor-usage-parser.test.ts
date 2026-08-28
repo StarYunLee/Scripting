@@ -108,5 +108,18 @@ test("parses the legacy request bucket without depending on object order", () =>
   });
   assert.equal(result?.planLabel, "Enterprise");
   assert.equal(result?.windows[0].usedPercent, 25);
-  assert.equal(result?.windows[0].label, "请求");
+  assert.equal(result?.windows[0].label, "请求额度");
+});
+
+test("legacy bucket label comes from the canonical copy table", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const parser = await readFile(
+    new URL(
+      "../../AI Usage/providers/cursor/usage-parser.ts",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+  assert.match(parser, /CURSOR_WINDOW\.REQUEST/);
+  assert.doesNotMatch(parser, /makeWindow\(\s*"weekly",\s*"[^"]+"/);
 });

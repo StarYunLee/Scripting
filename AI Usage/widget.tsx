@@ -3,6 +3,8 @@ import { resolveWidgetParameter } from "./widget/parameter";
 import { loadWidgetUsage } from "./widget/loader";
 import { loadDashboardWidgetUsage } from "./widget/dashboard-loader";
 import { DashboardWidgetView } from "./widget/dashboard/DashboardWidgetView";
+import { AccountUsageWidgetView } from "./widget/shared/AccountUsageWidgetView";
+import { getLegacyWidgetSettings } from "./widget/legacy-settings";
 import { UsageWidgetView as CodexUsageWidgetView } from "./widget/codex/UsageWidgetView";
 import { UsageWidgetView as GrokUsageWidgetView } from "./widget/grok/UsageWidgetView";
 import { UsageWidgetView as ClaudeUsageWidgetView } from "./widget/claude/UsageWidgetView";
@@ -12,6 +14,8 @@ import { UsageWidgetView as KimiUsageWidgetView } from "./widget/kimi/UsageWidge
 import { UsageWidgetView as CopilotUsageWidgetView } from "./widget/copilot/UsageWidgetView";
 import { UsageWidgetView as ZaiUsageWidgetView } from "./widget/zai/UsageWidgetView";
 import { UsageWidgetView as MinimaxUsageWidgetView } from "./widget/minimax/UsageWidgetView";
+import { getWidgetWindowSettings } from "./services/widget-window-settings";
+import { migrateLegacyCursorHiddenWindows } from "./widget/shared/window-settings-migration";
 import { getAppDisplaySettings } from "./services/settings";
 import { getWidgetPrivacyPrefs } from "./services/dashboard-prefs";
 import { writeLog } from "./services/logger";
@@ -87,98 +91,105 @@ async function run() {
 
   const { provider, profileId } = resolved.account;
   const loaded = await loadWidgetUsage(provider, profileId);
+  const legacyExtraLarge = family.toLowerCase().includes("extralarge");
+  const legacySettings = legacyExtraLarge
+    ? getLegacyWidgetSettings(provider, profileId)
+    : null;
 
-  if (loaded.provider === "codex") {
+  if (legacyExtraLarge &&
+    loaded.provider === "codex" &&
+    legacySettings?.provider === "codex") {
     Widget.present(
       <CodexUsageWidgetView
         result={loaded.result}
         family={family}
-        focusWindow={loaded.settings.focusWindow}
-        widgetLayout={loaded.settings.widgetLayout}
+        focusWindow={legacySettings.value.focusWindow}
+        widgetLayout={legacySettings.value.widgetLayout}
       />,
       { reloadPolicy },
     );
     return;
   }
-
-  if (loaded.provider === "grok") {
-    Widget.present(
-      <GrokUsageWidgetView result={loaded.result} family={family} />,
-      { reloadPolicy },
-    );
+  if (legacyExtraLarge &&
+    loaded.provider === "grok" &&
+    legacySettings?.provider === "grok") {
+    Widget.present(<GrokUsageWidgetView result={loaded.result} family={family} />, { reloadPolicy });
     return;
   }
-
-  if (loaded.provider === "claude") {
+  if (legacyExtraLarge &&
+    loaded.provider === "claude" &&
+    legacySettings?.provider === "claude") {
     Widget.present(
       <ClaudeUsageWidgetView
         result={loaded.result}
         family={family}
-        focusWindow={loaded.settings.focusWindow}
-        widgetStyle={loaded.settings.widgetStyle}
-        dualQuotaPreset={loaded.settings.dualQuotaPreset}
+        focusWindow={legacySettings.value.focusWindow}
+        widgetStyle={legacySettings.value.widgetStyle}
+        dualQuotaPreset={legacySettings.value.dualQuotaPreset}
       />,
       { reloadPolicy },
     );
     return;
   }
-
-  if (loaded.provider === "antigravity") {
+  if (legacyExtraLarge &&
+    loaded.provider === "antigravity" &&
+    legacySettings?.provider === "antigravity") {
     Widget.present(
       <AntigravityUsageWidgetView
         result={loaded.result}
         family={family}
-        focusWindow={loaded.settings.focusWindow}
-        widgetStyle={loaded.settings.widgetStyle}
-        dualQuotaPreset={loaded.settings.dualQuotaPreset}
+        focusWindow={legacySettings.value.focusWindow}
+        widgetStyle={legacySettings.value.widgetStyle}
+        dualQuotaPreset={legacySettings.value.dualQuotaPreset}
       />,
       { reloadPolicy },
     );
     return;
   }
-
-  if (loaded.provider === "cursor") {
-    Widget.present(
-      <CursorUsageWidgetView result={loaded.result} family={family} />,
-      { reloadPolicy },
-    );
+  if (legacyExtraLarge &&
+    loaded.provider === "cursor" &&
+    legacySettings?.provider === "cursor") {
+    Widget.present(<CursorUsageWidgetView result={loaded.result} family={family} />, { reloadPolicy });
+    return;
+  }
+  if (legacyExtraLarge &&
+    loaded.provider === "kimi" &&
+    legacySettings?.provider === "kimi") {
+    Widget.present(<KimiUsageWidgetView result={loaded.result} family={family} />, { reloadPolicy });
+    return;
+  }
+  if (legacyExtraLarge &&
+    loaded.provider === "copilot" &&
+    legacySettings?.provider === "copilot") {
+    Widget.present(<CopilotUsageWidgetView result={loaded.result} family={family} />, { reloadPolicy });
+    return;
+  }
+  if (legacyExtraLarge &&
+    loaded.provider === "zai" &&
+    legacySettings?.provider === "zai") {
+    Widget.present(<ZaiUsageWidgetView result={loaded.result} family={family} />, { reloadPolicy });
+    return;
+  }
+  if (legacyExtraLarge &&
+    loaded.provider === "minimax" &&
+    legacySettings?.provider === "minimax") {
+    Widget.present(<MinimaxUsageWidgetView result={loaded.result} family={family} />, { reloadPolicy });
     return;
   }
 
-  if (loaded.provider === "kimi") {
-    Widget.present(
-      <KimiUsageWidgetView result={loaded.result} family={family} />,
-      { reloadPolicy },
-    );
-    return;
-  }
+  migrateLegacyCursorHiddenWindows(provider, profileId);
+  const hiddenWindowIds = getWidgetWindowSettings(provider, profileId)
+    .hiddenWindowIds;
 
-  if (loaded.provider === "copilot") {
-    Widget.present(
-      <CopilotUsageWidgetView result={loaded.result} family={family} />,
-      { reloadPolicy },
-    );
-    return;
-  }
-
-  if (loaded.provider === "zai") {
-    Widget.present(
-      <ZaiUsageWidgetView result={loaded.result} family={family} />,
-      { reloadPolicy },
-    );
-    return;
-  }
-
-  if (loaded.provider === "minimax") {
-    Widget.present(
-      <MinimaxUsageWidgetView result={loaded.result} family={family} />,
-      { reloadPolicy },
-    );
-    return;
-  }
-
-  const exhausted: never = loaded;
-  Widget.present(<ErrorWidget message={`不支持的 Provider：${String(exhausted)}`} />);
+  Widget.present(
+    <AccountUsageWidgetView
+      provider={provider}
+      result={loaded.result}
+      family={family}
+      hiddenWindowIds={hiddenWindowIds}
+    />,
+    { reloadPolicy },
+  );
 }
 
 void run();
