@@ -473,6 +473,15 @@ export function SettingsPage(props: {
           header={<GlassSectionHeader title="用量总览" />}
         >
           <GlassGroup>
+            <Text
+              font={13}
+              foregroundStyle="secondaryLabel"
+              padding={{ vertical: true }}
+              frame={{ minHeight: 44, maxWidth: "infinity" }}
+            >
+              {APP_DASHBOARD_SETTINGS_FOOTER}
+            </Text>
+            <GlassDivider />
             <Button
               buttonStyle="plain"
               frame={{ maxWidth: "infinity" }}
@@ -491,14 +500,6 @@ export function SettingsPage(props: {
                 />
               </HStack>
             </Button>
-            <GlassDivider />
-            <Text
-              font="caption"
-              foregroundStyle="secondaryLabel"
-              padding={{ vertical: true }}
-            >
-              {APP_DASHBOARD_SETTINGS_FOOTER}
-            </Text>
           </GlassGroup>
         </Section>
 
@@ -507,6 +508,15 @@ export function SettingsPage(props: {
           header={<GlassSectionHeader title="小组件总览" />}
         >
           <GlassGroup>
+            <Text
+              font={13}
+              foregroundStyle="secondaryLabel"
+              padding={{ vertical: true }}
+              frame={{ minHeight: 44, maxWidth: "infinity" }}
+            >
+              {WIDGET_DASHBOARD_SETTINGS_FOOTER}
+            </Text>
+            <GlassDivider />
             <Button
               buttonStyle="plain"
               frame={{ maxWidth: "infinity" }}
@@ -552,14 +562,6 @@ export function SettingsPage(props: {
               <Text tag="systemLarge">Large</Text>
               <Text tag="systemExtraLarge">Extra Large</Text>
             </Picker>
-            <GlassDivider />
-            <Text
-              font="caption"
-              foregroundStyle="secondaryLabel"
-              padding={{ vertical: true }}
-            >
-              {WIDGET_DASHBOARD_SETTINGS_FOOTER}
-            </Text>
           </GlassGroup>
         </Section>
 

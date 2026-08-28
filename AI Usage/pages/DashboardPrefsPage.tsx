@@ -80,21 +80,23 @@ export function DashboardPrefsPage(props: {
         }}
         background={<PageBackground theme={props.backgroundTheme} />}
       >
-        <Section
-          listRowBackground={rowBackground}
-          footer={
-            <Text font="caption" foregroundStyle="secondaryLabel">
-              {isWidget
-                ? "控制多账号小组件展示哪些账号与用量窗口。默认全部显示，与应用内用量页互不影响。"
-                : "控制用量页展示哪些账号与用量窗口。默认全部显示；关闭后仅影响应用内总览，不影响主屏幕小组件。"}
-            </Text>
-          }
-        >
+        <Section listRowBackground={rowBackground}>
           <VStack
             spacing={0}
             frame={{ maxWidth: "infinity" }}
             listRowInsets={{ top: 0, bottom: 0, leading: 16, trailing: 16 }}
           >
+            <Text
+              font={13}
+              foregroundStyle="secondaryLabel"
+              padding={{ vertical: true }}
+              frame={{ minHeight: 44, maxWidth: "infinity" }}
+            >
+              {isWidget
+                ? "控制多账号小组件展示哪些账号与用量窗口。默认全部显示，与应用内用量页互不影响。"
+                : "控制用量页展示哪些账号与用量窗口。默认全部显示；关闭后仅影响应用内总览，不影响主屏幕小组件。"}
+            </Text>
+            <Divider />
             <Button
               buttonStyle="plain"
               frame={{ maxWidth: "infinity" }}
@@ -119,17 +121,21 @@ export function DashboardPrefsPage(props: {
           <Section
             listRowBackground={rowBackground}
             header={<Text foregroundStyle="secondaryLabel">隐私与显示</Text>}
-            footer={
-              <Text font="caption" foregroundStyle="secondaryLabel">
-                {DASHBOARD_PREFS_WIDGET_PRIVACY_FOOTER}
-              </Text>
-            }
           >
             <VStack
               spacing={0}
               frame={{ maxWidth: "infinity" }}
               listRowInsets={{ top: 0, bottom: 0, leading: 16, trailing: 16 }}
             >
+              <Text
+                font={13}
+                foregroundStyle="secondaryLabel"
+                padding={{ vertical: true }}
+                frame={{ minHeight: 44, maxWidth: "infinity" }}
+              >
+                {DASHBOARD_PREFS_WIDGET_PRIVACY_FOOTER}
+              </Text>
+              <Divider />
               <Toggle
                 title="显示账号邮箱"
                 value={prefs.privacy.showAccountEmail}

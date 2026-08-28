@@ -59,7 +59,7 @@ const C: Record<string, Color | DynamicShapeStyle> = {
   bg: "systemBackground",
   primary: "label",
   secondary: "secondaryLabel",
-  track: dynamic("#D9D9DE", "#3A3A3C"),
+  track: dynamic("#C7C8CC", "#55565C"),
   warn: "systemOrange",
 };
 

@@ -22,3 +22,9 @@ test("Stage F routes dashboard refresh through the bounded widget source plane",
   assert.match(settings, /Widget\.preview\(/);
   assert.match(settings, /systemExtraLarge/);
 });
+
+test("Dashboard uses the same neutral progress track as provider widgets", async () => {
+  const dashboard = await source("widget/dashboard/DashboardWidgetView.tsx");
+  assert.match(dashboard, /track: dynamic\("#C7C8CC", "#55565C"\)/);
+  assert.doesNotMatch(dashboard, /#D9D9DE|#3A3A3C/);
+});
