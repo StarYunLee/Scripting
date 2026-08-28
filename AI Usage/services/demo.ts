@@ -24,6 +24,11 @@ import type {
   LimitWindowName as CursorLimitWindowName,
   UsageResult as CursorUsageResult,
 } from "../providers/cursor/types";
+import type {
+  LimitWindow as KimiLimitWindow,
+  LimitWindowName as KimiLimitWindowName,
+  UsageResult as KimiUsageResult,
+} from "../providers/kimi/types";
 
 const DEMO_KEY = "ai_usage_demo_mode_v1";
 
@@ -452,6 +457,29 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
     ],
     resetCredits: null,
   },
+  {
+    id: "demo_kimi_layout",
+    provider: "kimi",
+    title: "demo@kimi.demo",
+    planLabel: "Demo",
+    windows: [
+      {
+        id: "rolling_18000",
+        name: "five_hour",
+        label: "5 小时",
+        usedPercent: 48,
+        resetOffsetMs: 2 * 3_600_000 + 9 * 60_000,
+      },
+      {
+        id: "weekly",
+        name: "weekly",
+        label: "每周",
+        usedPercent: 66,
+        resetOffsetMs: 3 * 86_400_000 + 11 * 3_600_000,
+      },
+    ],
+    resetCredits: null,
+  },
 ];
 
 function futureIso(offsetMs: number): string {
@@ -508,6 +536,10 @@ export function getDemoWidgetResult(
   accountId: string,
 ): CursorUsageResult | null;
 export function getDemoWidgetResult(
+  provider: "kimi",
+  accountId: string,
+): KimiUsageResult | null;
+export function getDemoWidgetResult(
   provider: "antigravity",
   accountId: string,
 ): AntigravityUsageResult | null;
@@ -519,6 +551,7 @@ export function getDemoWidgetResult(
   | GrokUsageResult
   | ClaudeUsageResult
   | CursorUsageResult
+  | KimiUsageResult
   | AntigravityUsageResult
   | null {
   const account = DEMO_ACCOUNTS.find(
@@ -608,6 +641,28 @@ export function getDemoWidgetResult(
         total: byName("total"),
         api: byName("api"),
         grokBot: byName("grok_bot"),
+        weekly: byName("weekly"),
+        planType: account.planLabel,
+        planLabel: account.planLabel,
+        fetchedAt,
+        source: "live",
+      },
+    };
+  }
+
+  if (provider === "kimi") {
+    const windows: KimiLimitWindow[] = account.windows.map((window) => ({
+      ...windowBase(window),
+      id: `kimi:${window.id}`,
+      name: window.name as KimiLimitWindowName,
+    }));
+    const byName = (name: KimiLimitWindowName) =>
+      windows.find((window) => window.name === name) || null;
+    return {
+      ok: true,
+      snapshot: {
+        windows,
+        fiveHour: byName("five_hour"),
         weekly: byName("weekly"),
         planType: account.planLabel,
         planLabel: account.planLabel,
