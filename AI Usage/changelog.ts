@@ -6,6 +6,15 @@ export type ChangelogEntry = {
 
 export const CHANGELOG = [
   {
+    version: "1.3.0",
+    date: "2026-08-29",
+    changes: [
+      "新增 Cursor、Kimi Code、GitHub Copilot、Z.ai 与 MiniMax 用量查看，支持对应账号授权、额度解析和缓存回退。",
+      "新增应用内用量总览控制，可按账号决定是否显示，并在账号详情中选择需要展示的额度窗口。",
+      "优化多账号账号数据迁移与刷新并发，降低批量刷新时的等待和相互影响。",
+    ],
+  },
+  {
     version: "1.2.0",
     date: "2026-08-28",
     changes: [

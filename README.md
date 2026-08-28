@@ -30,7 +30,9 @@
 
 ### AI Usage
 
-统一管理 Codex、Grok、Claude 与 Antigravity 的多账号用量。应用页面、账号管理和运行记录采用统一信息结构；Small / Medium 主屏幕小组件共享额度层级、套餐标签与窗口命名，固定显示剩余额度，并按账号保存布局。支持快捷指令或 App Intent 刷新，失败时回退最近缓存，未授权时可预览演示模式。
+统一管理 Codex、Grok、Claude、Antigravity、Cursor、Kimi Code、GitHub Copilot、Z.ai 与 MiniMax 的多账号用量。应用页面、账号管理和运行记录采用统一信息结构；Small / Medium 主屏幕小组件共享额度层级、套餐标签与窗口命名，固定显示剩余额度，并按账号保存布局。支持应用内用量总览控制、快捷指令或 App Intent 刷新，失败时回退最近缓存，未授权时可预览演示模式。
+
+当前版本：`1.3.0`
 
 <table>
   <tr>
@@ -114,11 +116,11 @@ https://raw.githubusercontent.com/StarYunLee/Scripting/main/Surge-Metrics.script
 
 以下项目已停止维护，相关功能已整合至 [AI Usage](#ai-usage)。为保持历史源码和安装链接可用，仓库继续保留其最终版本，但不会继续适配接口变化或修复问题；旧安装包保持最终发布版本的原始内容，不代表重新发布。
 
-| 项目 | 最终版本 | 源码 | 安装包 |
-|---|---:|---|---|
-| Codex Usage | `1.5.1` | [查看源码](./Codex%20Usage/) | [下载安装](https://raw.githubusercontent.com/StarYunLee/Scripting/main/Codex-Usage.scripting) |
-| Claude Usage | `1.3.5` | [查看源码](./Claude%20Usage/) | [下载安装](https://raw.githubusercontent.com/StarYunLee/Scripting/main/Claude-Usage.scripting) |
-| Grok Usage | `1.5.1` | [查看源码](./Grok%20Usage/) | [下载安装](https://raw.githubusercontent.com/StarYunLee/Scripting/main/Grok-Usage.scripting) |
+| 项目         | 最终版本 | 源码                          | 安装包                                                                                         |
+| ------------ | -------: | ----------------------------- | ---------------------------------------------------------------------------------------------- |
+| Codex Usage  |  `1.5.1` | [查看源码](./Codex%20Usage/)  | [下载安装](https://raw.githubusercontent.com/StarYunLee/Scripting/main/Codex-Usage.scripting)  |
+| Claude Usage |  `1.3.5` | [查看源码](./Claude%20Usage/) | [下载安装](https://raw.githubusercontent.com/StarYunLee/Scripting/main/Claude-Usage.scripting) |
+| Grok Usage   |  `1.5.1` | [查看源码](./Grok%20Usage/)   | [下载安装](https://raw.githubusercontent.com/StarYunLee/Scripting/main/Grok-Usage.scripting)   |
 
 > 旧项目仅为兼容和历史参考保留。新安装和问题反馈请统一使用 AI Usage。
 
@@ -141,6 +143,7 @@ https://raw.githubusercontent.com/StarYunLee/Scripting/main/Surge-Metrics.script
 提交 Issue 时，请在标题中用方括号注明项目名称，例如 `[AI Usage]`。
 
 ## 友链
+
 - [LINUX DO](https://linux.do/) — 社区讨论与反馈
 - [烧饼论坛](https://sb.sb/)
 

@@ -8,15 +8,16 @@
   </tr>
 </table>
 
-面向 [Scripting App](https://scriptingapp.github.io/) 的非官方多平台用量查看应用。在一个项目里管理 Codex、Grok、Claude 与 Antigravity 的多账号用量、主屏幕小组件和自动化刷新。
+面向 [Scripting App](https://scriptingapp.github.io/) 的非官方多平台用量查看应用。在一个项目里管理 Codex、Grok、Claude、Antigravity、Cursor、Kimi Code、GitHub Copilot、Z.ai 与 MiniMax 的多账号用量、主屏幕小组件和自动化刷新。
 
-当前版本：`1.2.0`
+当前版本：`1.3.0`
 
 > 本项目不是 OpenAI、xAI、Anthropic、Google 或 Scripting App 官方产品，与上述平台无隶属或合作关系。
 
 ## 功能
 
-- 统一管理 Codex、Grok、Claude、Antigravity 多个账号
+- 统一管理 Codex、Grok、Claude、Antigravity、Cursor、Kimi Code、GitHub Copilot、Z.ai 与 MiniMax 多个账号
+- 应用内用量总览支持按账号控制显示，并可在账号详情中选择需要展示的额度窗口
 - Access Token、Refresh Token 和相关身份凭据保存在本机 Keychain
 - Token 到期前自动刷新
 - 主屏幕小组件支持 Small、Medium，并按账号独立保存布局
@@ -74,6 +75,31 @@ https://raw.githubusercontent.com/StarYunLee/Scripting/main/AI-Usage.scripting
 - 回调：`http://localhost:51121/oauth-callback?...`
 - 复制 Safari 地址栏中的完整回调地址
 
+### Cursor
+
+- 在应用打开的授权页中完成登录
+- 返回应用后直接提交完成授权，无需粘贴回调内容
+
+### Kimi Code
+
+- 使用设备码在浏览器完成登录和授权
+- 返回应用后直接提交完成授权，无需粘贴回调内容
+
+### GitHub Copilot
+
+- 使用设备码在 GitHub 完成设备授权
+- 返回应用后直接提交完成授权
+
+### Z.ai
+
+- 在 Z.ai 或智谱控制台创建并复制 API Key
+- 将 API Key 粘贴回应用提交验证
+
+### MiniMax
+
+- 先选择国际站 `minimax.io` 或国内站 `minimaxi.com`
+- 从对应站点复制 Subscription Key 并粘贴回应用
+
 OAuth 临时状态有效期为 10 分钟。Authorization Code 通常只能交换一次；授权失败或超时后请重新开始。
 
 > 回调 URL 和一次性授权码属于短期敏感凭据。不要截图、公开或发送给他人。
@@ -97,6 +123,12 @@ OAuth 临时状态有效期为 10 分钟。Authorization Code 通常只能交换
 ```text
 provider:profileId
 ```
+
+## 应用内用量总览
+
+- 设置页可以集中控制每个已连接账号是否显示在应用的“用量”页面
+- 账号详情页可以独立选择该账号要显示的额度窗口，并至少保留一个窗口
+- 这些设置只影响应用内用量总览，不影响普通单账号主屏幕小组件、授权或刷新
 
 ## 小组件显示
 
@@ -161,6 +193,11 @@ iOS WidgetKit 可能根据系统调度延后刷新。所选时间是请求的最
 - Grok：xAI OAuth 与 Grok Build / CLI 订阅额度接口
 - Claude：Anthropic OAuth 与 Claude Code 用量接口
 - Antigravity：Google OAuth 与 Antigravity / Code Assist 用量接口
+- Cursor：Cursor 账户授权与用量接口
+- Kimi Code：Kimi Code 设备授权与额度接口
+- GitHub Copilot：GitHub 设备授权与 Copilot 用量接口
+- Z.ai：Z.ai / 智谱 API Key 与用量接口
+- MiniMax：MiniMax Subscription Key 与 Token Plan 用量接口
 
 服务端更新后，路径、字段或访问策略可能变化。
 
@@ -202,7 +239,7 @@ AI Usage/
 ├── assets/                   平台 Logo、水印与展示图
 ├── components/               共享 UI 与用量卡片
 ├── pages/                    用量、设置、账号详情、日志页
-├── providers/                Codex / Grok / Claude / Antigravity 适配
+├── providers/                Codex / Grok / Claude / Antigravity / Cursor / Kimi / Copilot / Z.ai / MiniMax 适配
 ├── services/                 刷新编排、配色、设置、演示与存储
 ├── widget/                   小组件分发、Loader 与平台布局
 ├── app_intents.tsx           系统 App Intent
