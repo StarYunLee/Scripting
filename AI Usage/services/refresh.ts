@@ -1,6 +1,7 @@
 import { getUsageProvider } from "../providers/usage-registry";
 import { PROVIDER_IDS, type ProviderId } from "../models";
 import { writeLog } from "./logger";
+import { runWithConcurrency } from "./refresh-batches";
 
 export type RefreshTarget = {
   provider: ProviderId;
@@ -120,18 +121,40 @@ export type RefreshBatchCallbacks = {
   onResult?: (outcome: RefreshOutcome) => void | Promise<void>;
 };
 
+const REFRESH_BATCH_SIZE = 3;
+
 export async function refreshAccounts(
   targets: RefreshTarget[],
   options: RefreshOptions,
   callbacks: RefreshBatchCallbacks = {},
 ): Promise<RefreshSummary> {
-  const outcomes: RefreshOutcome[] = [];
-  for (const target of targets) {
-    await callbacks.onStart?.(target);
-    const outcome = await refreshAccount(target, options);
-    outcomes.push(outcome);
-    await callbacks.onResult?.(outcome);
-  }
+  const settled = await runWithConcurrency(
+    targets,
+    REFRESH_BATCH_SIZE,
+    async (target): Promise<RefreshOutcome> => {
+      try {
+        await callbacks.onStart?.(target);
+      } catch {
+        /* UI callback failures must not skip the provider refresh. */
+      }
+      const outcome = await refreshAccount(target, options);
+      try {
+        await callbacks.onResult?.(outcome);
+      } catch {
+        /* Preserve the provider outcome when a UI callback fails. */
+      }
+      return outcome;
+    },
+  );
+  const outcomes = settled.map((item, index): RefreshOutcome =>
+    item.ok
+      ? item.value
+      : {
+          ...targets[index],
+          ok: false,
+          error: { message: "刷新发生异常", code: "batch_exception" },
+        },
+  );
   return {
     total: outcomes.length,
     succeeded: outcomes.filter((item) => item.ok).length,
