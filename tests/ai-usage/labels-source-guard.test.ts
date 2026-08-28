@@ -48,9 +48,11 @@ test("Stage G centralizes shared window copy and keeps provider themes visual-on
   assert.match(model, /copy\/labels/);
   assert.doesNotMatch(model, /value\.includes\("周"\)|return "Weekly"/);
   assert.match(dashboard, /WIDGET_TITLE/);
-  assert.match(dashboard, /widgetOverflowSmall/);
+  // Small shows fixed five single-line rows: no overflow footer label.
+  assert.doesNotMatch(dashboard, /widgetOverflowSmall/);
   assert.match(dashboard, /widgetOverflowMedium/);
   assert.match(dashboard, /widgetOverflowLarge/);
+  assert.match(dashboard, /widgetOverflowLargeShort/);
   assert.doesNotMatch(dashboard, /另有 \{(?:hidden|extra)\}|\+\{hidden\} 条/);
   for (const widget of [kimiWidget, copilotWidget, zaiWidget]) {
     assert.match(widget, /copy\/labels/);

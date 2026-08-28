@@ -7,6 +7,7 @@ import {
   largeVisibleLimit,
   planMediumRings,
   privacySubtitle,
+  ringStroke,
   shortAccountTitle,
   shortWindowLabel,
   smallVisibleLimit,
@@ -78,8 +79,9 @@ test("maps widget families and fallback dimensions for all four layouts", () => 
 test("plans bounded readable content for Small Medium and Large", () => {
   const sparse = { ...privateDefaults, showPlanBadge: false };
   const dense = { ...privateDefaults, showAccountEmail: true, showAccountId: true };
-  assert.equal(smallVisibleLimit(sparse), 6);
+  assert.equal(smallVisibleLimit(sparse), 5);
   assert.equal(smallVisibleLimit(dense), 5);
+  assert.equal(smallVisibleLimit(privateDefaults), 5);
 
   assert.deepEqual(planMediumRings(3, 338, 158, privateDefaults), {
     rowCount: 1,
@@ -93,8 +95,15 @@ test("plans bounded readable content for Small Medium and Large", () => {
   assert.equal(crowded.maxVisible, 10);
   assert.ok(crowded.ringSize >= 34 && crowded.ringSize <= 42);
 
-  assert.equal(largeVisibleLimit(privateDefaults, 382), 8);
-  assert.equal(largeVisibleLimit(dense, 382), 8);
+  assert.equal(largeVisibleLimit(privateDefaults, 382), 9);
+  assert.equal(largeVisibleLimit(dense, 382), 9);
+  assert.equal(largeVisibleLimit(sparse, 382), 9);
+});
+
+test("derives deterministic Circle stroke geometry for Medium rings", () => {
+  assert.deepEqual(ringStroke(52), { thickness: 5, circleSize: 47 });
+  assert.deepEqual(ringStroke(42), { thickness: 4, circleSize: 38 });
+  assert.deepEqual(ringStroke(30), { thickness: 3, circleSize: 27 });
 });
 
 test("shortens account and representative provider window labels without losing fallbacks", () => {

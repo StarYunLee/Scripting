@@ -23,8 +23,24 @@ test("Stage F routes dashboard refresh through the bounded widget source plane",
   assert.match(settings, /systemExtraLarge/);
 });
 
-test("Dashboard uses the same neutral progress track as provider widgets", async () => {
-  const dashboard = await source("widget/dashboard/DashboardWidgetView.tsx");
-  assert.match(dashboard, /track: dynamic\("#C7C8CC", "#55565C"\)/);
-  assert.doesNotMatch(dashboard, /#D9D9DE|#3A3A3C/);
+test("dashboard widget view keeps deterministic rings and single-line Small rows", async () => {
+  const view = await source("widget/dashboard/DashboardWidgetView.tsx");
+  const model = await source("widget/dashboard/model.ts");
+
+  // Medium rings must be deterministic Circle+trim strokes, never circular ProgressView.
+  assert.doesNotMatch(view, /progressViewStyle/i);
+  assert.match(view, /<Circle/);
+  assert.match(view, /trim=\{\{/);
+  assert.match(model, /export function ringStroke/);
+
+  // Small is fixed five single-line rows with logo + quota title + percent, no overflow footer.
+  assert.doesNotMatch(view, /widgetOverflowSmall/);
+  assert.match(view, /widgetQuotaTitle\(/);
+  assert.match(view, /ProviderLogo/);
+
+  // Large row titles carry quota/window only; provider stays in the badge/logo slot.
+  assert.match(view, /widgetWindowOnlyTitle\(/);
+
+  // Large overflow is the short "+N" marker.
+  assert.match(view, /widgetOverflowLargeShort\(/);
 });

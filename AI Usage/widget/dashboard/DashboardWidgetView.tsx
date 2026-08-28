@@ -1,7 +1,7 @@
 import {
+  Circle,
   HStack,
   Image,
-  ProgressView,
   Spacer,
   Text,
   VStack,
@@ -20,9 +20,11 @@ import {
   widgetAccountOverflow,
   widgetEntryCount,
   widgetOverflowLarge,
+  widgetOverflowLargeShort,
   widgetOverflowMedium,
-  widgetOverflowSmall,
+  widgetQuotaTitle,
   widgetRemainingLabel,
+  widgetWindowOnlyTitle,
 } from "../../copy/labels";
 import type { WidgetPrivacyPrefs } from "../../services/dashboard-prefs";
 import { usageTint } from "../../services/usage-colors";
@@ -36,6 +38,7 @@ import {
   providerShortName,
   remainingLabel,
   ringCenterText,
+  ringStroke,
   ringValue,
   shortWindowLabel,
   smallVisibleLimit,
@@ -151,37 +154,24 @@ function ErrorHint({ show }: { show?: boolean }) {
   );
 }
 
-function TextRow(props: { row: DashboardRow; privacy: WidgetPrivacyPrefs }) {
-  const meta = providerMeta(props.row.provider);
-  const subtitle = privacySubtitle(props.row, props.privacy);
-  const label = `${providerShortName(props.row.provider)} · ${shortWindowLabel(props.row.windowLabel)}`;
+function TextRow(props: { row: DashboardRow }) {
   return (
-    <VStack alignment="leading" spacing={2} frame={{ maxWidth: "infinity" }}>
-      <HStack alignment="center" spacing={6}>
-        <Text
-          font={10}
-          fontWeight="semibold"
-          foregroundStyle={C.primary}
-          lineLimit={1}
-          minScaleFactor={0.7}
-        >
-          {label}
-        </Text>
-        <Spacer minLength={0} />
-        <Text font={10} fontWeight="bold" monospacedDigit foregroundStyle={C.primary}>
-          {remainingLabel(props.row.remainingPercent)}
-        </Text>
-      </HStack>
-      {subtitle ? (
-        <Text font={8} foregroundStyle={C.secondary} lineLimit={1} minScaleFactor={0.75}>
-          {subtitle}
-        </Text>
-      ) : props.privacy.showPlanBadge ? (
-        <Text font={8} foregroundStyle={C.secondary} lineLimit={1}>
-          {props.row.planLabel || meta.title}
-        </Text>
-      ) : null}
-    </VStack>
+    <HStack alignment="center" spacing={5} frame={{ maxWidth: "infinity" }}>
+      <ProviderLogo provider={props.row.provider} size={11} />
+      <Text
+        font={10}
+        fontWeight="semibold"
+        foregroundStyle={C.primary}
+        lineLimit={1}
+        minScaleFactor={0.7}
+      >
+        {widgetQuotaTitle(props.row.provider, props.row.windowLabel)}
+      </Text>
+      <Spacer minLength={0} />
+      <Text font={10} fontWeight="bold" monospacedDigit foregroundStyle={C.primary}>
+        {remainingLabel(props.row.remainingPercent)}
+      </Text>
+    </HStack>
   );
 }
 
@@ -197,6 +187,7 @@ function UsageRing(props: {
   const titleFont = props.compact ? 9 : 10;
   const subFont = props.compact ? 8 : 9;
   const subtitle = privacySubtitle(props.row, props.privacy);
+  const { thickness, circleSize } = ringStroke(props.size);
 
   return (
     <VStack
@@ -205,20 +196,26 @@ function UsageRing(props: {
       frame={{ maxWidth: "infinity" }}
     >
       <ZStack frame={{ width: props.size, height: props.size }}>
-        <ProgressView
-          value={100}
-          total={100}
-          progressViewStyle="circular"
-          tint={C.track}
-          scaleEffect={{ x: 1.08, y: 1.08 }}
+        <Circle
+          fill="clear"
+          stroke={{
+            shapeStyle: C.track,
+            strokeStyle: { lineWidth: thickness },
+          }}
+          frame={{ width: circleSize, height: circleSize }}
         />
-        <ProgressView
-          value={value}
-          total={100}
-          progressViewStyle="circular"
-          tint={tint}
-          scaleEffect={{ x: 1.08, y: 1.08 }}
-        />
+        {value > 0 ? (
+          <Circle
+            fill="clear"
+            trim={{ from: 0, to: value / 100 }}
+            stroke={{
+              shapeStyle: tint,
+              strokeStyle: { lineWidth: thickness, lineCap: "round" },
+            }}
+            rotationEffect={{ degrees: -90, anchor: "center" }}
+            frame={{ width: circleSize, height: circleSize }}
+          />
+        ) : null}
         <Text
           font={props.size * 0.3}
           fontWeight="bold"
@@ -279,7 +276,7 @@ function BarRow(props: {
           <PlanBadge
             provider={props.row.provider}
             label={props.row.planLabel || meta.title}
-            small
+            size="small"
           />
         ) : (
           <ProviderLogo provider={props.row.provider} size={12} />
@@ -291,9 +288,11 @@ function BarRow(props: {
             lineLimit={1}
             minScaleFactor={0.8}
           >
-            {providerShortName(props.row.provider)} · {shortWindowLabel(props.row.windowLabel)}
+            {props.compact
+              ? widgetWindowOnlyTitle(props.row.windowLabel)
+              : `${providerShortName(props.row.provider)} · ${shortWindowLabel(props.row.windowLabel)}`}
           </Text>
-          {subtitle ? (
+          {!props.compact && subtitle ? (
             <Text font={8} foregroundStyle={C.secondary} lineLimit={1}>
               {subtitle}
             </Text>
@@ -354,7 +353,6 @@ function SmallTextLayout(props: {
 }) {
   const limit = smallVisibleLimit(props.privacy);
   const visible = props.rows.slice(0, limit);
-  const hidden = props.rows.length - visible.length;
   return (
     <VStack
       alignment="leading"
@@ -365,17 +363,10 @@ function SmallTextLayout(props: {
     >
       <VStack alignment="leading" spacing={6}>
         {visible.map((row) => (
-          <TextRow key={row.key} row={row} privacy={props.privacy} />
+          <TextRow key={row.key} row={row} />
         ))}
       </VStack>
       <HStack alignment="center">
-        {hidden > 0 ? (
-          <Text font={8} foregroundStyle={C.secondary}>
-            {widgetOverflowSmall(hidden)}
-          </Text>
-        ) : (
-          <Spacer minLength={0} />
-        )}
         <Spacer minLength={0} />
         <ErrorHint show={props.hasErrors} />
       </HStack>
@@ -489,8 +480,8 @@ function LargeBarLayout(props: {
         ))}
       </VStack>
       {hidden > 0 ? (
-        <Text font={10} foregroundStyle={C.secondary}>
-          {widgetOverflowLarge(hidden)}
+        <Text font={11} fontWeight="semibold" foregroundStyle={C.secondary}>
+          {widgetOverflowLargeShort(hidden)}
         </Text>
       ) : null}
       <Spacer minLength={0} />

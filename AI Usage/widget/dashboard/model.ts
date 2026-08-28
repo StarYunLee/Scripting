@@ -141,11 +141,18 @@ export function hasPrivacyDetails(privacy: WidgetPrivacyPrefs): boolean {
   return privacy.showAccountEmail || privacy.showAccountId;
 }
 
-/** Small 去掉标题后的可见条数。 */
-export function smallVisibleLimit(privacy: WidgetPrivacyPrefs): number {
-  if (hasPrivacyDetails(privacy)) return 5;
-  if (privacy.showPlanBadge) return 5;
-  return 6;
+/** Small：固定最多 5 条单行，与隐私/徽章开关无关。 */
+export function smallVisibleLimit(_privacy: WidgetPrivacyPrefs): number {
+  return 5;
+}
+
+/** Medium 圆环确定性描边几何：线宽随直径缩放，圆径让出线宽。 */
+export function ringStroke(size: number): {
+  thickness: number;
+  circleSize: number;
+} {
+  const thickness = Math.max(3, Math.round(size * 0.09));
+  return { thickness, circleSize: size - thickness };
 }
 
 export type MediumRingPlan = {
@@ -193,20 +200,12 @@ export function planMediumRings(
   return { rowCount: 2, columns, ringSize, maxVisible };
 }
 
-/** Large 进度条列表可见条数。 */
+/** Large：无论隐私/Badge 设置固定规划 9 条（副标题由视图压缩/隐藏以保证行高预算）。 */
 export function largeVisibleLimit(
-  privacy: WidgetPrivacyPrefs,
-  height: number,
+  _privacy: WidgetPrivacyPrefs,
+  _height: number,
 ): number {
-  const dense = hasPrivacyDetails(privacy) || privacy.showPlanBadge;
-  const pad = 32;
-  const header = 22;
-  const footer = 14;
-  const rowBlock = dense ? 36 : 30;
-  const available = height - pad - header - footer;
-  const fit = Math.floor(available / rowBlock);
-  const cap = dense ? 8 : 9;
-  return Math.min(cap, Math.max(6, fit));
+  return 9;
 }
 
 export function multipleAccounts(rows: DashboardRow[]): boolean {
