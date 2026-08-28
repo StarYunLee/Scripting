@@ -6,6 +6,7 @@ function logoBaseName(provider: ProviderId): string {
   if (provider === "codex") return "openai";
   if (provider === "grok") return "grok";
   if (provider === "claude") return "anthropic";
+  if (provider === "cursor") return "cursor";
   return "antigravity";
 }
 

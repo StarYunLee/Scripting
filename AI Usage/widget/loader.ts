@@ -34,6 +34,13 @@ import type {
   UsageResult as AntigravityUsageResult,
   WidgetSettings as AntigravityWidgetSettings,
 } from "../providers/antigravity/types";
+import {
+  fetchUsage as fetchCursorUsage,
+  getCachedUsage as getCursorCache,
+} from "../providers/cursor/api";
+import { getEffectiveSettings as getCursorSettings } from "../providers/cursor/widget-settings";
+import type { UsageResult as CursorUsageResult } from "../providers/cursor/types";
+import type { CursorWidgetSettings } from "../providers/cursor/widget-settings";
 import { getDemoWidgetResult, isDemoAccountId } from "../services/demo";
 import { writeLog } from "../services/logger";
 import type { ProviderId } from "../models";
@@ -58,6 +65,11 @@ export type LoadedWidgetUsage =
       provider: "antigravity";
       result: AntigravityUsageResult;
       settings: AntigravityWidgetSettings;
+    }
+  | {
+      provider: "cursor";
+      result: CursorUsageResult;
+      settings: CursorWidgetSettings;
     };
 
 type LoadedCodexWidget = Extract<LoadedWidgetUsage, { provider: "codex" }>;
@@ -67,6 +79,7 @@ type LoadedAntigravityWidget = Extract<
   LoadedWidgetUsage,
   { provider: "antigravity" }
 >;
+type LoadedCursorWidget = Extract<LoadedWidgetUsage, { provider: "cursor" }>;
 
 function logLoadFailure(
   provider: ProviderId,
@@ -186,6 +199,25 @@ async function loadAntigravity(
     settings: getAntigravitySettings(profileId),
   };
 }
+
+async function loadCursor(profileId: string): Promise<LoadedCursorWidget> {
+  const result = await loadProviderResult<CursorUsageResult>({
+    provider: "cursor",
+    profileId,
+    demo: () => getDemoWidgetResult("cursor", profileId)!,
+    fetch: () => fetchCursorUsage({ force: false, profileId }),
+    fallback: (error) => ({
+      ok: false,
+      error: unknownError(error),
+      cache: getCursorCache(profileId),
+    }),
+  });
+  return {
+    provider: "cursor",
+    result,
+    settings: getCursorSettings(profileId),
+  };
+}
 export function loadWidgetUsage(
   provider: "codex",
   profileId: string,
@@ -203,6 +235,10 @@ export function loadWidgetUsage(
   profileId: string,
 ): Promise<LoadedAntigravityWidget>;
 export function loadWidgetUsage(
+  provider: "cursor",
+  profileId: string,
+): Promise<LoadedCursorWidget>;
+export function loadWidgetUsage(
   provider: ProviderId,
   profileId: string,
 ): Promise<LoadedWidgetUsage>;
@@ -213,5 +249,6 @@ export function loadWidgetUsage(
   if (provider === "codex") return loadCodex(profileId);
   if (provider === "grok") return loadGrok(profileId);
   if (provider === "claude") return loadClaude(profileId);
-  return loadAntigravity(profileId);
+  if (provider === "antigravity") return loadAntigravity(profileId);
+  return loadCursor(profileId);
 }

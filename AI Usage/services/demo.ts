@@ -19,6 +19,11 @@ import type {
   LimitWindow as AntigravityLimitWindow,
   UsageResult as AntigravityUsageResult,
 } from "../providers/antigravity/types";
+import type {
+  LimitWindow as CursorLimitWindow,
+  LimitWindowName as CursorLimitWindowName,
+  UsageResult as CursorUsageResult,
+} from "../providers/cursor/types";
 
 const DEMO_KEY = "ai_usage_demo_mode_v1";
 
@@ -409,6 +414,44 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
     ],
     resetCredits: null,
   },
+  {
+    // 中性演示套餐：不臆造真实套餐分层，仅用于账号页预览与布局验收。
+    id: "demo_cursor_layout",
+    provider: "cursor",
+    title: "demo@cursor.demo",
+    planLabel: "Demo",
+    windows: [
+      {
+        id: "auto",
+        name: "auto",
+        label: "Auto",
+        usedPercent: 41,
+        resetOffsetMs: 1 * 3_600_000 + 26 * 60_000,
+      },
+      {
+        id: "total",
+        name: "total",
+        label: "Total",
+        usedPercent: 57,
+        resetOffsetMs: 4 * 86_400_000 + 2 * 3_600_000,
+      },
+      {
+        id: "api",
+        name: "api",
+        label: "API",
+        usedPercent: 73,
+        resetOffsetMs: 4 * 86_400_000 + 2 * 3_600_000,
+      },
+      {
+        id: "requests",
+        name: "weekly",
+        label: "每周",
+        usedPercent: 24,
+        resetOffsetMs: 5 * 86_400_000 + 6 * 3_600_000,
+      },
+    ],
+    resetCredits: null,
+  },
 ];
 
 function futureIso(offsetMs: number): string {
@@ -461,6 +504,10 @@ export function getDemoWidgetResult(
   accountId: string,
 ): ClaudeUsageResult | null;
 export function getDemoWidgetResult(
+  provider: "cursor",
+  accountId: string,
+): CursorUsageResult | null;
+export function getDemoWidgetResult(
   provider: "antigravity",
   accountId: string,
 ): AntigravityUsageResult | null;
@@ -471,6 +518,7 @@ export function getDemoWidgetResult(
   | CodexUsageResult
   | GrokUsageResult
   | ClaudeUsageResult
+  | CursorUsageResult
   | AntigravityUsageResult
   | null {
   const account = DEMO_ACCOUNTS.find(
@@ -538,6 +586,31 @@ export function getDemoWidgetResult(
         resetCreditExpirations: account.resetCredits
           ? [futureIso(account.resetCredits.nearestOffsetMs)]
           : [],
+        fetchedAt,
+        source: "live",
+      },
+    };
+  }
+
+  if (provider === "cursor") {
+    const windows: CursorLimitWindow[] = account.windows.map((window) => ({
+      ...windowBase(window),
+      id: `cursor:${window.id}`,
+      name: window.name as CursorLimitWindowName,
+    }));
+    const byName = (name: CursorLimitWindowName) =>
+      windows.find((window) => window.name === name) || null;
+    return {
+      ok: true,
+      snapshot: {
+        windows,
+        auto: byName("auto"),
+        total: byName("total"),
+        api: byName("api"),
+        grokBot: byName("grok_bot"),
+        weekly: byName("weekly"),
+        planType: account.planLabel,
+        planLabel: account.planLabel,
         fetchedAt,
         source: "live",
       },

@@ -59,6 +59,21 @@ import {
 } from "./antigravity/oauth";
 import { normalizeUsageSnapshot as normalizeAntigravityUsage } from "./antigravity/normalize";
 import { clearProfileSettings as clearAntigravitySettings } from "./antigravity/credentials";
+import * as CursorAccounts from "./cursor/accounts";
+import {
+  fetchUsage as fetchCursorUsage,
+  getCachedUsage as getCursorCache,
+  clearUsageCache as clearCursorCache,
+} from "./cursor/api";
+import {
+  startCursorLogin,
+  completeCursorLogin,
+  clearPendingOAuth as clearCursorPending,
+  getPendingOAuthProfileId as getCursorPending,
+  hasPendingOAuth as hasCursorPending,
+} from "./cursor/oauth";
+import { normalizeUsageSnapshot as normalizeCursorUsage } from "./cursor/normalize";
+import { clearProfileSettings as clearCursorSettings } from "./cursor/widget-settings";
 import type { ProviderId } from "../models";
 import type { ProviderCore } from "./contracts";
 
@@ -150,6 +165,28 @@ export const PROVIDER_REGISTRY = {
       clearCache: clearAntigravityCache,
     },
     clearSettings: clearAntigravitySettings,
+  },
+  cursor: {
+    ...ACCOUNT_PROVIDERS.cursor,
+    ensure: CursorAccounts.ensureAccountMigration,
+    create: CursorAccounts.createAccount,
+    remove: CursorAccounts.deleteAccount,
+    auth: {
+      start: startCursorLogin,
+      complete: completeCursorLogin,
+      clearPending: clearCursorPending,
+      pendingId: getCursorPending,
+      hasPending: hasCursorPending,
+    },
+    usage: {
+      fetch: fetchCursorUsage,
+      cache: (profileId: string) => {
+        const snapshot = getCursorCache(profileId);
+        return snapshot ? normalizeCursorUsage(snapshot) : null;
+      },
+      clearCache: clearCursorCache,
+    },
+    clearSettings: clearCursorSettings,
   },
 } satisfies Record<ProviderId, ProviderCore>;
 
