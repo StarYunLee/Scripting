@@ -7,6 +7,7 @@ import {
   Section,
   Spacer,
   Text,
+  Toggle,
   VStack,
   Widget,
   useState,
@@ -28,6 +29,11 @@ import {
 } from "../components/GlassList";
 import type { BackgroundThemeId } from "../services/settings";
 import { requestWidgetReload } from "../services/widgets";
+import type { UsageWindowView } from "../models";
+import {
+  isWindowShownInOverview,
+  setWindowShownInOverview,
+} from "../services/app-overview-prefs";
 
 type Account = {
   id: string;
@@ -65,6 +71,8 @@ function DetailActionRow(props: {
 export function AccountDetailPage(props: {
   provider: ProviderId;
   account: Account;
+  overviewWindows: UsageWindowView[];
+  onOverviewChange: () => void;
   demo?: boolean;
   backgroundTheme: BackgroundThemeId;
   onReauthorize: () => void;
@@ -74,6 +82,7 @@ export function AccountDetailPage(props: {
   const [previewFamily, setPreviewFamily] = useState<
     "choose" | "systemSmall" | "systemMedium"
   >("choose");
+  const [overviewTick, setOverviewTick] = useState(0);
   const meta = providerMeta(props.provider);
   const title = props.account.email || props.account.name;
 
@@ -169,6 +178,62 @@ export function AccountDetailPage(props: {
           )}
         </GlassGroup>
       </Section>
+
+      {props.overviewWindows.length > 0 ? (
+        <Section
+          listRowBackground={glassRowBackground}
+          header={<GlassSectionHeader title="用量总览显示" />}
+        >
+          <GlassGroup>
+            {props.overviewWindows.map((window, index) => (
+              <VStack
+                key={`${window.id}:${overviewTick}`}
+                alignment="leading"
+                spacing={0}
+                frame={{ maxWidth: "infinity" }}
+              >
+                <Toggle
+                  title={window.label}
+                  toggleStyle="switch"
+                  value={isWindowShownInOverview(
+                    props.provider,
+                    props.account.id,
+                    window.id,
+                  )}
+                  onChanged={(value: boolean) => {
+                    const changed = setWindowShownInOverview(
+                      props.provider,
+                      props.account.id,
+                      props.overviewWindows,
+                      window.id,
+                      value,
+                    );
+                    if (changed) {
+                      props.onOverviewChange();
+                      setOverviewTick((current) => current + 1);
+                    } else {
+                      void Dialog.alert({
+                        title: "至少保留一个窗口",
+                        message:
+                          "如需隐藏整个账号，请在设置页关闭该账号右侧的用量总览开关。",
+                        buttonLabel: "知道了",
+                      });
+                      setOverviewTick((current) => current + 1);
+                    }
+                  }}
+                  padding={{ vertical: true }}
+                  frame={{ minHeight: 44, maxWidth: "infinity" }}
+                />
+                {index < props.overviewWindows.length - 1 ? (
+                  <GlassDivider />
+                ) : null}
+              </VStack>
+            ))}
+            <GlassDivider />
+            <GlassNoteRow text="仅控制此账号在 App“用量”卡片中显示的额度窗口，不影响桌面小组件。" />
+          </GlassGroup>
+        </Section>
+      ) : null}
 
       {meta.capabilities.widget ? (
         <Section

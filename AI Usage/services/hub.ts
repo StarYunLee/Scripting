@@ -8,7 +8,13 @@ import {
 } from "./demo";
 import { writeLog } from "./logger";
 import { refreshAccount } from "./refresh";
-import { PROVIDER_IDS, type ProviderId, type UsageCard } from "../models";
+import {
+  PROVIDER_IDS,
+  type ProviderId,
+  type UsageCard,
+  type UsageWindowView,
+} from "../models";
+import { clearAccountOverviewPreferences } from "./app-overview-prefs";
 
 type AccountLike = ProviderAccount;
 
@@ -187,7 +193,15 @@ export function deleteAuthorizedAccount(
   const api = getProvider(provider);
   api.usage.clearCache(profileId);
   api.clearSettings(profileId);
+  clearAccountOverviewPreferences(provider, profileId);
   api.remove(profileId);
+}
+
+export function cachedUsageWindows(
+  provider: ProviderId,
+  profileId: string,
+): UsageWindowView[] {
+  return getProvider(provider).usage.cache(profileId)?.windows || [];
 }
 
 export function listProviderAccounts(provider: ProviderId): AccountLike[] {

@@ -17,6 +17,7 @@ import { parseMinimaxAuthChoice } from "../providers/minimax/auth-choice";
 import {
   beginProviderAuth,
   cachedPlanLabel,
+  cachedUsageWindows,
   cancelProviderAuth,
   completeProviderAuth,
   deleteAuthorizedAccount,
@@ -35,6 +36,7 @@ import { planCopilotAuthorization } from "../providers/copilot/auth-flow";
 import {
   GlassDivider,
   GlassGroup,
+  GlassNoteRow,
   GlassSectionHeader,
   glassRowBackground,
 } from "../components/GlassList";
@@ -49,6 +51,10 @@ import { LogPage } from "./LogPage";
 import type { AuthSheet } from "../models";
 import { listDemoAccounts } from "../services/demo";
 import { requestWidgetReload } from "../services/widgets";
+import {
+  isAccountShownInOverview,
+  setAccountShownInOverview,
+} from "../services/app-overview-prefs";
 
 function errorText(error: unknown): string {
   if (error instanceof Error && error.message) return error.message;
@@ -74,6 +80,7 @@ export function SettingsPage(props: {
   backgroundTheme: BackgroundThemeId;
   onDemoModeChange: (enabled: boolean) => void;
   onBackgroundThemeChange: (theme: BackgroundThemeId) => void;
+  onOverviewChange: () => void;
 }) {
   const [tick, setTick] = useState(0);
   const [sheet, setSheet] = useState<AuthSheet | null>(null);
@@ -190,6 +197,14 @@ export function SettingsPage(props: {
 
   // 设置页只保留账号维护与小组件设置；添加账号统一从状态页右上角进入。
   const toolbar = usePageToolbar();
+  const accountRows = PROVIDERS.flatMap((meta) => {
+    const accounts = props.demoMode
+      ? listDemoAccounts(meta.id)
+      : listProviderAccounts(meta.id).filter((account) =>
+          isAuthorized(meta.id, account.id),
+        );
+    return accounts.map((account) => ({ meta, account }));
+  });
 
   if (sheet) {
     return (
@@ -234,6 +249,11 @@ export function SettingsPage(props: {
                 key={`${selectedDestination.provider}:${selectedDestination.account.id}`}
                 provider={selectedDestination.provider}
                 account={selectedDestination.account}
+                overviewWindows={cachedUsageWindows(
+                  selectedDestination.provider,
+                  selectedDestination.account.id,
+                )}
+                onOverviewChange={props.onOverviewChange}
                 demo={props.demoMode}
                 backgroundTheme={props.backgroundTheme}
                 onReauthorize={() =>
@@ -279,43 +299,31 @@ export function SettingsPage(props: {
           </GlassGroup>
         </Section>
 
-        {PROVIDERS.map((meta) => {
-          const accounts = props.demoMode
-            ? listDemoAccounts(meta.id)
-            : listProviderAccounts(meta.id).filter((account) =>
-                isAuthorized(meta.id, account.id),
-              );
-          return (
-            <Section
-              key={meta.id}
-              listRowBackground={glassRowBackground}
-              header={
-                meta.id === "codex" ? (
-                  <GlassSectionHeader title="账号" />
-                ) : undefined
-              }
-            >
-              <GlassGroup>
-                <HStack
-                  spacing={8}
-                  padding={{ vertical: true }}
-                  frame={{ minHeight: 44, maxWidth: "infinity" }}
-                >
-                  <ProviderLogo provider={meta.id} size={18} />
-                  <Text fontWeight="semibold">{meta.title}</Text>
-                  <Spacer />
-                  <Text font={13} foregroundStyle="secondaryLabel">
-                    {accounts.length}个账号
-                  </Text>
-                </HStack>
-                <GlassDivider />
-                {accounts.length > 0 ? (
-                  accounts.map((account, index) => (
-                    <VStack
-                      key={`${meta.id}:${account.id}:${tick}`}
-                      alignment="leading"
-                      spacing={0}
-                      frame={{ maxWidth: "infinity" }}
+        <Section
+          listRowBackground={glassRowBackground}
+          header={<GlassSectionHeader title="账号" />}
+        >
+          <GlassGroup>
+            {accountRows.length > 0 ? (
+              accountRows.map(({ meta, account }, index) => {
+                const title = account.email || account.name;
+                const planLabel =
+                  "planLabel" in account
+                    ? account.planLabel
+                    : cachedPlanLabel(meta.id, account.id);
+                const shown = isAccountShownInOverview(meta.id, account.id);
+                return (
+                  <VStack
+                    key={`${meta.id}:${account.id}:${tick}`}
+                    alignment="leading"
+                    spacing={0}
+                    frame={{ maxWidth: "infinity" }}
+                  >
+                    <HStack
+                      alignment="center"
+                      spacing={12}
+                      padding={{ vertical: true }}
+                      frame={{ minHeight: 56, maxWidth: "infinity" }}
                     >
                       <Button
                         buttonStyle="plain"
@@ -328,47 +336,70 @@ export function SettingsPage(props: {
                               id: account.id,
                               name: account.name,
                               email: account.email,
-                              planLabel:
-                                "planLabel" in account
-                                  ? account.planLabel
-                                  : cachedPlanLabel(meta.id, account.id),
+                              planLabel,
                             },
                           })
                         }
                       >
                         <HStack
-                          padding={{ vertical: true }}
-                          frame={{ minHeight: 44, maxWidth: "infinity" }}
+                          spacing={10}
+                          frame={{ maxWidth: "infinity" }}
                           contentShape="rect"
                         >
-                          <Text font="body" lineLimit={1} truncationMode="tail">
-                            {account.email || account.name}
-                          </Text>
+                          <ProviderLogo provider={meta.id} size={24} />
+                          <VStack alignment="leading" spacing={3}>
+                            <Text
+                              font="body"
+                              lineLimit={1}
+                              truncationMode="tail"
+                            >
+                              {title}
+                            </Text>
+                            <Text
+                              font={13}
+                              foregroundStyle="secondaryLabel"
+                              lineLimit={1}
+                              truncationMode="tail"
+                            >
+                              {planLabel && planLabel !== meta.title
+                                ? `${meta.title} · ${planLabel}`
+                                : meta.title}
+                            </Text>
+                          </VStack>
                           <Spacer />
-                          <Image
-                            systemName="chevron.right"
-                            foregroundStyle="tertiaryLabel"
-                          />
                         </HStack>
                       </Button>
-                      {index < accounts.length - 1 ? <GlassDivider /> : null}
-                    </VStack>
-                  ))
-                ) : (
-                  <HStack
-                    padding={{ vertical: true }}
-                    frame={{ minHeight: 44, maxWidth: "infinity" }}
-                  >
-                    <Text font={13} foregroundStyle="secondaryLabel">
-                      尚未连接账号
-                    </Text>
-                    <Spacer />
-                  </HStack>
-                )}
-              </GlassGroup>
-            </Section>
-          );
-        })}
+                      <Toggle
+                        title={`在用量总览中显示 ${title}`}
+                        labelsHidden
+                        toggleStyle="switch"
+                        value={shown}
+                        onChanged={(value: boolean) => {
+                          setAccountShownInOverview(meta.id, account.id, value);
+                          props.onOverviewChange();
+                          refresh();
+                        }}
+                      />
+                    </HStack>
+                    {index < accountRows.length - 1 ? <GlassDivider /> : null}
+                  </VStack>
+                );
+              })
+            ) : (
+              <HStack
+                padding={{ vertical: true }}
+                frame={{ minHeight: 44, maxWidth: "infinity" }}
+              >
+                <Text font={13} foregroundStyle="secondaryLabel">
+                  尚未连接账号
+                </Text>
+                <Spacer />
+              </HStack>
+            )}
+            <GlassDivider />
+            <GlassNoteRow text="右侧开关只控制账号是否显示在 App 的“用量”页面，不影响桌面小组件。" />
+          </GlassGroup>
+        </Section>
 
         <Section
           listRowBackground={glassRowBackground}

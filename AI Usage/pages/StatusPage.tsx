@@ -29,6 +29,10 @@ import {
 import { refreshAccounts } from "../services/refresh";
 import { requestWidgetReload } from "../services/widgets";
 import { type BackgroundThemeId } from "../services/settings";
+import {
+  applyOverviewPreferences,
+  isAccountShownInOverview,
+} from "../services/app-overview-prefs";
 
 function errorText(error: unknown): string {
   if (error instanceof Error && error.message) return error.message;
@@ -38,13 +42,18 @@ function errorText(error: unknown): string {
 export function StatusPage(props: {
   demoMode: boolean;
   backgroundTheme: BackgroundThemeId;
+  overviewRevision: number;
+  onOverviewChange: () => void;
 }) {
   const [provider, setProvider] = useState<ProviderId>("codex");
-  const [cards, setCards] = useState<UsageCard[]>(() => listAuthorizedCards());
+  const [cards, setCards] = useState<UsageCard[]>(() =>
+    applyOverviewPreferences(listAuthorizedCards()),
+  );
   const [sheet, setSheet] = useState<AuthSheet | null>(null);
   const [busy, setBusy] = useState(false);
   const [openedCard, setOpenedCard] = useState<UsageCard | null>(null);
   const displayMode = "remaining";
+  const hasAccounts = listAuthorizedCards().length > 0;
 
   function setCardRefreshState(
     key: string,
@@ -69,12 +78,12 @@ export function StatusPage(props: {
   }
 
   function reloadCards() {
-    setCards(listAuthorizedCards());
+    setCards(applyOverviewPreferences(listAuthorizedCards()));
   }
 
   useEffect(() => {
     reloadCards();
-  }, [props.demoMode]);
+  }, [props.demoMode, props.overviewRevision]);
 
   useEffect(() => {
     if (props.demoMode) return;
@@ -104,9 +113,12 @@ export function StatusPage(props: {
         if (cancelled) return;
         try {
           const next = await refreshCard(card.provider, card.accountId, false);
-          if (!cancelled) {
+          const [visibleNext] = applyOverviewPreferences([next]);
+          if (!cancelled && visibleNext) {
             setCards((current) =>
-              current.map((item) => (item.key === next.key ? next : item)),
+              current.map((item) =>
+                item.key === visibleNext.key ? visibleNext : item,
+              ),
             );
           }
         } catch {
@@ -200,10 +212,17 @@ export function StatusPage(props: {
       reloadCards();
       const next = await refreshCard(sheet.provider, sheet.profileId, true);
       setCards((current) => {
-        const exists = current.some((item) => item.key === next.key);
+        if (!isAccountShownInOverview(next.provider, next.accountId)) {
+          return current;
+        }
+        const [visibleNext] = applyOverviewPreferences([next]);
+        if (!visibleNext) return current;
+        const exists = current.some((item) => item.key === visibleNext.key);
         return exists
-          ? current.map((item) => (item.key === next.key ? next : item))
-          : [...current, next];
+          ? current.map((item) =>
+              item.key === visibleNext.key ? visibleNext : item,
+            )
+          : [...current, visibleNext];
       });
       requestWidgetReload();
     } catch (error) {
@@ -229,8 +248,8 @@ export function StatusPage(props: {
   }
 
   const toolbar = usePageToolbar({
-    // 空态中心已有平台选择；有卡时才在右上继续添加。
-    showAdd: cards.length > 0 || Boolean(sheet),
+    // 无账号空态中心已有平台选择；已有账号即使全部隐藏也保留添加入口。
+    showAdd: hasAccounts || Boolean(sheet),
     onAdd: startAuth,
   });
 
@@ -285,11 +304,13 @@ export function StatusPage(props: {
               errorMessage: outcome.error?.message,
               source: outcome.ok ? outcome.source || "live" : "error",
             });
+            const [visibleNext] = applyOverviewPreferences([next]);
+            if (!visibleNext) return;
             const refreshStatus = outcome.ok ? "success" : "failure";
             setCards((current) =>
               current.map((item) =>
                 item.key === key
-                  ? { ...next, refreshing: false, refreshStatus }
+                  ? { ...visibleNext, refreshing: false, refreshStatus }
                   : item,
               ),
             );
@@ -320,11 +341,14 @@ export function StatusPage(props: {
     setCardRefreshState(card.key, true);
     try {
       const next = await refreshCard(card.provider, card.accountId, true);
-      const refreshStatus = next.source === "error" ? "failure" : "success";
+      const [visibleNext] = applyOverviewPreferences([next]);
+      if (!visibleNext) return;
+      const refreshStatus =
+        visibleNext.source === "error" ? "failure" : "success";
       setCards((current) =>
         current.map((item) =>
           item.key === card.key
-            ? { ...next, refreshing: false, refreshStatus }
+            ? { ...visibleNext, refreshing: false, refreshStatus }
             : item,
         ),
       );
@@ -364,7 +388,7 @@ export function StatusPage(props: {
     );
   }
 
-  if (!cards.length) {
+  if (!cards.length && !hasAccounts) {
     return (
       <NavigationStack>
         <ConnectEmptyView
@@ -403,6 +427,12 @@ export function StatusPage(props: {
                 email: openedCard.title.includes("@") ? openedCard.title : null,
                 planLabel: openedCard.planLabel,
               }}
+              overviewWindows={
+                listAuthorizedCards().find(
+                  (card) => card.key === openedCard.key,
+                )?.windows || openedCard.windows
+              }
+              onOverviewChange={props.onOverviewChange}
               demo={props.demoMode}
               backgroundTheme={props.backgroundTheme}
               onReauthorize={() =>
@@ -423,6 +453,18 @@ export function StatusPage(props: {
           ),
         }}
       >
+        {cards.length === 0 ? (
+          <Text
+            font={14}
+            foregroundStyle="secondaryLabel"
+            multilineTextAlignment="center"
+            frame={{ maxWidth: "infinity", minHeight: 160 }}
+            listRowBackground={<></>}
+            listRowSeparator="hidden"
+          >
+            当前没有显示的账号，请在“设置 → 账号”中开启用量总览显示。
+          </Text>
+        ) : null}
         {cards.map((card) => (
           <UsageCardView
             key={card.key}
