@@ -1,5 +1,8 @@
 import { Widget } from "scripting";
-import { pickFocusWindow } from "../../providers/codex/api";
+import {
+  isOrdinaryWindow,
+  pickFocusWindow,
+} from "../../providers/codex/api";
 import {
   formatPercent,
   formatResetDate,
@@ -34,7 +37,18 @@ type Model = {
   live: boolean;
   detail: string;
   hasResetCredits: boolean;
+  additionalText: string | null;
 };
+function additionalQuotaText(snapshot: UsageSnapshot | null): string | null {
+  const windows = snapshot?.windows.filter((window) => !isOrdinaryWindow(window));
+  if (!windows?.length) return null;
+  return windows
+    .map(
+      (window) =>
+        `${window.label} · 剩余 ${formatPercent(window.remainingPercent)}`,
+    )
+    .join(" / ");
+}
 function modelFor(result: UsageResult, focusName: Props["focusWindow"]): Model {
   const snapshot = result.ok ? result.snapshot : result.cache || null;
   const focus = snapshot ? pickFocusWindow(snapshot, focusName) : null;
@@ -60,6 +74,7 @@ function modelFor(result: UsageResult, focusName: Props["focusWindow"]): Model {
     live: result.ok,
     detail: result.ok ? "" : result.error.message,
     hasResetCredits: snapshot?.resetCreditsAvailable != null,
+    additionalText: additionalQuotaText(snapshot),
   };
 }
 function isSmall(family: string): boolean {
@@ -98,6 +113,7 @@ export function DetailWidgetView({ result, family, focusWindow }: Props) {
         remainingText={formatPercent(model.focus?.remainingPercent)}
         fetchedText={formatSmallDate(model.snapshot?.fetchedAt)}
         resetText={formatSmallDate(model.focus?.resetAt)}
+        additionalText={model.additionalText || undefined}
         optionalMeta={
           model.hasResetCredits
             ? {
@@ -123,6 +139,7 @@ export function DetailWidgetView({ result, family, focusWindow }: Props) {
       remainingText={model.main}
       fetchedText={model.fetched}
       resetText={formatResetDate(model.focus?.resetAt)}
+      additionalText={model.additionalText || undefined}
       optionalMeta={
         model.hasResetCredits
           ? { label: model.resetLabel, value: model.resetExpiration }

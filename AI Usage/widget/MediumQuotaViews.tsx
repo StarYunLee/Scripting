@@ -132,6 +132,7 @@ export function SingleQuotaMediumView(props: {
   fetchedText: string;
   resetText: string;
   optionalMeta: MediumOptionalMeta;
+  additionalText?: string;
   errorText?: string;
 }) {
   const contentWidth = Math.max(180, props.width - 40);
@@ -271,6 +272,25 @@ export function SingleQuotaMediumView(props: {
           alignment="trailing"
         />
       </HStack>
+      {props.additionalText ? (
+        <HStack
+          frame={{
+            maxWidth: "infinity",
+            maxHeight: "infinity",
+            alignment: "bottomLeading",
+          }}
+          padding={{ horizontal: 20, bottom: props.errorText ? 13 : 2 }}
+        >
+          <Text
+            font={8}
+            foregroundStyle={C.secondary}
+            lineLimit={1}
+            minScaleFactor={0.55}
+          >
+            {props.additionalText}
+          </Text>
+        </HStack>
+      ) : null}
       {props.errorText ? (
         <HStack
           frame={{
@@ -420,6 +440,7 @@ export function DualQuotaMediumView(props: {
   first: MediumQuotaWindow;
   second: MediumQuotaWindow;
   secondOptionalMeta?: MediumOptionalMeta;
+  additionalText?: string;
   errorText?: string;
 }) {
   const contentWidth = Math.max(220, props.width - 40);
@@ -463,6 +484,25 @@ export function DualQuotaMediumView(props: {
         top={96}
         optionalMeta={props.secondOptionalMeta}
       />
+      {props.additionalText ? (
+        <HStack
+          frame={{
+            maxWidth: "infinity",
+            maxHeight: "infinity",
+            alignment: "bottomLeading",
+          }}
+          padding={{ horizontal: 20, bottom: props.errorText ? 13 : 2 }}
+        >
+          <Text
+            font={8}
+            foregroundStyle={C.secondary}
+            lineLimit={1}
+            minScaleFactor={0.55}
+          >
+            {props.additionalText}
+          </Text>
+        </HStack>
+      ) : null}
       {props.errorText ? (
         <HStack
           frame={{

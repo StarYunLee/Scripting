@@ -145,6 +145,7 @@ export function SingleQuotaSmallView(props: {
   fetchedText: string;
   resetText: string;
   optionalMeta: SmallOptionalMeta;
+  additionalText?: string;
 }) {
   const contentWidth = Math.max(90, props.width - 24);
   const verticalOffset = props.optionalMeta ? 0 : 6;
@@ -270,6 +271,26 @@ export function SingleQuotaSmallView(props: {
           width={contentWidth}
         />
       </VStack>
+      {props.additionalText ? (
+        <HStack
+          frame={{
+            maxWidth: "infinity",
+            maxHeight: "infinity",
+            alignment: "bottomLeading",
+          }}
+          padding={{ horizontal: 12, bottom: 1 }}
+        >
+          <Text
+            font={7}
+            fontWeight="medium"
+            foregroundStyle={C.secondary}
+            lineLimit={1}
+            minScaleFactor={0.5}
+          >
+            {props.additionalText}
+          </Text>
+        </HStack>
+      ) : null}
     </ZStack>
   );
 }
@@ -387,6 +408,7 @@ export function DualQuotaSmallView(props: {
   first: SmallQuotaWindow;
   second: SmallQuotaWindow;
   fetchedText: string;
+  additionalText?: string;
 }) {
   const contentWidth = Math.max(90, props.width - 24);
   const verticalOffset = 2 + Math.max(0, (displayHeight() - 158) / 2);
@@ -452,6 +474,26 @@ export function DualQuotaSmallView(props: {
           width={contentWidth}
         />
       </HStack>
+      {props.additionalText ? (
+        <HStack
+          frame={{
+            maxWidth: "infinity",
+            maxHeight: "infinity",
+            alignment: "bottomLeading",
+          }}
+          padding={{ horizontal: 12, bottom: 1 }}
+        >
+          <Text
+            font={7}
+            fontWeight="medium"
+            foregroundStyle={C.secondary}
+            lineLimit={1}
+            minScaleFactor={0.5}
+          >
+            {props.additionalText}
+          </Text>
+        </HStack>
+      ) : null}
     </ZStack>
   );
 }

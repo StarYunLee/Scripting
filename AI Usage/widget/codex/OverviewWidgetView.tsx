@@ -30,7 +30,21 @@ type Model = {
   live: boolean;
   detail: string;
   hasResetCredits: boolean;
+  additionalText: string | null;
 };
+function isOrdinaryWindow(window: { id: string }): boolean {
+  return window.id.startsWith("codex:") || window.id.startsWith("direct:");
+}
+function additionalQuotaText(snapshot: UsageSnapshot | null): string | null {
+  const windows = snapshot?.windows.filter((window) => !isOrdinaryWindow(window));
+  if (!windows?.length) return null;
+  return windows
+    .map(
+      (window) =>
+        `${window.label} · 剩余 ${formatPercent(window.remainingPercent)}`,
+    )
+    .join(" / ");
+}
 function modelFor(result: UsageResult): Model {
   const snapshot = result.ok ? result.snapshot : result.cache || null;
   const resets = resetCreditsSummary(
@@ -40,13 +54,19 @@ function modelFor(result: UsageResult): Model {
   return {
     snapshot,
     fiveHour:
-      snapshot?.fiveHour ||
-      snapshot?.windows.find((w) => w.name === "five_hour") ||
-      null,
+      snapshot?.fiveHour && isOrdinaryWindow(snapshot.fiveHour)
+        ? snapshot.fiveHour
+        : snapshot?.windows.find(
+            (window) =>
+              isOrdinaryWindow(window) && window.name === "five_hour",
+          ) || null,
     weekly:
-      snapshot?.weekly ||
-      snapshot?.windows.find((w) => w.name === "weekly") ||
-      null,
+      snapshot?.weekly && isOrdinaryWindow(snapshot.weekly)
+        ? snapshot.weekly
+        : snapshot?.windows.find(
+            (window) =>
+              isOrdinaryWindow(window) && window.name === "weekly",
+          ) || null,
     planLabel: snapshot?.planLabel || snapshot?.planType || "Plus",
     resetLabel:
       resets.available == null ? "重置—" : `重置${resets.available}次`,
@@ -55,6 +75,7 @@ function modelFor(result: UsageResult): Model {
     live: result.ok,
     detail: result.ok ? "" : result.error.message,
     hasResetCredits: snapshot?.resetCreditsAvailable != null,
+    additionalText: additionalQuotaText(snapshot),
   };
 }
 function isSmall(family: string): boolean {
@@ -101,6 +122,7 @@ export function OverviewWidgetView({ result, family }: Props) {
           resetText: formatResetDate(model.weekly?.resetAt),
         }}
         fetchedText={model.fetched}
+        additionalText={model.additionalText || undefined}
       />
     );
 
@@ -132,6 +154,7 @@ export function OverviewWidgetView({ result, family }: Props) {
           ? { label: model.resetLabel, value: model.resetExpiration }
           : null
       }
+      additionalText={model.additionalText || undefined}
       errorText={!model.live && model.detail ? model.detail : undefined}
     />
   );
