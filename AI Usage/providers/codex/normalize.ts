@@ -7,6 +7,10 @@ import {
   type NormalizedUsageSnapshot,
 } from "../../services/usage-model";
 
+function isOrdinaryWindow(window: { id: string }): boolean {
+  return window.id.startsWith("codex:") || window.id.startsWith("direct:");
+}
+
 export function normalizeUsageSnapshot(
   snapshot: UsageSnapshot,
 ): NormalizedUsageSnapshot {
@@ -20,9 +24,9 @@ export function normalizeUsageSnapshot(
       .map((window) => ({
         ...window,
         label:
-          window.name === "unknown"
-            ? window.label
-            : codexWindowTitle(window.name),
+          isOrdinaryWindow(window) && window.name !== "unknown"
+            ? codexWindowTitle(window.name)
+            : window.label,
       }))
       .map(toUsageWindowView)
       .filter(isUsageWindowView),

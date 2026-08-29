@@ -82,6 +82,23 @@ function label(name: LimitWindowName, seconds: number | null): string {
   if (seconds && seconds >= 86400) return `${Math.round(seconds / 86400)} 天`;
   return codexWindowTitle("unknown");
 }
+function slug(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+function isOrdinaryWindow(window: LimitWindow): boolean {
+  return window.id.startsWith("codex:") || window.id.startsWith("direct:");
+}
+function sameWindow(left: LimitWindow, right: LimitWindow): boolean {
+  return (
+    left.name === right.name &&
+    left.resetAtMs === right.resetAtMs &&
+    left.usedPercent === right.usedPercent
+  );
+}
 function parseWindow(
   value: unknown,
   id: string,
@@ -115,6 +132,7 @@ function collectFromRateLimit(
   rate: Record<string, unknown>,
   prefix: string,
   hint = "",
+  labelPrefix = "",
 ): LimitWindow[] {
   const out: LimitWindow[] = [];
   const keys = [
@@ -132,7 +150,10 @@ function collectFromRateLimit(
     if (!value || seen.has(value)) continue;
     seen.add(value);
     const parsed = parseWindow(value, `${prefix}:${key}`, `${hint} ${key}`);
-    if (parsed) out.push(parsed);
+    if (parsed) {
+      if (labelPrefix) parsed.label = `${labelPrefix} ${parsed.label}`;
+      if (!out.some((window) => sameWindow(window, parsed))) out.push(parsed);
+    }
   }
   return out;
 }
@@ -147,14 +168,22 @@ function extractWindows(payload: Record<string, unknown>): LimitWindow[] {
     additional.forEach((item, i) => {
       const obj = asObject(item);
       const rate = asObject(obj?.rate_limit) || obj;
-      if (rate)
+      if (rate) {
+        const limitName = toStringValue(
+          obj?.limit_name ?? obj?.metered_feature,
+        );
+        const featureId =
+          slug(toStringValue(obj?.metered_feature) || limitName || "") ||
+          `unknown-${i}`;
         out.push(
           ...collectFromRateLimit(
             rate,
-            `extra${i}`,
-            String(obj?.limit_name || obj?.metered_feature || ""),
+            `extra:${featureId}`,
+            limitName || "",
+            limitName || "Codex 附加限额",
           ),
         );
+      }
     });
   }
   const direct: Array<[string, LimitWindowName]> = [
@@ -164,23 +193,26 @@ function extractWindows(payload: Record<string, unknown>): LimitWindow[] {
   ];
   for (const [key, name] of direct) {
     const parsed = parseWindow(payload[key], `direct:${key}`, key);
-    if (parsed && !out.some((x) => x.name === name)) out.push(parsed);
+    if (
+      parsed &&
+      !out.some((window) => isOrdinaryWindow(window) && window.name === name)
+    ) {
+      out.push(parsed);
+    }
   }
   const unique: LimitWindow[] = [];
   for (const w of out) {
-    if (
-      !unique.some(
-        (x) =>
-          x.name === w.name &&
-          x.resetAtMs === w.resetAtMs &&
-          x.usedPercent === w.usedPercent,
-      )
-    )
-      unique.push(w);
+    if (!unique.some((x) => x.id === w.id)) unique.push(w);
   }
-  return unique.sort(
-    (a, b) => (a.windowSeconds || 1e20) - (b.windowSeconds || 1e20),
-  );
+  return unique.sort((a, b) => {
+    const sourceOrder =
+      Number(!isOrdinaryWindow(a)) - Number(!isOrdinaryWindow(b));
+    return (
+      sourceOrder ||
+      (a.windowSeconds || 1e20) - (b.windowSeconds || 1e20) ||
+      a.id.localeCompare(b.id)
+    );
+  });
 }
 function planLabel(payload: Record<string, unknown>): string | null {
   const raw = toStringValue(payload.plan_type)?.toLowerCase();
