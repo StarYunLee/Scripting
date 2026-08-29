@@ -89,7 +89,7 @@ function slug(value: string): string {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
 }
-function isOrdinaryWindow(window: LimitWindow): boolean {
+export function isOrdinaryWindow(window: LimitWindow): boolean {
   return window.id.startsWith("codex:") || window.id.startsWith("direct:");
 }
 function sameWindow(left: LimitWindow, right: LimitWindow): boolean {
@@ -172,6 +172,7 @@ function extractWindows(payload: Record<string, unknown>): LimitWindow[] {
         const limitName = toStringValue(
           obj?.limit_name ?? obj?.metered_feature,
         );
+        const isSpark = Boolean(limitName && /spark/i.test(limitName));
         const featureId =
           slug(toStringValue(obj?.metered_feature) || limitName || "") ||
           `unknown-${i}`;
@@ -180,7 +181,7 @@ function extractWindows(payload: Record<string, unknown>): LimitWindow[] {
             rate,
             `extra:${featureId}`,
             limitName || "",
-            limitName || "Codex 附加限额",
+            isSpark ? "Codex Spark" : limitName || "Codex 附加限额",
           ),
         );
       }
@@ -419,7 +420,11 @@ export function pickFocusWindow(
   snapshot: UsageSnapshot,
   focus: "weekly" | "five_hour" | "monthly" = "weekly",
 ): LimitWindow | null {
-  return snapshot.windows.find((w) => w.name === focus) || null;
+  return (
+    snapshot.windows.find(
+      (window) => isOrdinaryWindow(window) && window.name === focus,
+    ) || null
+  );
 }
 function recent(cache: UsageSnapshot | null): boolean {
   if (!cache?.fetchedAt) return false;
@@ -552,9 +557,18 @@ export async function fetchUsage(options?: {
         : (cache?.resetCreditExpirations ?? []);
     const snapshot: UsageSnapshot = {
       windows,
-      fiveHour: windows.find((w) => w.name === "five_hour") || null,
-      weekly: windows.find((w) => w.name === "weekly") || null,
-      monthly: windows.find((w) => w.name === "monthly") || null,
+      fiveHour:
+        windows.find(
+          (window) => isOrdinaryWindow(window) && window.name === "five_hour",
+        ) || null,
+      weekly:
+        windows.find(
+          (window) => isOrdinaryWindow(window) && window.name === "weekly",
+        ) || null,
+      monthly:
+        windows.find(
+          (window) => isOrdinaryWindow(window) && window.name === "monthly",
+        ) || null,
       planType: rawPlanType,
       planLabel: planLabel(payload),
       creditStatus,
