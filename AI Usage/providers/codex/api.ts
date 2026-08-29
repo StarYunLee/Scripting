@@ -2,6 +2,7 @@ import { fetch } from "scripting";
 import {
   getProfileAccountId,
   getProfileAccessToken,
+  getProfileIdToken,
   resolveProfile,
 } from "./accounts";
 import { refreshOAuthToken } from "./oauth";
@@ -215,16 +216,19 @@ function extractWindows(payload: Record<string, unknown>): LimitWindow[] {
     );
   });
 }
-function planLabel(payload: Record<string, unknown>): string | null {
-  const raw = toStringValue(payload.plan_type)?.toLowerCase();
+function planLabel(rawPlanType: string | null): string | null {
+  const raw = rawPlanType?.toLowerCase().trim() || null;
   if (!raw) return null;
   const labels: Record<string, string> = {
     guest: "Guest",
     free: "Free",
     go: "Go",
     plus: "Plus",
-    pro: "Pro",
-    prolite: "Pro Lite",
+    // ChatGPT Pro：$100=5× → prolite；$200=20× → pro
+    prolite: "Pro 5X",
+    pro: "Pro 20X",
+    chatgptpro: "Pro 20X",
+    chatgpt_pro: "Pro 20X",
     free_workspace: "Free Workspace",
     team: "Team",
     self_serve_business_prolite: "Business Pro Lite",
@@ -244,6 +248,45 @@ function planLabel(payload: Record<string, unknown>): string | null {
   return (
     labels[raw] ||
     raw.replace(/(^|_)(\w)/g, (_, __, c) => ` ${c.toUpperCase()}`).trim()
+  );
+}
+
+/**
+ * 从 JWT 读取 chatgpt_plan_type。
+ * 官方 Codex 从 id_token 的 https://api.openai.com/auth 解析；access_token 仅作次级回退。
+ */
+function planTypeFromJwt(token: string | null): string | null {
+  if (!token) return null;
+  try {
+    let raw = token.split(".")[1]?.replace(/-/g, "+").replace(/_/g, "/");
+    if (!raw) return null;
+    while (raw.length % 4) raw += "=";
+    const json = decodeURIComponent(
+      Array.from(atob(raw))
+        .map((c) => "%" + c.charCodeAt(0).toString(16).padStart(2, "0"))
+        .join(""),
+    );
+    const payload = asObject(JSON.parse(json));
+    if (!payload) return null;
+    const auth = asObject(payload["https://api.openai.com/auth"]);
+    return (
+      toStringValue(auth?.chatgpt_plan_type) ||
+      toStringValue(payload.chatgpt_plan_type) ||
+      toStringValue(auth?.plan_type)
+    );
+  } catch {
+    return null;
+  }
+}
+
+/** usage 缺 plan_type 时：id_token → access_token。 */
+function planTypeFromStoredTokens(
+  profileId: string,
+  accessToken: string | null,
+): string | null {
+  return (
+    planTypeFromJwt(getProfileIdToken(profileId)) ||
+    planTypeFromJwt(accessToken)
   );
 }
 function parseCreditStatus(
@@ -537,7 +580,8 @@ export async function fetchUsage(options?: {
       };
     }
     const rawPlanType =
-      typeof payload.plan_type === "string" ? payload.plan_type : null;
+      toStringValue(payload.plan_type) ||
+      planTypeFromStoredTokens(profile.id, token);
     const creditStatus = parseCreditStatus(payload);
     const spendControl = parseSpendControl(payload);
     const status = rateLimitStatus(payload);
@@ -555,6 +599,8 @@ export async function fetchUsage(options?: {
       detailedResetCredits != null || embeddedResetCredits.count != null
         ? liveResetExpirations
         : (cache?.resetCreditExpirations ?? []);
+    const resolvedPlanLabel =
+      planLabel(rawPlanType) || cache?.planLabel || cache?.planType || null;
     const snapshot: UsageSnapshot = {
       windows,
       fiveHour:
@@ -570,7 +616,7 @@ export async function fetchUsage(options?: {
           (window) => isOrdinaryWindow(window) && window.name === "monthly",
         ) || null,
       planType: rawPlanType,
-      planLabel: planLabel(payload),
+      planLabel: resolvedPlanLabel,
       creditStatus,
       spendControl,
       rateLimitAllowed: status.allowed,
