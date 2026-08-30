@@ -4,19 +4,41 @@ import { resolvePlanBadge } from "../providers/badge-registry";
 import { ProviderLogo } from "./ProviderLogo";
 
 const BADGE_SIZES = {
-  small: {
-    logo: 10,
-    text: 9,
-    spacing: 5,
-    horizontalPadding: 8,
+  // App 页面端使用：纯文字胶囊，外部已有品牌 Logo 与名称
+  regular: {
+    showLogo: false,
+    logo: 0,
+    text: 10,
+    spacing: 0,
+    horizontalPadding: 7,
     verticalPadding: 3,
   },
-  regular: {
+  // 小组件专用：紧凑一体化胶囊，内置品牌 Logo + 套餐名称
+  widget: {
+    showLogo: true,
+    logo: 12,
+    text: 9.5,
+    spacing: 4.5,
+    horizontalPadding: 7,
+    verticalPadding: 3.5,
+  },
+  // 小尺寸小组件专用
+  "widget-small": {
+    showLogo: true,
     logo: 11,
-    text: 10,
-    spacing: 6,
-    horizontalPadding: 10,
-    verticalPadding: 4,
+    text: 9,
+    spacing: 4,
+    horizontalPadding: 6,
+    verticalPadding: 3,
+  },
+  // 多账号小组件格子：信息密度更高，给邮箱标识留出剩余宽度
+  "widget-dense": {
+    showLogo: true,
+    logo: 9,
+    text: 8,
+    spacing: 3,
+    horizontalPadding: 5,
+    verticalPadding: 2,
   },
 } as const;
 
@@ -29,28 +51,16 @@ export function PlanBadge(props: {
 }) {
   const recipe = resolvePlanBadge(props.provider, props.label);
   const layout = BADGE_SIZES[props.size ?? "regular"];
-  const providerText =
-    props.provider === "codex"
-      ? "CODEX"
-      : props.provider === "grok"
-        ? "GROK"
-        : props.provider === "claude"
-          ? "CLAUDE"
-          : props.provider === "cursor"
-            ? "CURSOR"
-            : props.provider === "kimi"
-              ? "KIMI"
-              : props.provider === "copilot"
-                ? "COPILOT"
-                : props.provider === "zai"
-                  ? "Z.AI"
-                  : props.provider === "minimax"
-                    ? "MINIMAX"
-                    : "ANTIGRAVITY";
-  const text = recipe.text === providerText ? "" : recipe.text;
+  const text = recipe.text;
+
+  // 如果无文字且不展示 Logo，则不渲染
+  if (!text && !layout.showLogo) {
+    return null;
+  }
+
   return (
     <HStack
-      spacing={layout.spacing}
+      spacing={layout.showLogo && text ? layout.spacing : 0}
       padding={{
         horizontal: layout.horizontalPadding,
         vertical: layout.verticalPadding,
@@ -60,11 +70,13 @@ export function PlanBadge(props: {
       layoutPriority={1}
       fixedSize={true}
     >
-      <ProviderLogo
-        provider={props.provider}
-        size={layout.logo}
-        tint={recipe.preserveLogoColor ? undefined : recipe.foreground}
-      />
+      {layout.showLogo ? (
+        <ProviderLogo
+          provider={props.provider}
+          size={layout.logo}
+          tint={recipe.preserveLogoColor ? undefined : recipe.foreground}
+        />
+      ) : null}
       {text ? (
         <Text
           fontDesign="default"
@@ -73,7 +85,9 @@ export function PlanBadge(props: {
           fontWeight="bold"
           foregroundStyle={recipe.foreground}
           lineLimit={1}
-          minScaleFactor={props.size === "small" ? 0.7 : 1}
+          minScaleFactor={
+            props.size === "widget-dense" ? 0.7 : layout.showLogo ? 0.75 : 1
+          }
         >
           {text}
         </Text>

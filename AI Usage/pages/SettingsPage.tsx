@@ -22,6 +22,7 @@ import {
   completeProviderAuth,
   deleteAuthorizedAccount,
   isAuthorized,
+  listAuthorizedCards,
   listProviderAccounts,
 } from "../services/hub";
 import {
@@ -47,10 +48,18 @@ import { usePageToolbar } from "../components/PageToolbar";
 import { CURRENT_VERSION } from "../changelog";
 import { ChangelogPage } from "./ChangelogPage";
 import { AccountDetailPage } from "./AccountDetailPage";
+import { DashboardWidgetSettingsPage } from "./DashboardWidgetSettingsPage";
 import { LogPage } from "./LogPage";
 import type { AuthSheet } from "../models";
-import { listDemoAccounts } from "../services/demo";
-import { requestWidgetReload } from "../services/widgets";
+import { listDemoAccounts, listDemoCards } from "../services/demo";
+import {
+  getDashboardWidgetPreferences,
+  setDashboardWidgetDisplayPreferences,
+} from "../services/dashboard-widget-prefs";
+import {
+  requestWidgetReload,
+  requestWidgetReloadAfterStorage,
+} from "../services/widgets";
 import {
   isAccountShownInOverview,
   setAccountShownInOverview,
@@ -72,6 +81,7 @@ type SelectedDestination =
         planLabel?: string | null;
       };
     }
+  | { kind: "dashboardWidget" }
   | { kind: "log" }
   | { kind: "changelog" };
 
@@ -88,6 +98,7 @@ export function SettingsPage(props: {
     useState<SelectedDestination | null>(null);
   const [busy, setBusy] = useState(false);
   const settings = getAppDisplaySettings();
+  const dashboardPreferences = getDashboardWidgetPreferences();
 
   function refresh() {
     setTick((value) => value + 1);
@@ -272,6 +283,11 @@ export function SettingsPage(props: {
                   refresh();
                 }}
               />
+            ) : selectedDestination?.kind === "dashboardWidget" ? (
+              <DashboardWidgetSettingsPage
+                cards={props.demoMode ? listDemoCards() : listAuthorizedCards()}
+                backgroundTheme={props.backgroundTheme}
+              />
             ) : selectedDestination?.kind === "log" ? (
               <LogPage backgroundTheme={props.backgroundTheme} />
             ) : selectedDestination?.kind === "changelog" ? (
@@ -397,13 +413,78 @@ export function SettingsPage(props: {
               </HStack>
             )}
             <GlassDivider />
-            <GlassNoteRow text="右侧开关只控制账号是否显示在 App 的“用量”页面，不影响桌面小组件。" />
+            <GlassNoteRow text="账号开关仅控制是否在 App 用量页显示，不影响单账号或多账号桌面小组件。" />
           </GlassGroup>
         </Section>
 
         <Section
           listRowBackground={glassRowBackground}
-          header={<GlassSectionHeader title="显示" />}
+          header={<GlassSectionHeader title="多账号小组件" />}
+        >
+          <GlassGroup>
+            <Toggle
+              title="显示账号标识"
+              value={dashboardPreferences.display.showAccountLabel}
+              onChanged={(value: boolean) => {
+                setDashboardWidgetDisplayPreferences({
+                  showAccountLabel: value,
+                });
+                requestWidgetReloadAfterStorage();
+                refresh();
+              }}
+              padding={{ vertical: true }}
+              frame={{ minHeight: 44, maxWidth: "infinity" }}
+            />
+            <GlassDivider />
+            <Button
+              buttonStyle="plain"
+              frame={{ maxWidth: "infinity" }}
+              action={() => setSelectedDestination({ kind: "dashboardWidget" })}
+            >
+              <HStack
+                padding={{ vertical: true }}
+                frame={{ minHeight: 44, maxWidth: "infinity" }}
+                contentShape="rect"
+              >
+                <Text>账号配置</Text>
+                <Spacer />
+                <Image
+                  systemName="chevron.right"
+                  foregroundStyle="tertiaryLabel"
+                />
+              </HStack>
+            </Button>
+            <GlassDivider />
+            <Button
+              buttonStyle="plain"
+              frame={{ maxWidth: "infinity" }}
+              action={async () => {
+                await Pasteboard.setString("dashboard");
+                await Dialog.alert({
+                  title: "已复制小组件参数",
+                  message:
+                    "添加 AI Usage 小组件后，将参数粘贴为 dashboard。只影响多账号桌面小组件。",
+                  buttonLabel: "知道了",
+                });
+              }}
+            >
+              <HStack
+                padding={{ vertical: true }}
+                frame={{ minHeight: 44, maxWidth: "infinity" }}
+                contentShape="rect"
+              >
+                <Text foregroundStyle="accentColor">复制参数</Text>
+                <Spacer />
+              </HStack>
+            </Button>
+            <GlassDivider />
+            <GlassNoteRow text="账号标识显示在套餐标签右侧，默认关闭以减少主屏幕隐私暴露。" />
+          </GlassGroup>
+        </Section>
+
+        <Section
+          listRowBackground={glassRowBackground}
+          header={<GlassSectionHeader title="外观与刷新" />}
         >
           <GlassGroup>
             <Picker
@@ -447,7 +528,7 @@ export function SettingsPage(props: {
 
         <Section
           listRowBackground={glassRowBackground}
-          header={<GlassSectionHeader title="运行与支持" />}
+          header={<GlassSectionHeader title="关于" />}
         >
           <GlassGroup>
             <Button

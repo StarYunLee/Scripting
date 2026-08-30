@@ -49,7 +49,7 @@ export const BACKGROUND_THEMES: Array<{
 
 const DEFAULT_SETTINGS: AppDisplaySettings = {
   reloadMinutes: 30,
-  backgroundTheme: "warm_paper",
+  backgroundTheme: "system_default",
 };
 
 function clampMinutes(value: unknown): number {
@@ -59,9 +59,15 @@ function clampMinutes(value: unknown): number {
 }
 
 function normalizeTheme(value: unknown): BackgroundThemeId {
-  if (value === "system_default" || value === "cool_blue") return value;
-  if (value === "mist_haze") return "mist_haze";
-  return "warm_paper";
+  if (
+    value === "system_default" ||
+    value === "cool_blue" ||
+    value === "warm_paper" ||
+    value === "mist_haze"
+  ) {
+    return value;
+  }
+  return DEFAULT_SETTINGS.backgroundTheme;
 }
 
 let legacyWidgetSettingsMigrated = false;

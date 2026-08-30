@@ -2,15 +2,22 @@
 
 <table>
   <tr>
-    <td align="center" width="33%"><img src="assets/ai-usage-preview-widgets-light.jpeg" alt="AI Usage 浅色小组件总览" /></td>
-    <td align="center" width="33%"><img src="assets/ai-usage-preview-widgets-dark.jpeg" alt="AI Usage 深色小组件总览" /></td>
-    <td align="center" width="33%"><img src="assets/ai-usage-preview-app.jpeg" alt="AI Usage 应用预览" /></td>
+    <td align="center" width="25%"><img src="assets/ai-usage-preview-app-light.jpeg" alt="AI Usage 浅色应用预览" /></td>
+    <td align="center" width="25%"><img src="assets/ai-usage-preview-widgets-light.jpeg" alt="AI Usage 浅色 Small 与 Medium 小组件" /></td>
+    <td align="center" width="25%"><img src="assets/ai-usage-preview-layouts-light.jpeg" alt="AI Usage 浅色 Medium 布局" /></td>
+    <td align="center" width="25%"><img src="assets/ai-usage-preview-dashboard-light.jpeg" alt="AI Usage 浅色多账号小组件" /></td>
+  </tr>
+  <tr>
+    <td align="center" width="25%"><img src="assets/ai-usage-preview-app-dark.jpeg" alt="AI Usage 深色应用预览" /></td>
+    <td align="center" width="25%"><img src="assets/ai-usage-preview-widgets-dark.jpeg" alt="AI Usage 深色 Small 与 Medium 小组件" /></td>
+    <td align="center" width="25%"><img src="assets/ai-usage-preview-layouts-dark.jpeg" alt="AI Usage 深色 Medium 布局" /></td>
+    <td align="center" width="25%"><img src="assets/ai-usage-preview-dashboard-dark.jpeg" alt="AI Usage 深色多账号小组件" /></td>
   </tr>
 </table>
 
 面向 [Scripting App](https://scriptingapp.github.io/) 的非官方多平台用量查看应用。在一个项目里管理 Codex、Grok、Claude、Antigravity、Cursor、Kimi Code、GitHub Copilot、Z.ai 与 MiniMax 的多账号用量、主屏幕小组件和自动化刷新。
 
-当前版本：`1.3.0`
+当前版本：`1.5.0`
 
 > 本项目不是 OpenAI、xAI、Anthropic、Google 或 Scripting App 官方产品，与上述平台无隶属或合作关系。
 
@@ -20,9 +27,10 @@
 - 应用内用量总览支持按账号控制显示，并可在账号详情中选择需要展示的额度窗口
 - Access Token、Refresh Token 和相关身份凭据保存在本机 Keychain
 - Token 到期前自动刷新
-- 主屏幕小组件支持 Small、Medium，并按账号独立保存布局
-- Small 与 Medium 在各平台之间统一额度层级、刷新 / 重置时间和套餐标签；Small 对长窗口名使用紧凑标题
-- 小组件主数值和进度条固定显示剩余额度
+- 主屏幕小组件支持普通单账号和多账号模式，覆盖 Small、Medium 与 Large 尺寸
+- 普通小组件可在账号详情中选择要显示的额度窗口：Small 最多 2 项、Medium 最多 4 项
+- 多账号小组件可集中选择账号和每账号最多 2 个额度窗口，并按尺寸展示 2、4 或 8 个账号
+- 小组件主数值和进度条固定显示剩余额度，刷新与重置时间使用相对表述
 - 统一绿 / 橙 / 红风险配色：剩余不高于 40% 显示橙色，不高于 15% 显示红色
 - 网络失败或接口限流时回退最近一次成功缓存
 - 内置只读演示模式，可在未授权时预览界面和小组件
@@ -124,6 +132,14 @@ OAuth 临时状态有效期为 10 分钟。Authorization Code 通常只能交换
 provider:profileId
 ```
 
+多账号小组件使用固定参数：
+
+```text
+dashboard
+```
+
+在设置页的“多账号小组件”中可以控制账号标识、进入账号配置、选择每个账号的额度窗口并预览不同尺寸。
+
 ## 应用内用量总览
 
 - 设置页可以集中控制每个已连接账号是否显示在应用的“用量”页面
@@ -132,7 +148,7 @@ provider:profileId
 
 ## 小组件显示
 
-小组件不再提供“已用 / 剩余”切换。主数值、概览数值和进度条长度都固定为剩余额度；颜色仍按已用比例判断风险。
+小组件不再提供“已用 / 剩余”切换。主数值和进度条长度都固定为剩余额度；颜色仍按已用比例判断风险。刷新时间和重置时间使用相对表述。
 
 - 绿色：剩余高于 40%
 - 橙色：剩余不高于 40%、高于 15%
@@ -140,40 +156,24 @@ provider:profileId
 
 ### Small
 
-- Codex / Claude / Antigravity：可按账号选择单额度详情或双额度概览
-- Grok：固定展示每周额度
+- 按账号所选窗口自适应：1 个窗口显示单额度详情，2 个窗口上下排列
 - 单额度详情同时列出已用和剩余百分比，主数字与进度条仍表示剩余
-- Small 优先使用平台定义的紧凑窗口标题；没有紧凑标题时使用标准标题
+- 超过 2 项时只显示前 2 项
 
 ### Medium
 
-- 单额度详情用大数字突出剩余额度，右上角显示已用百分比
-- 双额度概览同时展示两个额度窗口的剩余百分比、进度条和重置时间
+- 按账号所选窗口自上而下排列，最多 4 项
+- 1 个窗口时用大数字突出剩余额度；多个窗口时每项显示剩余百分比、进度条和相对重置时间
 
 所选窗口缺失时，对应位置显示 `—`，不会改用其他额度。
 
 ## 小组件设置
 
-布局选项只作用于当前账号；刷新频率对全部账号生效。升级后会自动清理旧的“已用 / 剩余”切换设置，并保留现有布局选择。
+在账号详情中勾选要显示的额度窗口；同一账号的 Small 与 Medium 共用这份选择。刷新频率对全部账号生效。
 
-### Codex
-
-- 组件布局：单额度详情、双额度概览
-- 单额度详情可选择 5 小时、每周或每月额度
-
-### Claude
-
-- 组件布局：双额度概览、单额度详情
-- 概览组合和单额度窗口可按账号选择
-
-### Antigravity
-
-- 单额度详情：Gemini 每周、Claude/GPT 每周
-- 双额度概览：Gemini 5 小时 + 每周、Claude/GPT 5 小时 + 每周、双方每周额度
-
-### Grok
-
-- 固定显示每周额度，不再提供账号级显示切换
+- Small 最多 2 项，Medium 最多 4 项
+- 窗口按平台列表顺序显示，不按勾选先后
+- 这些设置只影响普通单账号主屏幕小组件，不影响应用内用量总览
 
 ### 刷新频率
 

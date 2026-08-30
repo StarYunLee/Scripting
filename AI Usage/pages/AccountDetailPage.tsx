@@ -12,9 +12,6 @@ import {
   Widget,
   useState,
 } from "scripting";
-import { CodexWidgetSettingsView } from "../providers/codex/WidgetSettingsView";
-import { ClaudeWidgetSettingsView } from "../providers/claude/WidgetSettingsView";
-import { AntigravityWidgetSettingsView } from "../providers/antigravity/WidgetSettingsView";
 import { providerMeta, type ProviderId } from "../models";
 import { widgetParameter } from "../widget/parameter";
 import { PageBackground } from "../components/PageBackground";
@@ -34,6 +31,10 @@ import {
   isWindowShownInOverview,
   setWindowShownInOverview,
 } from "../services/app-overview-prefs";
+import {
+  isWindowSelectedForWidget,
+  toggleWidgetWindowSelection,
+} from "../services/widget-prefs";
 
 type Account = {
   id: string;
@@ -83,6 +84,7 @@ export function AccountDetailPage(props: {
     "choose" | "systemSmall" | "systemMedium"
   >("choose");
   const [overviewTick, setOverviewTick] = useState(0);
+  const [widgetTick, setWidgetTick] = useState(0);
   const meta = providerMeta(props.provider);
   const title = props.account.email || props.account.name;
 
@@ -182,7 +184,7 @@ export function AccountDetailPage(props: {
       {props.overviewWindows.length > 0 ? (
         <Section
           listRowBackground={glassRowBackground}
-          header={<GlassSectionHeader title="用量总览显示" />}
+          header={<GlassSectionHeader title="用量总览" />}
         >
           <GlassGroup>
             {props.overviewWindows.map((window, index) => (
@@ -230,7 +232,68 @@ export function AccountDetailPage(props: {
               </VStack>
             ))}
             <GlassDivider />
-            <GlassNoteRow text="仅控制此账号在 App“用量”卡片中显示的额度窗口，不影响桌面小组件。" />
+            <GlassNoteRow text="只影响 App 用量页，不影响桌面小组件。" />
+          </GlassGroup>
+        </Section>
+      ) : null}
+
+      {meta.capabilities.widget && props.overviewWindows.length > 0 ? (
+        <Section
+          listRowBackground={glassRowBackground}
+          header={<GlassSectionHeader title="桌面小组件" />}
+        >
+          <GlassGroup>
+            {props.overviewWindows.map((window, index) => {
+              const isSelected = isWindowSelectedForWidget(
+                props.provider,
+                props.account.id,
+                props.overviewWindows,
+                window.id,
+              );
+              return (
+                <VStack
+                  key={`widget-win:${window.id}:${widgetTick}`}
+                  alignment="leading"
+                  spacing={0}
+                  frame={{ maxWidth: "infinity" }}
+                >
+                  <Toggle
+                    title={window.label}
+                    toggleStyle="switch"
+                    value={isSelected}
+                    onChanged={(value: boolean) => {
+                      const success = toggleWidgetWindowSelection(
+                        props.provider,
+                        props.account.id,
+                        props.overviewWindows,
+                        window.id,
+                        value,
+                      );
+                      if (success) {
+                        changed();
+                        setWidgetTick((current) => current + 1);
+                      } else {
+                        void Dialog.alert({
+                          title: value ? "最多选择 4 项" : "至少保留 1 项",
+                          message: value
+                            ? "中尺寸小组件最多同时展示 4 个额度窗口。"
+                            : "小组件必须至少展示 1 个额度窗口。",
+                          buttonLabel: "知道了",
+                        });
+                        setWidgetTick((current) => current + 1);
+                      }
+                    }}
+                    padding={{ vertical: true }}
+                    frame={{ minHeight: 44, maxWidth: "infinity" }}
+                  />
+                  {index < props.overviewWindows.length - 1 ? (
+                    <GlassDivider />
+                  ) : null}
+                </VStack>
+              );
+            })}
+            <GlassDivider />
+            <GlassNoteRow text="小尺寸最多 2 项，中尺寸最多 4 项。同一账号共用。" />
           </GlassGroup>
         </Section>
       ) : null}
@@ -238,42 +301,11 @@ export function AccountDetailPage(props: {
       {meta.capabilities.widget ? (
         <Section
           listRowBackground={glassRowBackground}
-          header={<GlassSectionHeader title="小组件设置" />}
+          header={<GlassSectionHeader title="预览与参数" />}
         >
           <GlassGroup>
-            {props.provider === "codex" ? (
-              <CodexWidgetSettingsView
-                profileId={props.account.id}
-                onChanged={changed}
-              />
-            ) : props.provider === "grok" ||
-              props.provider === "cursor" ||
-              props.provider === "kimi" ||
-              props.provider === "copilot" ||
-              props.provider === "zai" ||
-              props.provider === "minimax" ? null : props.provider ===
-              "claude" ? (
-              <ClaudeWidgetSettingsView
-                profileId={props.account.id}
-                onChanged={changed}
-              />
-            ) : (
-              <AntigravityWidgetSettingsView
-                profileId={props.account.id}
-                onChanged={changed}
-              />
-            )}
-
-            {props.provider === "grok" ||
-            props.provider === "cursor" ||
-            props.provider === "kimi" ||
-            props.provider === "copilot" ||
-            props.provider === "zai" ||
-            props.provider === "minimax" ? null : (
-              <GlassDivider />
-            )}
             <Picker
-              title="组件预览"
+              title="小组件预览"
               value={previewFamily}
               onChanged={(value: string) => {
                 if (value !== "systemSmall" && value !== "systemMedium") {
@@ -294,30 +326,25 @@ export function AccountDetailPage(props: {
             </Picker>
             <GlassDivider />
             <DetailActionRow
-              title="复制组件参数"
+              title="复制小组件参数"
               action={async () => {
-                await Pasteboard.setString(
-                  widgetParameter(props.provider, props.account.id),
-                );
+                const param = widgetParameter(props.provider, props.account.id);
+                await Pasteboard.setString(param);
                 await Dialog.alert({
-                  title: "已复制组件参数",
-                  message:
-                    "请长按主屏幕上的 AI Usage 小组件并选择“编辑小组件”，将内容粘贴到“参数”。",
+                  title: "已复制小组件参数",
+                  message: param,
                   buttonLabel: "知道了",
                 });
               }}
             />
             <GlassDivider />
-            <GlassNoteRow text="长按主屏幕上的 AI Usage 小组件 → 编辑小组件，将复制的内容粘贴到“参数”。同一账号的多个小组件共享这里的显示设置。" />
+            <GlassNoteRow text="复制后长按主屏幕小组件，在“编辑小组件”中粘贴到“参数”。" />
           </GlassGroup>
         </Section>
       ) : null}
 
       {props.demo ? null : (
-        <Section
-          listRowBackground={glassRowBackground}
-          header={<GlassSectionHeader title="删除账号" />}
-        >
+        <Section listRowBackground={glassRowBackground}>
           <GlassGroup>
             <DetailActionRow
               title="删除此账号…"

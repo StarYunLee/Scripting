@@ -29,6 +29,19 @@ export function formatRelativeFetchedAt(
   return formatFetchedAt(iso);
 }
 
+export function formatSmallRelativeFetchedAt(
+  iso: string | null | undefined,
+): string {
+  if (!iso) return "—";
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "—";
+  const diffMs = Date.now() - date.getTime();
+  if (diffMs < 60_000) return "刚刚";
+  if (diffMs < 3_600_000) return `${Math.floor(diffMs / 60_000)} 分钟前`;
+  if (diffMs < 86_400_000) return `${Math.floor(diffMs / 3_600_000)} 小时前`;
+  return formatTimeOnly(iso);
+}
+
 export function formatRelativeResetAt(iso: string | null | undefined): string {
   if (!iso) return "—";
   const date = new Date(iso);
@@ -78,6 +91,55 @@ export function formatSmallDate(resetAtIso: string | null | undefined): string {
   const hour = String(date.getHours()).padStart(2, "0");
   const minute = String(date.getMinutes()).padStart(2, "0");
   return `${month}月${day}日 ${hour}:${minute}`;
+}
+
+export function formatTimeOnly(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "—";
+  const hour = String(date.getHours()).padStart(2, "0");
+  const minute = String(date.getMinutes()).padStart(2, "0");
+  return `${hour}:${minute}`;
+}
+
+export function formatCompactDate(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "—";
+
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${month}-${day}`;
+}
+
+export function formatResetCountdown(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
+  const diffMs = date.getTime() - Date.now();
+  if (diffMs < 0) return "";
+  if (diffMs < 60_000) return "1m";
+  if (diffMs < 3_600_000) return `${Math.max(1, Math.floor(diffMs / 60_000))}m`;
+  if (diffMs < 86_400_000)
+    return `${Math.max(1, Math.floor(diffMs / 3_600_000))}h`;
+  return `${Math.max(1, Math.floor(diffMs / 86_400_000))}d`;
+}
+
+export function formatCompactRelativeResetAt(
+  iso: string | null | undefined,
+): string {
+  if (!iso) return "—";
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "—";
+  const diffMs = date.getTime() - Date.now();
+  if (diffMs < 0) return "已重置";
+  if (diffMs < 60_000) return "即将重置";
+  if (diffMs < 3_600_000) return `${Math.floor(diffMs / 60_000)}分钟后重置`;
+  if (diffMs < 86_400_000) return `${Math.floor(diffMs / 3_600_000)}小时后重置`;
+  if (diffMs < 86_400_000 * 30) {
+    return `${Math.floor(diffMs / 86_400_000)}天后重置`;
+  }
+  return `${date.getMonth() + 1}月${date.getDate()}日重置`;
 }
 
 export function formatResetDate(resetAtIso: string | null | undefined): string {

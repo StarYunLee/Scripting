@@ -109,23 +109,38 @@ export function StatusPage(props: {
     if (!authorized.length || props.demoMode) return;
     let cancelled = false;
     (async () => {
-      for (const card of authorized) {
-        if (cancelled) return;
-        try {
-          const next = await refreshCard(card.provider, card.accountId, false);
-          const [visibleNext] = applyOverviewPreferences([next]);
-          if (!cancelled && visibleNext) {
+      const summary = await refreshAccounts(
+        authorized.map((card) => ({
+          provider: card.provider,
+          profileId: card.accountId,
+        })),
+        { force: false, source: "app" },
+        {
+          onResult: (outcome) => {
+            if (cancelled || !outcome.ok) return;
+            const account = listProviderAccounts(outcome.provider).find(
+              (item) => item.id === outcome.profileId,
+            );
+            if (!account) return;
+            const next = buildCard(outcome.provider, account, {
+              source: outcome.source || "live",
+            });
+            const [visibleNext] = applyOverviewPreferences([next]);
+            if (!visibleNext) return;
             setCards((current) =>
               current.map((item) =>
                 item.key === visibleNext.key ? visibleNext : item,
               ),
             );
-          }
-        } catch {
-          /* keep cache card */
-        }
-      }
-    })();
+          },
+        },
+      );
+      // 账号并发刷新完成后再发一次 reload 请求，避免逐账号顺序等待，
+      // 也避免 Dashboard 缓存已更新但主屏幕仍持有旧时间线。
+      if (!cancelled && summary.succeeded > 0) requestWidgetReload();
+    })().catch(() => {
+      /* 启动静默刷新失败时保留当前缓存和页面。 */
+    });
     return () => {
       cancelled = true;
     };
@@ -255,16 +270,22 @@ export function StatusPage(props: {
 
   async function refreshAll() {
     if (busy) return;
-    const targets = cards;
+    // Dashboard 的账号范围独立于 App 用量总览开关，不能只刷新当前
+    // StatusPage 可见卡片；否则被 App 隐藏但在 Dashboard 显示的账号永远是旧缓存。
+    const targets = listAuthorizedCards();
     if (!targets.length) return;
     setBusy(true);
     if (props.demoMode) {
       const nextCards = targets.map((card) => refreshDemoCard(card.accountId));
       setCards(
-        nextCards.map((card) => ({
-          ...card,
-          refreshStatus: "success" as const,
-        })),
+        nextCards
+          .filter((card) =>
+            isAccountShownInOverview(card.provider, card.accountId),
+          )
+          .map((card) => ({
+            ...card,
+            refreshStatus: "success" as const,
+          })),
       );
       writeLog({
         level: "info",
@@ -273,13 +294,14 @@ export function StatusPage(props: {
         event: "refresh_all.completed",
         message: `全部刷新完成：成功 ${nextCards.length}，失败 0`,
       });
+      // 不要等用户关闭完成弹窗才刷新主屏幕组件。
+      requestWidgetReload();
       await Dialog.alert({
         title: "刷新完成",
         message: `成功 ${nextCards.length} 个，失败 0 个。`,
         buttonLabel: "关闭",
       });
       for (const card of nextCards) clearCardRefreshState(card.key);
-      requestWidgetReload();
       setBusy(false);
       return;
     }
@@ -325,13 +347,14 @@ export function StatusPage(props: {
         event: "refresh_all.completed",
         message: `全部刷新完成：成功 ${summary.succeeded}，失败 ${summary.failed}`,
       });
+      // 刷新完成即通知 WidgetKit，不把小组件更新绑定在弹窗关闭动作上。
+      requestWidgetReload();
       await Dialog.alert({
         title: summary.failed ? "刷新完成，部分失败" : "刷新成功",
         message: `成功 ${summary.succeeded} 个，失败 ${summary.failed} 个。`,
         buttonLabel: "关闭",
       });
     } finally {
-      requestWidgetReload();
       setBusy(false);
     }
   }
@@ -462,7 +485,7 @@ export function StatusPage(props: {
             listRowBackground={<></>}
             listRowSeparator="hidden"
           >
-            当前没有显示的账号，请在“设置 → 账号”中开启用量总览显示。
+            没有可显示的账号。到设置页打开用量总览开关。
           </Text>
         ) : null}
         {cards.map((card) => (
@@ -474,18 +497,18 @@ export function StatusPage(props: {
             onOpen={() => setOpenedCard(card)}
           />
         ))}
-        <Text
-          font={12}
-          foregroundStyle="secondaryLabel"
-          multilineTextAlignment="center"
-          frame={{ maxWidth: "infinity" }}
-          listRowBackground={<></>}
-          listRowSeparator="hidden"
-        >
-          {props.demoMode
-            ? `当前为演示模式，显示 ${demoAccountCount()} 个样例账号，不会请求真实接口。`
-            : "只显示已授权账号；窗口以各平台实际返回为准。"}
-        </Text>
+        {props.demoMode ? (
+          <Text
+            font={12}
+            foregroundStyle="secondaryLabel"
+            multilineTextAlignment="center"
+            frame={{ maxWidth: "infinity" }}
+            listRowBackground={<></>}
+            listRowSeparator="hidden"
+          >
+            {`当前为演示模式，显示 ${demoAccountCount()} 个样例账号，不会请求真实接口。`}
+          </Text>
+        ) : null}
       </List>
     </NavigationStack>
   );

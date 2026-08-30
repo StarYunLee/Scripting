@@ -87,29 +87,6 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
     resetCredits: { available: 1, nearestOffsetMs: 6 * 86_400_000 },
   },
   {
-    id: "demo_codex_pro",
-    provider: "codex",
-    title: "pro@codex.demo",
-    planLabel: "Pro",
-    windows: [
-      {
-        id: "five_hour",
-        name: "five_hour",
-        label: "5 小时",
-        usedPercent: 74,
-        resetOffsetMs: 2 * 3_600_000 + 5 * 60_000,
-      },
-      {
-        id: "weekly",
-        name: "weekly",
-        label: "每周",
-        usedPercent: 86,
-        resetOffsetMs: 2 * 86_400_000 + 11 * 3_600_000,
-      },
-    ],
-    resetCredits: { available: 2, nearestOffsetMs: 7 * 86_400_000 },
-  },
-  {
     id: "demo_codex_pro5x",
     provider: "codex",
     title: "pro5x@codex.demo",
@@ -174,13 +151,6 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
         label: "每周",
         usedPercent: 34,
         resetOffsetMs: 5 * 86_400_000 + 2 * 3_600_000,
-      },
-      {
-        id: "monthly",
-        name: "monthly",
-        label: "每月",
-        usedPercent: 47,
-        resetOffsetMs: 18 * 86_400_000,
       },
     ],
     resetCredits: { available: 2, nearestOffsetMs: 9 * 86_400_000 },
@@ -435,11 +405,10 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
     resetCredits: null,
   },
   {
-    // 中性演示套餐：不臆造真实套餐分层，仅用于账号页预览与布局验收。
     id: "demo_cursor_layout",
     provider: "cursor",
-    title: "demo@cursor.demo",
-    planLabel: "Demo",
+    title: "pro@cursor.demo",
+    planLabel: "Pro",
     windows: [
       {
         id: "auto",
@@ -475,8 +444,8 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
   {
     id: "demo_kimi_layout",
     provider: "kimi",
-    title: "demo@kimi.demo",
-    planLabel: "Demo",
+    title: "allegro@kimi.demo",
+    planLabel: "Allegro",
     windows: [
       {
         id: "rolling_18000",
@@ -498,8 +467,8 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
   {
     id: "demo_copilot_layout",
     provider: "copilot",
-    title: "demo@copilot.demo",
-    planLabel: "Demo",
+    title: "pro-plus@copilot.demo",
+    planLabel: "Pro+",
     windows: [
       {
         id: "credits",

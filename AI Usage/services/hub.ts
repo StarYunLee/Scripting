@@ -15,6 +15,12 @@ import {
   type UsageWindowView,
 } from "../models";
 import { clearAccountOverviewPreferences } from "./app-overview-prefs";
+import { clearAccountWidgetPreferences } from "./widget-prefs";
+import { clearDashboardWidgetAccountPreferences } from "./dashboard-widget-prefs";
+import {
+  buildWidgetCard as buildCard,
+  listAuthorizedWidgetCards,
+} from "./widget-cards";
 
 type AccountLike = ProviderAccount;
 
@@ -35,49 +41,12 @@ export function findPendingAuth(): {
   return null;
 }
 
-export function buildCard(
-  provider: ProviderId,
-  account: AccountLike,
-  extras?: {
-    refreshing?: boolean;
-    errorMessage?: string;
-    source?: UsageCard["source"];
-  },
-): UsageCard {
-  const api = getProvider(provider);
-  const authorized = Boolean(api.token(account.id));
-  const cache = authorized ? api.usage.cache(account.id) : null;
-  return {
-    key: `${provider}:${account.id}`,
-    provider,
-    accountId: account.id,
-    title: account.email || account.name,
-    planLabel: cache?.planLabel || null,
-    authorized,
-    windows: cache?.windows || [],
-    resetCredits: cache?.resetCredits || null,
-    fetchedAt: cache?.fetchedAt || null,
-    source: extras?.errorMessage
-      ? "error"
-      : extras?.source || cache?.source || "empty",
-    errorMessage: extras?.errorMessage,
-    refreshing: Boolean(extras?.refreshing),
-  };
-}
+export { buildCard };
 
-export function listAuthorizedCards(): UsageCard[] {
-  if (isDemoMode()) return listDemoCards();
-  const cards: UsageCard[] = [];
-  for (const provider of PROVIDER_IDS) {
-    const api = getProvider(provider);
-    const accounts = api.list() as AccountLike[];
-    const authorized = accounts.filter((account) => api.token(account.id));
-    authorized.sort((a, b) =>
-      String(a.createdAt).localeCompare(String(b.createdAt)),
-    );
-    for (const account of authorized) cards.push(buildCard(provider, account));
-  }
-  return cards;
+export function listAuthorizedCards(): ReturnType<
+  typeof listAuthorizedWidgetCards
+> {
+  return isDemoMode() ? listDemoCards() : listAuthorizedWidgetCards();
 }
 
 export async function beginProviderAuth(
@@ -194,6 +163,8 @@ export function deleteAuthorizedAccount(
   api.usage.clearCache(profileId);
   api.clearSettings(profileId);
   clearAccountOverviewPreferences(provider, profileId);
+  clearAccountWidgetPreferences(provider, profileId);
+  clearDashboardWidgetAccountPreferences(`${provider}:${profileId}`);
   api.remove(profileId);
 }
 
@@ -201,6 +172,12 @@ export function cachedUsageWindows(
   provider: ProviderId,
   profileId: string,
 ): UsageWindowView[] {
+  if (isDemoAccountId(profileId) || isDemoMode()) {
+    const demoCard = listDemoCards().find(
+      (c) => c.provider === provider && c.accountId === profileId,
+    );
+    if (demoCard) return demoCard.windows;
+  }
   return getProvider(provider).usage.cache(profileId)?.windows || [];
 }
 

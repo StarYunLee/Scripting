@@ -2,6 +2,8 @@ import { getAccountProvider } from "../providers/account-registry";
 import { isDemoAccountId, listDemoAccounts } from "../services/demo";
 import { PROVIDER_IDS, providerMeta, type ProviderId } from "../models";
 
+export const WIDGET_DASHBOARD_PARAMETER = "dashboard";
+
 export type WidgetAccount = {
   provider: ProviderId;
   profileId: string;
@@ -24,6 +26,21 @@ function normalizeWidgetParameter(rawValue: unknown): string {
   } catch {
     return raw;
   }
+}
+
+export function resolveWidgetParameter(rawValue: unknown): {
+  mode: "dashboard" | "account";
+  account: WidgetAccount | null;
+  error: string | null;
+} {
+  if (
+    normalizeWidgetParameter(rawValue).toLowerCase() ===
+    WIDGET_DASHBOARD_PARAMETER
+  ) {
+    return { mode: "dashboard", account: null, error: null };
+  }
+  const resolved = resolveWidgetAccount(rawValue);
+  return { mode: "account", ...resolved };
 }
 
 export function resolveWidgetAccount(rawValue: unknown): {

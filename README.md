@@ -30,15 +30,22 @@
 
 ### AI Usage
 
-统一管理 Codex、Grok、Claude、Antigravity、Cursor、Kimi Code、GitHub Copilot、Z.ai 与 MiniMax 的多账号用量。应用页面、账号管理和运行记录采用统一信息结构；Small / Medium 主屏幕小组件共享额度层级、套餐标签与窗口命名，固定显示剩余额度，并按账号保存布局。支持应用内用量总览控制、快捷指令或 App Intent 刷新，失败时回退最近缓存，未授权时可预览演示模式。
+统一管理 Codex、Grok、Claude、Antigravity、Cursor、Kimi Code、GitHub Copilot、Z.ai 与 MiniMax 的多账号用量。支持普通单账号和多账号主屏幕小组件，覆盖 Small、Medium 与 Large 尺寸；可配置显示账号、额度窗口和账号标识。应用内用量总览、快捷指令与 App Intent 可刷新全部授权账号，失败时回退最近缓存，未授权时可使用只读演示模式。
 
-当前版本：`1.3.0`
+当前版本：`1.5.0`
 
 <table>
   <tr>
-    <td align="center" width="33%"><img src="./AI%20Usage/assets/ai-usage-preview-widgets-light.jpeg" alt="AI Usage 浅色小组件总览" /></td>
-    <td align="center" width="33%"><img src="./AI%20Usage/assets/ai-usage-preview-widgets-dark.jpeg" alt="AI Usage 深色小组件总览" /></td>
-    <td align="center" width="33%"><img src="./AI%20Usage/assets/ai-usage-preview-app.jpeg" alt="AI Usage 应用预览" /></td>
+    <td align="center" width="25%"><img src="./AI%20Usage/assets/ai-usage-preview-app-light.jpeg" alt="AI Usage 浅色应用预览" /></td>
+    <td align="center" width="25%"><img src="./AI%20Usage/assets/ai-usage-preview-widgets-light.jpeg" alt="AI Usage 浅色 Small 与 Medium 小组件" /></td>
+    <td align="center" width="25%"><img src="./AI%20Usage/assets/ai-usage-preview-layouts-light.jpeg" alt="AI Usage 浅色 Medium 布局" /></td>
+    <td align="center" width="25%"><img src="./AI%20Usage/assets/ai-usage-preview-dashboard-light.jpeg" alt="AI Usage 浅色多账号小组件" /></td>
+  </tr>
+  <tr>
+    <td align="center" width="25%"><img src="./AI%20Usage/assets/ai-usage-preview-app-dark.jpeg" alt="AI Usage 深色应用预览" /></td>
+    <td align="center" width="25%"><img src="./AI%20Usage/assets/ai-usage-preview-widgets-dark.jpeg" alt="AI Usage 深色 Small 与 Medium 小组件" /></td>
+    <td align="center" width="25%"><img src="./AI%20Usage/assets/ai-usage-preview-layouts-dark.jpeg" alt="AI Usage 深色 Medium 布局" /></td>
+    <td align="center" width="25%"><img src="./AI%20Usage/assets/ai-usage-preview-dashboard-dark.jpeg" alt="AI Usage 深色多账号小组件" /></td>
   </tr>
 </table>
 

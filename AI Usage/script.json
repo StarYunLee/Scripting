@@ -12,13 +12,13 @@
       "homepage": "https://github.com/gamesme"
     }
   ],
-  "version": "1.3.0",
+  "version": "1.5.0",
   "intentInputTypes": [],
   "localizedNames": {
     "zh": "AI Usage",
     "en": "AI Usage"
   },
-  "description": "Unified Codex, Grok, Claude, Antigravity, Cursor, Kimi Code, GitHub Copilot, Z.ai, and MiniMax usage app with multi-account Home Screen widgets, remaining-quota display, and App usage overview controls.",
+  "description": "Unified multi-account AI usage app for Codex, Grok, Claude, Antigravity, Cursor, Kimi Code, GitHub Copilot, Z.ai, and MiniMax, with configurable Small, Medium, and Large Home Screen widgets.",
   "remoteResource": {
     "url": "https://raw.githubusercontent.com/StarYunLee/Scripting/main/AI-Usage.scripting",
     "autoUpdateInterval": 86400
@@ -29,8 +29,8 @@
     "homepage": "https://github.com/StarYunLee"
   },
   "localizedDescriptions": {
-    "zh": "整合 Codex、Grok、Claude、Antigravity、Cursor、Kimi Code、GitHub Copilot、Z.ai 与 MiniMax 用量的应用。支持多账号、按账号设置主屏幕小组件布局、应用内用量总览控制，以及应用内 Safari 授权后粘贴完成登录。",
-    "en": "Unified Codex, Grok, Claude, Antigravity, Cursor, Kimi Code, GitHub Copilot, Z.ai, and MiniMax usage app with multi-account Home Screen widgets, remaining-quota display, and App usage overview controls."
+    "zh": "整合 Codex、Grok、Claude、Antigravity、Cursor、Kimi Code、GitHub Copilot、Z.ai 与 MiniMax 多账号用量。支持可配置的 Small、Medium 与 Large 普通和多账号主屏幕小组件。",
+    "en": "Unified multi-account usage for Codex, Grok, Claude, Antigravity, Cursor, Kimi Code, GitHub Copilot, Z.ai, and MiniMax, with configurable Small, Medium, and Large Home Screen widgets."
   },
   "iconImage": null
 }
