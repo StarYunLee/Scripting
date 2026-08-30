@@ -1,4 +1,5 @@
 import type { UsageSnapshot } from "./types";
+import { isOrdinaryCodexWindow } from "./usage-parser";
 import { codexWindowTitle } from "./window-titles";
 import {
   isUsageWindowView,
@@ -20,9 +21,9 @@ export function normalizeUsageSnapshot(
       .map((window) => ({
         ...window,
         label:
-          window.name === "unknown"
-            ? window.label
-            : codexWindowTitle(window.name),
+          isOrdinaryCodexWindow(window) && window.name !== "unknown"
+            ? codexWindowTitle(window.name)
+            : window.label,
       }))
       .map(toUsageWindowView)
       .filter(isUsageWindowView),

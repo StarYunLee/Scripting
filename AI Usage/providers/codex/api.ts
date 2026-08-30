@@ -2,18 +2,22 @@ import { fetch } from "scripting";
 import {
   getProfileAccountId,
   getProfileAccessToken,
+  getProfileIdToken,
   resolveProfile,
 } from "./accounts";
 import { refreshOAuthToken } from "./oauth";
 import type {
   CodexCreditStatus,
   CodexSpendControl,
-  LimitWindow,
-  LimitWindowName,
   UsageResult,
   UsageSnapshot,
 } from "./types";
-import { codexWindowTitle } from "./window-titles";
+import {
+  extractCodexWindows,
+  pickOrdinaryCodexWindow,
+  resolveCodexPlanLabel,
+  resolveCodexPlanType,
+} from "./usage-parser";
 
 const CACHE_KEY = "ai_usage_codex_cache_v1";
 const USAGE_URL = "https://chatgpt.com/backend-api/wham/usage";
@@ -41,9 +45,6 @@ function toBoolean(v: unknown): boolean | null {
 function toStringValue(v: unknown): string | null {
   return typeof v === "string" && v.trim() ? v.trim() : null;
 }
-function clamp(n: number): number {
-  return Math.max(0, Math.min(100, n));
-}
 function epoch(v: unknown): { iso: string | null; ms: number | null } {
   if (typeof v === "string" && !/^\d+(\.\d+)?$/.test(v)) {
     const ms = new Date(v).getTime();
@@ -57,161 +58,6 @@ function epoch(v: unknown): { iso: string | null; ms: number | null } {
   return Number.isFinite(ms)
     ? { iso: new Date(ms).toISOString(), ms }
     : { iso: null, ms: null };
-}
-function used(obj: Record<string, unknown>): number | null {
-  const u = toNumber(obj.used_percent ?? obj.usedPercent);
-  if (u != null) return clamp(u);
-  const r = toNumber(
-    obj.percent_left ?? obj.remaining_percent ?? obj.remainingPercent,
-  );
-  return r == null ? null : clamp(100 - r);
-}
-function inferName(seconds: number | null, text = ""): LimitWindowName {
-  const s = text.toLowerCase();
-  if (/5\s*h|five|session/.test(s)) return "five_hour";
-  if (/30\s*d|month/.test(s)) return "monthly";
-  if (/7\s*d|week/.test(s)) return "weekly";
-  if (seconds == null) return "unknown";
-  if (seconds <= 6 * 3600) return "five_hour";
-  if (seconds >= 25 * 86400) return "monthly";
-  if (seconds >= 6 * 86400) return "weekly";
-  return "unknown";
-}
-function label(name: LimitWindowName, seconds: number | null): string {
-  if (name !== "unknown") return codexWindowTitle(name);
-  if (seconds && seconds >= 86400) return `${Math.round(seconds / 86400)} 天`;
-  return codexWindowTitle("unknown");
-}
-function parseWindow(
-  value: unknown,
-  id: string,
-  hint = "",
-): LimitWindow | null {
-  let obj = asObject(value);
-  if (!obj) return null;
-  if (!obj.reset_at && !obj.used_percent && asObject(obj.primary_window))
-    obj = asObject(obj.primary_window)!;
-  const seconds = toNumber(
-    obj.limit_window_seconds ?? obj.window_seconds ?? obj.limit_window,
-  );
-  const name = inferName(seconds, `${id} ${hint}`);
-  const reset = epoch(
-    obj.reset_at ?? obj.reset_time_ms ?? obj.resetAt ?? obj.reset_time,
-  );
-  const usedPercent = used(obj);
-  if (usedPercent == null && !reset.iso) return null;
-  return {
-    id,
-    name,
-    label: label(name, seconds),
-    usedPercent,
-    remainingPercent: usedPercent == null ? null : clamp(100 - usedPercent),
-    resetAt: reset.iso,
-    resetAtMs: reset.ms,
-    windowSeconds: seconds,
-  };
-}
-function collectFromRateLimit(
-  rate: Record<string, unknown>,
-  prefix: string,
-  hint = "",
-): LimitWindow[] {
-  const out: LimitWindow[] = [];
-  const keys = [
-    "primary_window",
-    "primaryWindow",
-    "secondary_window",
-    "secondaryWindow",
-    "five_hour",
-    "weekly",
-    "monthly",
-  ];
-  const seen = new Set<unknown>();
-  for (const key of keys) {
-    const value = rate[key];
-    if (!value || seen.has(value)) continue;
-    seen.add(value);
-    const parsed = parseWindow(value, `${prefix}:${key}`, `${hint} ${key}`);
-    if (parsed) out.push(parsed);
-  }
-  return out;
-}
-function extractWindows(payload: Record<string, unknown>): LimitWindow[] {
-  const out: LimitWindow[] = [];
-  const root =
-    asObject(payload.rate_limit) || asObject(payload.rateLimit) || payload;
-  out.push(...collectFromRateLimit(root, "codex"));
-  const additional =
-    payload.additional_rate_limits ?? root.additional_rate_limits;
-  if (Array.isArray(additional)) {
-    additional.forEach((item, i) => {
-      const obj = asObject(item);
-      const rate = asObject(obj?.rate_limit) || obj;
-      if (rate)
-        out.push(
-          ...collectFromRateLimit(
-            rate,
-            `extra${i}`,
-            String(obj?.limit_name || obj?.metered_feature || ""),
-          ),
-        );
-    });
-  }
-  const direct: Array<[string, LimitWindowName]> = [
-    ["five_hour", "five_hour"],
-    ["weekly", "weekly"],
-    ["monthly", "monthly"],
-  ];
-  for (const [key, name] of direct) {
-    const parsed = parseWindow(payload[key], `direct:${key}`, key);
-    if (parsed && !out.some((x) => x.name === name)) out.push(parsed);
-  }
-  const unique: LimitWindow[] = [];
-  for (const w of out) {
-    if (
-      !unique.some(
-        (x) =>
-          x.name === w.name &&
-          x.resetAtMs === w.resetAtMs &&
-          x.usedPercent === w.usedPercent,
-      )
-    )
-      unique.push(w);
-  }
-  return unique.sort(
-    (a, b) => (a.windowSeconds || 1e20) - (b.windowSeconds || 1e20),
-  );
-}
-function planLabel(payload: Record<string, unknown>): string | null {
-  const raw = toStringValue(payload.plan_type)?.toLowerCase();
-  if (!raw) return null;
-  const labels: Record<string, string> = {
-    guest: "Guest",
-    free: "Free",
-    go: "Go",
-    plus: "Plus",
-    pro: "Pro",
-    prolite: "Pro Lite",
-    free_workspace: "Free Workspace",
-    team: "Team",
-    self_serve_business_prolite: "Business Pro Lite",
-    self_serve_business_usage_based: "Business",
-    business: "Business",
-    ent26: "Enterprise",
-    enterprise_cbp_automation: "Enterprise",
-    enterprise_cbp_usage_based: "Enterprise",
-    enterprise: "Enterprise",
-    education: "Education",
-    edu: "Education",
-    edu_plus: "Education Plus",
-    edu_pro: "Education Pro",
-    quorum: "Quorum",
-    k12: "Education",
-  };
-  return (
-    labels[raw] ||
-    raw.replace(/(^|_)(\w)/g, (_, __, c) => ` ${c.toUpperCase()}`).trim()
-  );
 }
 function parseCreditStatus(
   payload: Record<string, unknown>,
@@ -386,8 +232,8 @@ export function clearUsageCache(profileId?: string | null): void {
 export function pickFocusWindow(
   snapshot: UsageSnapshot,
   focus: "weekly" | "five_hour" | "monthly" = "weekly",
-): LimitWindow | null {
-  return snapshot.windows.find((w) => w.name === focus) || null;
+) {
+  return pickOrdinaryCodexWindow(snapshot.windows, focus);
 }
 function recent(cache: UsageSnapshot | null): boolean {
   if (!cache?.fetchedAt) return false;
@@ -489,7 +335,7 @@ export async function fetchUsage(options?: {
       };
     }
 
-    const windows = extractWindows(payload);
+    const windows = extractCodexWindows(payload);
     if (!windows.length) {
       const recovered = recoverRecentCache(profile.id, Boolean(options?.force));
       if (recovered) return recovered;
@@ -499,8 +345,11 @@ export async function fetchUsage(options?: {
         cache: readCache(profile.id) || cache,
       };
     }
-    const rawPlanType =
-      typeof payload.plan_type === "string" ? payload.plan_type : null;
+    const rawPlanType = resolveCodexPlanType(
+      payload.plan_type,
+      getProfileIdToken(profile.id),
+      token,
+    );
     const creditStatus = parseCreditStatus(payload);
     const spendControl = parseSpendControl(payload);
     const status = rateLimitStatus(payload);
@@ -518,13 +367,18 @@ export async function fetchUsage(options?: {
       detailedResetCredits != null || embeddedResetCredits.count != null
         ? liveResetExpirations
         : (cache?.resetCreditExpirations ?? []);
+    const resolvedPlanLabel = resolveCodexPlanLabel(
+      rawPlanType,
+      cache?.planLabel,
+      cache?.planType,
+    );
     const snapshot: UsageSnapshot = {
       windows,
-      fiveHour: windows.find((w) => w.name === "five_hour") || null,
-      weekly: windows.find((w) => w.name === "weekly") || null,
-      monthly: windows.find((w) => w.name === "monthly") || null,
+      fiveHour: pickOrdinaryCodexWindow(windows, "five_hour"),
+      weekly: pickOrdinaryCodexWindow(windows, "weekly"),
+      monthly: pickOrdinaryCodexWindow(windows, "monthly"),
       planType: rawPlanType,
-      planLabel: planLabel(payload),
+      planLabel: resolvedPlanLabel,
       creditStatus,
       spendControl,
       rateLimitAllowed: status.allowed,

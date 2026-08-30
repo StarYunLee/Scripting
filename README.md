@@ -32,7 +32,7 @@
 
 统一管理 Codex、Grok、Claude、Antigravity、Cursor、Kimi Code、GitHub Copilot、Z.ai 与 MiniMax 的多账号用量。支持普通单账号和多账号主屏幕小组件，覆盖 Small、Medium 与 Large 尺寸；可配置显示账号、额度窗口和账号标识。应用内用量总览、快捷指令与 App Intent 可刷新全部授权账号，失败时回退最近缓存，未授权时可使用只读演示模式。
 
-当前版本：`1.5.0`
+当前版本：`1.5.1`
 
 <table>
   <tr>

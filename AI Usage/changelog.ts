@@ -6,6 +6,15 @@ export type ChangelogEntry = {
 
 export const CHANGELOG = [
   {
+    version: "1.5.1",
+    date: "2026-08-30",
+    changes: [
+      "修复 Codex 附加额度与普通额度可能被错误合并的问题，并保留附加额度的来源标签。",
+      "支持识别 Codex Spark 独立额度，避免将其误用为普通 5 小时或每周额度。",
+      "修复 Codex Pro 5X 与 Pro 20X 套餐识别和徽章显示，并增强套餐信息回退。",
+    ],
+  },
+  {
     version: "1.5.0",
     date: "2026-08-30",
     changes: [
