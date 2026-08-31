@@ -1,41 +1,13 @@
 import { AppIntentManager, AppIntentProtocol } from "scripting";
-import {
-  refreshAllAuthorizedAccounts,
-  refreshProviderAccounts,
-} from "./services/refresh";
-import { writeLog } from "./services/logger";
-import { requestWidgetReload } from "./services/widgets";
+import { runIntentRefresh } from "./services/intent-refresh";
 import type { ProviderId } from "./models";
 
 async function refreshProviderIntent(provider: ProviderId): Promise<void> {
-  const summary = await refreshProviderAccounts(provider, {
-    force: true,
-    source: "intent",
-  });
-  requestWidgetReload();
-  writeLog({
-    level: summary.failed ? "warning" : "info",
-    source: "intent",
-    category: "refresh",
-    event: "intent.refresh.completed",
-    provider,
-    message: `Intent 刷新完成：成功 ${summary.succeeded}，失败 ${summary.failed}`,
-  });
+  await runIntentRefresh({ kind: "provider", provider });
 }
 
 async function refreshAllIntent(): Promise<void> {
-  const summary = await refreshAllAuthorizedAccounts({
-    force: true,
-    source: "intent",
-  });
-  requestWidgetReload();
-  writeLog({
-    level: summary.failed ? "warning" : "info",
-    source: "intent",
-    category: "refresh",
-    event: "intent.refresh_all.completed",
-    message: `全部刷新完成：成功 ${summary.succeeded}，失败 ${summary.failed}`,
-  });
+  await runIntentRefresh({ kind: "all" });
 }
 
 export const RefreshAIUsageCodexIntent = AppIntentManager.register({

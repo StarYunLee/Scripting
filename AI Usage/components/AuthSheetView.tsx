@@ -11,7 +11,6 @@ import {
   VStack,
 } from "scripting";
 import { providerMeta, type AuthSheet } from "../models";
-import { getPendingVerificationUri } from "../providers/copilot/oauth";
 import { openAuthorizationPage } from "../services/browser";
 import { PageBackground } from "./PageBackground";
 import {
@@ -40,29 +39,6 @@ export function AuthSheetView(props: {
     });
   }
 
-  async function openGitHubAuthorizationPage() {
-    const url = getPendingVerificationUri();
-    if (!url) {
-      await Dialog.alert({
-        title: "授权会话已过期",
-        message: "请取消后重新生成 GitHub 设备码。",
-        buttonLabel: "关闭",
-      });
-      return;
-    }
-    try {
-      await openAuthorizationPage(url);
-    } catch (error) {
-      await Dialog.alert({
-        title: "无法打开授权页",
-        message:
-          error instanceof Error && error.message
-            ? error.message
-            : "请稍后重试。",
-        buttonLabel: "关闭",
-      });
-    }
-  }
   return (
     <NavigationStack>
       <List
@@ -132,12 +108,25 @@ export function AuthSheetView(props: {
               />
             )}
             <GlassDivider />
-            {props.authSheet.deviceCode ? (
+            {props.authSheet.authorizationUrl ? (
               <>
                 <Button
                   buttonStyle="plain"
                   frame={{ maxWidth: "infinity" }}
-                  action={() => void openGitHubAuthorizationPage()}
+                  action={() => {
+                    void openAuthorizationPage(
+                      props.authSheet.authorizationUrl!,
+                    ).catch(async (error) => {
+                      await Dialog.alert({
+                        title: "无法打开授权页",
+                        message:
+                          error instanceof Error && error.message
+                            ? error.message
+                            : "请稍后重试。",
+                        buttonLabel: "关闭",
+                      });
+                    });
+                  }}
                 >
                   <HStack
                     padding={{ vertical: true }}
@@ -149,9 +138,7 @@ export function AuthSheetView(props: {
                       imageScale="medium"
                       foregroundStyle="accentColor"
                     />
-                    <Text foregroundStyle="accentColor">
-                      手动打开 GitHub 授权页
-                    </Text>
+                    <Text foregroundStyle="accentColor">重新打开授权页</Text>
                     <Spacer />
                   </HStack>
                 </Button>

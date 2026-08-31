@@ -81,6 +81,9 @@ function migrateLegacyWidgetSettings(): void {
   getAntigravitySettings();
 }
 
+export type StorageWriteResult<T> =
+  { ok: true; value: T } | { ok: false; value: T };
+
 export function getAppDisplaySettings(): AppDisplaySettings {
   migrateLegacyWidgetSettings();
   try {
@@ -102,34 +105,36 @@ export function getAppDisplaySettings(): AppDisplaySettings {
   }
 }
 
-export function setAppReloadMinutes(reloadMinutes: number): AppDisplaySettings {
+export function setAppReloadMinutes(
+  reloadMinutes: number,
+): StorageWriteResult<AppDisplaySettings> {
   const next = {
     ...getAppDisplaySettings(),
     reloadMinutes: clampMinutes(reloadMinutes),
   };
   try {
-    Storage.set(DISPLAY_KEY, next);
+    if (!Storage.set(DISPLAY_KEY, next)) return { ok: false, value: next };
   } catch {
-    /* ignore */
+    return { ok: false, value: next };
   }
   setCodexReloadMinutes(next.reloadMinutes);
   setGrokReloadMinutes(next.reloadMinutes);
   setClaudeReloadMinutes(next.reloadMinutes);
   setAntigravityReloadMinutes(next.reloadMinutes);
-  return next;
+  return { ok: true, value: next };
 }
 
 export function setAppBackgroundTheme(
   backgroundTheme: BackgroundThemeId,
-): AppDisplaySettings {
+): StorageWriteResult<AppDisplaySettings> {
   const next = {
     ...getAppDisplaySettings(),
     backgroundTheme: normalizeTheme(backgroundTheme),
   };
   try {
-    Storage.set(DISPLAY_KEY, next);
+    if (!Storage.set(DISPLAY_KEY, next)) return { ok: false, value: next };
+    return { ok: true, value: next };
   } catch {
-    /* ignore */
+    return { ok: false, value: next };
   }
-  return next;
 }

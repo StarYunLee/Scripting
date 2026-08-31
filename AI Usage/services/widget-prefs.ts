@@ -41,11 +41,11 @@ function readPreferences(): StoredWidgetPreferences {
   }
 }
 
-function writePreferences(value: StoredWidgetPreferences): void {
+function writePreferences(value: StoredWidgetPreferences): boolean {
   try {
-    Storage.set(STORAGE_KEY, value);
+    return Storage.set(STORAGE_KEY, value);
   } catch {
-    /* Keep the current session usable if persistence is unavailable. */
+    return false;
   }
 }
 
@@ -105,8 +105,7 @@ export function toggleWidgetWindowSelection(
     const prefs = readPreferences();
     if (!prefs.selectedWindows) prefs.selectedWindows = {};
     prefs.selectedWindows[key] = nextIds;
-    writePreferences(prefs);
-    return true;
+    return writePreferences(prefs);
   } else {
     // 关闭：下限最少保留 1 项
     if (!currentIds.includes(windowId)) return true;
@@ -115,8 +114,7 @@ export function toggleWidgetWindowSelection(
     const prefs = readPreferences();
     if (!prefs.selectedWindows) prefs.selectedWindows = {};
     prefs.selectedWindows[key] = nextIds;
-    writePreferences(prefs);
-    return true;
+    return writePreferences(prefs);
   }
 }
 
@@ -124,11 +122,10 @@ export function toggleWidgetWindowSelection(
 export function clearAccountWidgetPreferences(
   provider: ProviderId,
   accountId: string,
-): void {
+): boolean {
   const key = accountKey(provider, accountId);
   const prefs = readPreferences();
-  if (prefs.selectedWindows) {
-    delete prefs.selectedWindows[key];
-    writePreferences(prefs);
-  }
+  if (!prefs.selectedWindows || !(key in prefs.selectedWindows)) return true;
+  delete prefs.selectedWindows[key];
+  return writePreferences(prefs);
 }

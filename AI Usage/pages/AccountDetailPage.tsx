@@ -77,7 +77,7 @@ export function AccountDetailPage(props: {
   demo?: boolean;
   backgroundTheme: BackgroundThemeId;
   onReauthorize: () => void;
-  onDelete: () => void;
+  onDelete: () => void | Promise<void>;
 }) {
   const dismiss = Navigation.useDismiss();
   const [previewFamily, setPreviewFamily] = useState<
@@ -124,8 +124,19 @@ export function AccountDetailPage(props: {
       confirmLabel: "删除",
     });
     if (!confirmed) return;
-    props.onDelete();
-    dismiss();
+    try {
+      await props.onDelete();
+      dismiss();
+    } catch (error) {
+      await Dialog.alert({
+        title: "删除失败",
+        message:
+          error instanceof Error && error.message
+            ? error.message
+            : "账号未删除，请稍后重试。",
+        buttonLabel: "关闭",
+      });
+    }
   }
 
   return (
@@ -215,9 +226,9 @@ export function AccountDetailPage(props: {
                       setOverviewTick((current) => current + 1);
                     } else {
                       void Dialog.alert({
-                        title: "至少保留一个窗口",
+                        title: "设置未保存",
                         message:
-                          "如需隐藏整个账号，请在设置页关闭该账号右侧的用量总览开关。",
+                          "无法保存额度窗口设置，或当前账号必须至少保留一个可见窗口。",
                         buttonLabel: "知道了",
                       });
                       setOverviewTick((current) => current + 1);
@@ -274,10 +285,12 @@ export function AccountDetailPage(props: {
                         setWidgetTick((current) => current + 1);
                       } else {
                         void Dialog.alert({
-                          title: value ? "最多选择 4 项" : "至少保留 1 项",
+                          title: value
+                            ? "选择失败"
+                            : "至少保留 1 项或设置未保存",
                           message: value
-                            ? "中尺寸小组件最多同时展示 4 个额度窗口。"
-                            : "小组件必须至少展示 1 个额度窗口。",
+                            ? "中尺寸小组件最多同时展示 4 个额度窗口，或本地设置暂时无法写入。"
+                            : "小组件必须至少展示 1 个额度窗口；若仍有其他窗口，请稍后重试保存。",
                           buttonLabel: "知道了",
                         });
                         setWidgetTick((current) => current + 1);

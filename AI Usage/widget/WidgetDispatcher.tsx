@@ -8,7 +8,8 @@ import {
   formatRelativeResetAt,
   formatSmallDate,
   formatSmallRelativeFetchedAt,
-} from "../providers/codex/format";
+} from "../services/usage-format";
+import { parseWidgetFamily, widgetDispatcherFallbackWidth } from "./family";
 import {
   FocusSingleSmallLayout,
   CompactDualSmallLayout,
@@ -42,10 +43,7 @@ function displayWidth(family: string): number {
   } catch {
     /* ignore */
   }
-  return family.toLowerCase().includes("small") &&
-    !family.toLowerCase().includes("medium")
-    ? 158
-    : 338;
+  return widgetDispatcherFallbackWidth(family);
 }
 
 function resolveOptionalMeta(resetCredits?: NormalizedResetCredits | null): {
@@ -79,9 +77,7 @@ function resolveOptionalMeta(resetCredits?: NormalizedResetCredits | null): {
  * - Medium 尺寸：1 项 ImmersiveSingleMediumLayout，2 项 StandardDualMediumLayout，>=3 项 PanoramicTripleMediumLayout（最多 4 项纵向堆叠）。
  */
 export function WidgetDispatcher(props: Props) {
-  const isSmall =
-    props.family.toLowerCase().includes("small") &&
-    !props.family.toLowerCase().includes("medium");
+  const isSmall = parseWidgetFamily(props.family) === "small";
   const width = displayWidth(props.family);
   const planLabel = props.planLabel || props.provider;
   const watermarkPath = providerWatermarkPath(props.provider);
@@ -103,7 +99,8 @@ export function WidgetDispatcher(props: Props) {
         ];
 
   if (isSmall) {
-    const singleFetchedText = formatSmallRelativeFetchedAt(props.fetchedAt);
+    const singleFetchedText =
+      props.errorText || formatSmallRelativeFetchedAt(props.fetchedAt);
     // Small 尺寸分支
     if (activeWindows.length <= 1) {
       const w = activeWindows[0];

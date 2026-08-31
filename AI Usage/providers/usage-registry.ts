@@ -8,8 +8,18 @@ import { fetchUsage as fetchKimiUsage } from "./kimi/api";
 import { fetchUsage as fetchCopilotUsage } from "./copilot/api";
 import { fetchUsage as fetchZaiUsage } from "./zai/api";
 import { fetchUsage as fetchMinimaxUsage } from "./minimax/api";
+import { normalizeUsageSnapshot as normalizeCodexUsage } from "./codex/normalize";
+import { normalizeUsageSnapshot as normalizeGrokUsage } from "./grok/normalize";
+import { normalizeUsageSnapshot as normalizeClaudeUsage } from "./claude/normalize";
+import { normalizeUsageSnapshot as normalizeAntigravityUsage } from "./antigravity/normalize";
+import { normalizeUsageSnapshot as normalizeCursorUsage } from "./cursor/normalize";
+import { normalizeUsageSnapshot as normalizeKimiUsage } from "./kimi/normalize";
+import { normalizeUsageSnapshot as normalizeCopilotUsage } from "./copilot/normalize";
+import { normalizeUsageSnapshot as normalizeZaiUsage } from "./zai/normalize";
+import { normalizeUsageSnapshot as normalizeMinimaxUsage } from "./minimax/normalize";
 import type { ProviderId } from "../models";
-import type { UsageProvider } from "./contracts";
+import type { ProviderUsageError, UsageProvider } from "./contracts";
+import type { NormalizedUsageSnapshot } from "../services/usage-model";
 
 export const USAGE_PROVIDERS = {
   codex: {
@@ -50,6 +60,53 @@ export const USAGE_PROVIDERS = {
   },
 } satisfies Record<ProviderId, UsageProvider>;
 
+export type WidgetRefreshResult =
+  | { ok: true; snapshot: NormalizedUsageSnapshot }
+  | { ok: false; error: ProviderUsageError };
+
+export type WidgetRefreshProvider = UsageProvider & {
+  fetchSnapshot(options: {
+    force?: boolean;
+    profileId?: string | null;
+  }): Promise<WidgetRefreshResult>;
+};
+
+function withSnapshot<T>(
+  provider: UsageProvider,
+  normalize: (snapshot: T) => NormalizedUsageSnapshot,
+): WidgetRefreshProvider {
+  return {
+    ...provider,
+    async fetchSnapshot(options) {
+      const result = await provider.fetch(options);
+      return result.ok
+        ? { ok: true, snapshot: normalize(result.snapshot as T) }
+        : result;
+    },
+  };
+}
+
+export const WIDGET_REFRESH_PROVIDERS = {
+  codex: withSnapshot(USAGE_PROVIDERS.codex, normalizeCodexUsage),
+  grok: withSnapshot(USAGE_PROVIDERS.grok, normalizeGrokUsage),
+  claude: withSnapshot(USAGE_PROVIDERS.claude, normalizeClaudeUsage),
+  antigravity: withSnapshot(
+    USAGE_PROVIDERS.antigravity,
+    normalizeAntigravityUsage,
+  ),
+  cursor: withSnapshot(USAGE_PROVIDERS.cursor, normalizeCursorUsage),
+  kimi: withSnapshot(USAGE_PROVIDERS.kimi, normalizeKimiUsage),
+  copilot: withSnapshot(USAGE_PROVIDERS.copilot, normalizeCopilotUsage),
+  zai: withSnapshot(USAGE_PROVIDERS.zai, normalizeZaiUsage),
+  minimax: withSnapshot(USAGE_PROVIDERS.minimax, normalizeMinimaxUsage),
+} satisfies Record<ProviderId, WidgetRefreshProvider>;
+
 export function getUsageProvider(provider: ProviderId): UsageProvider {
   return USAGE_PROVIDERS[provider];
+}
+
+export function getWidgetRefreshProvider(
+  provider: ProviderId,
+): WidgetRefreshProvider {
+  return WIDGET_REFRESH_PROVIDERS[provider];
 }

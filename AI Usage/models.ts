@@ -20,6 +20,7 @@ export type AuthSheet = {
   provider: ProviderId;
   profileId: string;
   authorizationInput: string;
+  authorizationUrl?: string;
   status: string;
   deviceCode?: string;
 };
@@ -48,7 +49,7 @@ export type UsageCard = {
   refreshStatus?: "success" | "failure";
 };
 
-export const PROVIDERS: Array<{
+export type ProviderMeta = {
   id: ProviderId;
   title: string;
   connectTitle: string;
@@ -59,8 +60,10 @@ export const PROVIDERS: Array<{
   capabilities: {
     widget: boolean;
   };
-}> = [
-  {
+};
+
+export const PROVIDER_META: Record<ProviderId, ProviderMeta> = {
+  codex: {
     id: "codex",
     title: "Codex",
     connectTitle: "连接 ChatGPT 账户",
@@ -71,7 +74,7 @@ export const PROVIDERS: Array<{
     pastePlaceholder: "localhost:1455/auth/callback?code=…&state=…",
     capabilities: { widget: true },
   },
-  {
+  grok: {
     id: "grok",
     title: "Grok",
     connectTitle: "连接 xAI 账户",
@@ -82,7 +85,7 @@ export const PROVIDERS: Array<{
     pastePlaceholder: "127.0.0.1:56122/callback?code=… 或一次性代码",
     capabilities: { widget: true },
   },
-  {
+  claude: {
     id: "claude",
     title: "Claude",
     connectTitle: "连接 Anthropic 账户",
@@ -92,7 +95,7 @@ export const PROVIDERS: Array<{
     pastePlaceholder: "粘贴 code#state",
     capabilities: { widget: true },
   },
-  {
+  antigravity: {
     id: "antigravity",
     title: "Antigravity",
     connectTitle: "连接 Google Antigravity 账户",
@@ -103,7 +106,7 @@ export const PROVIDERS: Array<{
     pastePlaceholder: "localhost:51121/oauth-callback?code=…&state=…",
     capabilities: { widget: true },
   },
-  {
+  cursor: {
     id: "cursor",
     title: "Cursor",
     connectTitle: "连接 Cursor 账户",
@@ -114,7 +117,7 @@ export const PROVIDERS: Array<{
     pastePlaceholder: "无需填写，完成浏览器登录后提交",
     capabilities: { widget: true },
   },
-  {
+  kimi: {
     id: "kimi",
     title: "Kimi Code",
     connectTitle: "连接 Kimi Code 账户",
@@ -125,7 +128,7 @@ export const PROVIDERS: Array<{
     pastePlaceholder: "无需填写，完成浏览器登录后提交",
     capabilities: { widget: true },
   },
-  {
+  copilot: {
     id: "copilot",
     title: "GitHub Copilot",
     connectTitle: "连接 GitHub Copilot 账户",
@@ -136,7 +139,7 @@ export const PROVIDERS: Array<{
     pastePlaceholder: "无需填写，完成设备授权后提交",
     capabilities: { widget: true },
   },
-  {
+  zai: {
     id: "zai",
     title: "Z.ai",
     connectTitle: "连接 Z.ai 账户",
@@ -146,7 +149,7 @@ export const PROVIDERS: Array<{
     pastePlaceholder: "粘贴 Z.ai / 智谱 API Key",
     capabilities: { widget: true },
   },
-  {
+  minimax: {
     id: "minimax",
     title: "MiniMax",
     connectTitle: "连接 MiniMax Token Plan",
@@ -157,8 +160,10 @@ export const PROVIDERS: Array<{
     pastePlaceholder: "粘贴所选站点的 MiniMax Subscription Key",
     capabilities: { widget: true },
   },
-];
+};
+
+export const PROVIDERS = PROVIDER_IDS.map((id) => PROVIDER_META[id]);
 
 export function providerMeta(id: ProviderId) {
-  return PROVIDERS.find((item) => item.id === id)!;
+  return PROVIDER_META[id];
 }

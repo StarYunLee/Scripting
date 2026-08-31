@@ -1,3 +1,4 @@
+import { activePendingAuthorization } from "../../services/oauth-pending";
 import { fetch, Response } from "scripting";
 import {
   getProfileAccessToken,
@@ -121,15 +122,16 @@ export function copilotRequestHeaders(
 }
 
 export function hasPendingOAuth(): boolean {
-  const pending = readPending();
-  return Boolean(pending && Date.now() - pending.createdAt <= PENDING_TTL_MS);
+  return Boolean(
+    activePendingAuthorization(readPending(), PENDING_TTL_MS, clearPending),
+  );
 }
 
 export function getPendingOAuthProfileId(): string | null {
-  const pending = readPending();
-  return pending && Date.now() - pending.createdAt <= PENDING_TTL_MS
-    ? pending.profileId
-    : null;
+  return (
+    activePendingAuthorization(readPending(), PENDING_TTL_MS, clearPending)
+      ?.profileId || null
+  );
 }
 
 export function clearPendingOAuth(): void {
@@ -335,28 +337,20 @@ export async function refreshOAuthToken(
   return getProfileAccessToken(profileId);
 }
 
-export function getPendingUserCode(): string | null {
-  const pending = readPending();
-  if (!pending || Date.now() - pending.createdAt > PENDING_TTL_MS) return null;
-  return pending.userCode;
-}
-
 export function getPendingAuthorizationState(): {
   profileId: string;
   verificationUri: string;
   userCode: string;
 } | null {
-  const pending = readPending();
-  if (!pending || Date.now() - pending.createdAt > PENDING_TTL_MS) return null;
+  const pending = activePendingAuthorization(
+    readPending(),
+    PENDING_TTL_MS,
+    clearPending,
+  );
+  if (!pending) return null;
   return {
     profileId: pending.profileId,
     verificationUri: pending.verificationUri,
     userCode: pending.userCode,
   };
-}
-
-export function getPendingVerificationUri(): string | null {
-  const pending = readPending();
-  if (!pending || Date.now() - pending.createdAt > PENDING_TTL_MS) return null;
-  return pending.verificationUri;
 }

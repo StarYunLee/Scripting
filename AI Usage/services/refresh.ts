@@ -1,3 +1,7 @@
+import { createRefreshSingleFlight } from "./refresh-single-flight";
+import { credentialPersistenceFailure } from "./credential-errors";
+import { recordWidgetRefreshFailure } from "./widget-refresh-state";
+import { recordWidgetRefreshSuccess } from "./widget-refresh-metadata";
 import { getUsageProvider } from "../providers/usage-registry";
 import { PROVIDER_IDS, type ProviderId } from "../models";
 import { writeLog } from "./logger";
@@ -30,7 +34,18 @@ export type RefreshSummary = {
   outcomes: RefreshOutcome[];
 };
 
+const refreshSingleFlight = createRefreshSingleFlight();
+
 export async function refreshAccount(
+  target: RefreshTarget,
+  options: RefreshOptions,
+): Promise<RefreshOutcome> {
+  return refreshSingleFlight.run(target, () =>
+    performRefreshAccount(target, options),
+  );
+}
+
+async function performRefreshAccount(
   target: RefreshTarget,
   options: RefreshOptions,
 ): Promise<RefreshOutcome> {
@@ -60,6 +75,14 @@ export async function refreshAccount(
       profileId: target.profileId,
     });
     if (result.ok) {
+      if (result.snapshot.source === "live") {
+        const refreshedAt = new Date().toISOString();
+        recordWidgetRefreshSuccess(
+          target.provider,
+          target.profileId,
+          refreshedAt,
+        );
+      }
       writeLog({
         level: "info",
         source: options.source,
@@ -76,6 +99,7 @@ export async function refreshAccount(
       return { ...target, ok: true, source: result.snapshot.source };
     }
 
+    recordWidgetRefreshFailure(target.provider, target.profileId, result.error);
     writeLog({
       level: "error",
       source: options.source,
@@ -97,21 +121,36 @@ export async function refreshAccount(
       },
     };
   } catch (error) {
-    const detail = error instanceof Error ? error.name : "unknown";
+    const credentialFailure = credentialPersistenceFailure(error);
+    const detail = credentialFailure
+      ? credentialFailure.code
+      : error instanceof Error
+        ? error.name
+        : "unknown";
+    const message = credentialFailure
+      ? credentialFailure.message
+      : "刷新发生异常";
+    const refreshError = {
+      code: detail,
+      message,
+    };
+    recordWidgetRefreshFailure(target.provider, target.profileId, refreshError);
     writeLog({
       level: "error",
       source: options.source,
       category: "refresh",
-      event: "refresh.exception",
+      event: credentialFailure
+        ? "refresh.credential_persist_failed"
+        : "refresh.exception",
       provider: target.provider,
       accountId: target.profileId,
-      message: "刷新发生异常",
+      message,
       code: detail,
     });
     return {
       ...target,
       ok: false,
-      error: { message: "刷新发生异常", code: detail },
+      error: { message, code: detail },
     };
   }
 }

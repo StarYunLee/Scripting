@@ -49,11 +49,11 @@ function readPreferences(): OverviewPreferences {
   }
 }
 
-function writePreferences(value: OverviewPreferences): void {
+function writePreferences(value: OverviewPreferences): boolean {
   try {
-    Storage.set(STORAGE_KEY, value);
+    return Storage.set(STORAGE_KEY, value);
   } catch {
-    /* Keep the current session usable if persistence is unavailable. */
+    return false;
   }
 }
 
@@ -70,13 +70,13 @@ export function setAccountShownInOverview(
   provider: ProviderId,
   accountId: string,
   shown: boolean,
-): void {
+): boolean {
   const preferences = readPreferences();
   const key = accountKey(provider, accountId);
   preferences.hiddenAccounts = shown
     ? preferences.hiddenAccounts.filter((item) => item !== key)
     : uniqueStrings([...preferences.hiddenAccounts, key]);
-  writePreferences(preferences);
+  return writePreferences(preferences);
 }
 
 export function visibleOverviewWindows(
@@ -121,8 +121,7 @@ export function setWindowShownInOverview(
   }
   if (hidden.size > 0) preferences.hiddenWindows[key] = [...hidden];
   else delete preferences.hiddenWindows[key];
-  writePreferences(preferences);
-  return true;
+  return writePreferences(preferences);
 }
 
 export function applyOverviewPreferences(cards: UsageCard[]): UsageCard[] {
@@ -141,12 +140,12 @@ export function applyOverviewPreferences(cards: UsageCard[]): UsageCard[] {
 export function clearAccountOverviewPreferences(
   provider: ProviderId,
   accountId: string,
-): void {
+): boolean {
   const key = accountKey(provider, accountId);
   const preferences = readPreferences();
   preferences.hiddenAccounts = preferences.hiddenAccounts.filter(
     (item) => item !== key,
   );
   delete preferences.hiddenWindows[key];
-  writePreferences(preferences);
+  return writePreferences(preferences);
 }

@@ -1,11 +1,8 @@
 import { List, NavigationStack, Text, useEffect, useState } from "scripting";
 import { AccountDetailPage } from "./AccountDetailPage";
 import {
-  beginProviderAuth,
-  cancelProviderAuth,
-  completeProviderAuth,
+  authCoordinator,
   deleteAuthorizedAccount,
-  findPendingAuth,
   buildCard,
   listAuthorizedCards,
   listProviderAccounts,
@@ -20,12 +17,6 @@ import { usePageToolbar } from "../components/PageToolbar";
 import { UsageCardView } from "../components/UsageCardView";
 import { type AuthSheet, type ProviderId, type UsageCard } from "../models";
 import { parseMinimaxAuthChoice } from "../providers/minimax/auth-choice";
-import { openAuthorizationPage } from "../services/browser";
-import { getPendingAuthorizationState } from "../providers/copilot/oauth";
-import {
-  planCopilotAuthorization,
-  planPendingCopilotAuthorization,
-} from "../providers/copilot/auth-flow";
 import { refreshAccounts } from "../services/refresh";
 import { requestWidgetReload } from "../services/widgets";
 import { type BackgroundThemeId } from "../services/settings";
@@ -87,21 +78,10 @@ export function StatusPage(props: {
 
   useEffect(() => {
     if (props.demoMode) return;
-    const pending = findPendingAuth();
-    if (!pending) return;
-    setProvider(pending.provider);
-    const copilotState =
-      pending.provider === "copilot" ? getPendingAuthorizationState() : null;
-    const copilotPlan = copilotState
-      ? planPendingCopilotAuthorization(copilotState)
-      : null;
-    setSheet({
-      provider: pending.provider,
-      profileId: pending.profileId,
-      authorizationInput: "",
-      deviceCode: copilotPlan?.deviceCode,
-      status: copilotPlan?.status || "存在未完成的授权，请粘贴回调或授权码",
-    });
+    const pendingSheet = authCoordinator.resume();
+    if (!pendingSheet) return;
+    setProvider(pendingSheet.provider);
+    setSheet(pendingSheet);
   }, [props.demoMode]);
 
   useEffect(() => {
@@ -149,8 +129,13 @@ export function StatusPage(props: {
   async function startAuth(target: ProviderId, profileId?: string) {
     if (busy) return;
     setBusy(true);
-    let activeProfileId = profileId || target;
     try {
+      const pendingSheet = authCoordinator.resume();
+      if (pendingSheet) {
+        setProvider(pendingSheet.provider);
+        setSheet(pendingSheet);
+        return;
+      }
       const minimaxRegion =
         target === "minimax"
           ? parseMinimaxAuthChoice(
@@ -167,51 +152,24 @@ export function StatusPage(props: {
             )
           : null;
       if (target === "minimax" && !minimaxRegion) return;
-      const started = await beginProviderAuth(
-        target,
+      const result = await authCoordinator.start({
+        provider: target,
         profileId,
-        minimaxRegion || undefined,
-      );
-      activeProfileId = started.profileId;
-      if (target === "copilot") {
-        const state = getPendingAuthorizationState();
-        if (!state) throw new Error("GitHub 设备码生成失败，请重新开始");
-        const plan = planCopilotAuthorization(state);
-        setSheet({
-          provider: target,
-          profileId: plan.profileId,
-          authorizationInput: "",
-          deviceCode: plan.deviceCode,
-          status: plan.status,
-        });
+        providerInput: minimaxRegion || undefined,
+      });
+      if (result.ok) {
+        setProvider(result.sheet.provider);
+        setSheet(result.sheet);
         return;
       }
-      // 其他平台保持原流程：先打开授权页，关闭后再进入粘贴页。
-      const mode = await openAuthorizationPage(started.url);
-      setSheet({
-        provider: target,
-        profileId: started.profileId,
-        authorizationInput: "",
-        status:
-          target === "minimax"
-            ? mode === "present"
-              ? `关闭 ${minimaxRegion === "cn" ? "国内站" : "国际站"}控制台后，粘贴 Subscription Key`
-              : `已打开 MiniMax ${minimaxRegion === "cn" ? "国内站" : "国际站"}控制台，复制 Subscription Key 后粘贴`
-            : target === "zai"
-              ? mode === "present"
-                ? "关闭控制台后，把 API Key 粘贴到下方并提交"
-                : "已打开 API Key 控制台，复制 Key 后粘贴到下方并提交"
-              : mode === "present"
-                ? "关闭授权页后，把回调地址或授权码粘贴到下方"
-                : "已在系统 Safari 打开授权页，完成后把回调地址或授权码粘贴到下方",
-      });
-    } catch (error) {
-      setSheet({
-        provider: target,
-        profileId: activeProfileId,
-        authorizationInput: "",
-        status: "启动授权失败：" + errorText(error),
-      });
+      if (result.sheet) setSheet(result.sheet);
+      else {
+        await Dialog.alert({
+          title: "无法开始授权",
+          message: result.message,
+          buttonLabel: "关闭",
+        });
+      }
     } finally {
       setBusy(false);
     }
@@ -222,7 +180,7 @@ export function StatusPage(props: {
     setBusy(true);
     try {
       setSheet({ ...sheet, status: "正在验证授权…" });
-      await completeProviderAuth(sheet.provider, sheet.authorizationInput);
+      await authCoordinator.complete(sheet);
       setSheet(null);
       reloadCards();
       const next = await refreshCard(sheet.provider, sheet.profileId, true);
@@ -257,9 +215,16 @@ export function StatusPage(props: {
 
   function cancelAuth() {
     if (!sheet) return;
-    cancelProviderAuth(sheet.provider, sheet.profileId);
-    setSheet(null);
-    reloadCards();
+    try {
+      authCoordinator.cancel(sheet);
+      setSheet(null);
+      reloadCards();
+    } catch (error) {
+      setSheet({
+        ...sheet,
+        status: "取消授权失败：" + errorText(error),
+      });
+    }
   }
 
   const toolbar = usePageToolbar({
@@ -462,13 +427,25 @@ export function StatusPage(props: {
                 startAuth(openedCard.provider, openedCard.accountId)
               }
               onDelete={() => {
-                deleteAuthorizedAccount(
+                const result = deleteAuthorizedAccount(
                   openedCard.provider,
                   openedCard.accountId,
                 );
                 requestWidgetReload();
                 setOpenedCard(null);
                 reloadCards();
+                if (
+                  result.pendingSecretCleanup ||
+                  result.pendingPreferenceCleanup
+                ) {
+                  void Dialog.alert({
+                    title: "账号已删除",
+                    message: result.pendingSecretCleanup
+                      ? "账号已从 AI Usage 移除，剩余 Keychain 清理将在下次启动时自动重试。"
+                      : "账号已删除，但部分小组件或显示偏好未能清理。",
+                    buttonLabel: "关闭",
+                  });
+                }
               }}
             />
           ) : (

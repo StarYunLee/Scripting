@@ -12,7 +12,7 @@ import {
   formatRelativeFetchedAt,
   formatRelativeResetAt,
   formatResetDate,
-} from "../providers/codex/format";
+} from "../services/usage-format";
 import { providerMeta, type UsageCard } from "../models";
 import { usageTint } from "../services/usage-colors";
 import { PlanBadge } from "./PlanBadge";

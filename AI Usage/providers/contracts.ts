@@ -1,3 +1,4 @@
+import type { AccountRemovalResult } from "../services/account-store";
 import type { ProviderId } from "../models";
 import type { NormalizedUsageSnapshot } from "../services/usage-model";
 
@@ -8,16 +9,19 @@ export type ProviderAccount = {
   createdAt: string;
 };
 
+export type ProviderUsageError = {
+  code: string;
+  message: string;
+  status?: number;
+  detail?: string;
+  retryAt?: string;
+};
+
 export type ProviderUsageResult =
   | { ok: true; snapshot: { source: "live" | "cache" } }
   | {
       ok: false;
-      error: {
-        code: string;
-        message: string;
-        status?: number;
-        detail?: string;
-      };
+      error: ProviderUsageError;
     };
 
 export type AccountLookupProvider = {
@@ -36,7 +40,7 @@ export type UsageProvider = AccountLookupProvider & {
 export type ProviderCore = AccountLookupProvider & {
   ensure(): unknown;
   create(): ProviderAccount;
-  remove(profileId: string): void;
+  remove(profileId: string): AccountRemovalResult;
   auth: {
     start(profileId: string, input?: string): Promise<string>;
     complete(input: string): Promise<void>;

@@ -10,16 +10,15 @@ import {
   Text,
   Toggle,
   VStack,
+  useEffect,
   useState,
 } from "scripting";
 import { PROVIDERS, type ProviderId } from "../models";
 import { parseMinimaxAuthChoice } from "../providers/minimax/auth-choice";
 import {
-  beginProviderAuth,
+  authCoordinator,
   cachedPlanLabel,
   cachedUsageWindows,
-  cancelProviderAuth,
-  completeProviderAuth,
   deleteAuthorizedAccount,
   isAuthorized,
   listAuthorizedCards,
@@ -31,9 +30,6 @@ import {
   setAppReloadMinutes,
   type BackgroundThemeId,
 } from "../services/settings";
-import { openAuthorizationPage } from "../services/browser";
-import { getPendingAuthorizationState } from "../providers/copilot/oauth";
-import { planCopilotAuthorization } from "../providers/copilot/auth-flow";
 import {
   GlassDivider,
   GlassGroup,
@@ -65,6 +61,14 @@ import {
   setAccountShownInOverview,
 } from "../services/app-overview-prefs";
 
+export async function showSettingsSaveFailure(): Promise<void> {
+  await Dialog.alert({
+    title: "设置未保存",
+    message: "无法写入本地设置，请稍后重试。",
+    buttonLabel: "关闭",
+  });
+}
+
 function errorText(error: unknown): string {
   if (error instanceof Error && error.message) return error.message;
   return String(error);
@@ -88,8 +92,8 @@ type SelectedDestination =
 export function SettingsPage(props: {
   demoMode: boolean;
   backgroundTheme: BackgroundThemeId;
-  onDemoModeChange: (enabled: boolean) => void;
-  onBackgroundThemeChange: (theme: BackgroundThemeId) => void;
+  onDemoModeChange: (enabled: boolean) => void | Promise<void>;
+  onBackgroundThemeChange: (theme: BackgroundThemeId) => void | Promise<void>;
   onOverviewChange: () => void;
 }) {
   const [tick, setTick] = useState(0);
@@ -104,11 +108,21 @@ export function SettingsPage(props: {
     setTick((value) => value + 1);
   }
 
+  useEffect(() => {
+    if (props.demoMode || sheet) return;
+    const pendingSheet = authCoordinator.resume();
+    if (pendingSheet) setSheet(pendingSheet);
+  }, [props.demoMode]);
+
   async function startAuth(provider: ProviderId, profileId?: string) {
     if (busy) return;
     setBusy(true);
-    let activeProfileId = profileId || provider;
     try {
+      const pendingSheet = authCoordinator.resume();
+      if (pendingSheet) {
+        setSheet(pendingSheet);
+        return;
+      }
       const minimaxRegion =
         provider === "minimax"
           ? parseMinimaxAuthChoice(
@@ -125,51 +139,23 @@ export function SettingsPage(props: {
             )
           : null;
       if (provider === "minimax" && !minimaxRegion) return;
-      const started = await beginProviderAuth(
+      const result = await authCoordinator.start({
         provider,
         profileId,
-        minimaxRegion || undefined,
-      );
-      activeProfileId = started.profileId;
-      if (provider === "copilot") {
-        const state = getPendingAuthorizationState();
-        if (!state) throw new Error("GitHub 设备码生成失败，请重新开始");
-        const plan = planCopilotAuthorization(state);
-        setSheet({
-          provider,
-          profileId: plan.profileId,
-          authorizationInput: "",
-          deviceCode: plan.deviceCode,
-          status: plan.status,
-        });
+        providerInput: minimaxRegion || undefined,
+      });
+      if (result.ok) {
+        setSheet(result.sheet);
         return;
       }
-      // 其他平台保持原流程：先打开授权页，关闭后再进入粘贴页。
-      const mode = await openAuthorizationPage(started.url);
-      setSheet({
-        provider,
-        profileId: started.profileId,
-        authorizationInput: "",
-        status:
-          provider === "minimax"
-            ? mode === "present"
-              ? `关闭 ${minimaxRegion === "cn" ? "国内站" : "国际站"}控制台后，粘贴 Subscription Key`
-              : `已打开 MiniMax ${minimaxRegion === "cn" ? "国内站" : "国际站"}控制台，复制 Subscription Key 后粘贴`
-            : provider === "zai"
-              ? mode === "present"
-                ? "关闭控制台后，把 API Key 粘贴到下方并提交"
-                : "已打开 API Key 控制台，复制 Key 后粘贴到下方并提交"
-              : mode === "present"
-                ? "关闭授权页后，把回调地址或授权码粘贴到下方"
-                : "已在系统 Safari 打开授权页，完成后把回调地址或授权码粘贴到下方",
-      });
-    } catch (error) {
-      setSheet({
-        provider,
-        profileId: activeProfileId,
-        authorizationInput: "",
-        status: "启动授权失败：" + errorText(error),
-      });
+      if (result.sheet) setSheet(result.sheet);
+      else {
+        await Dialog.alert({
+          title: "无法开始授权",
+          message: result.message,
+          buttonLabel: "关闭",
+        });
+      }
     } finally {
       setBusy(false);
     }
@@ -180,7 +166,7 @@ export function SettingsPage(props: {
     setBusy(true);
     try {
       setSheet({ ...sheet, status: "正在验证授权…" });
-      await completeProviderAuth(sheet.provider, sheet.authorizationInput);
+      await authCoordinator.complete(sheet);
       setSheet(null);
       requestWidgetReload();
       refresh();
@@ -201,9 +187,16 @@ export function SettingsPage(props: {
 
   function cancelAuth() {
     if (!sheet) return;
-    cancelProviderAuth(sheet.provider, sheet.profileId);
-    setSheet(null);
-    refresh();
+    try {
+      authCoordinator.cancel(sheet);
+      setSheet(null);
+      refresh();
+    } catch (error) {
+      setSheet({
+        ...sheet,
+        status: "取消授权失败：" + errorText(error),
+      });
+    }
   }
 
   // 设置页只保留账号维护与小组件设置；添加账号统一从状态页右上角进入。
@@ -274,13 +267,25 @@ export function SettingsPage(props: {
                   )
                 }
                 onDelete={() => {
-                  deleteAuthorizedAccount(
+                  const result = deleteAuthorizedAccount(
                     selectedDestination.provider,
                     selectedDestination.account.id,
                   );
                   requestWidgetReload();
                   setSelectedDestination(null);
                   refresh();
+                  if (
+                    result.pendingSecretCleanup ||
+                    result.pendingPreferenceCleanup
+                  ) {
+                    void Dialog.alert({
+                      title: "账号已删除",
+                      message: result.pendingSecretCleanup
+                        ? "账号已从 AI Usage 移除，剩余 Keychain 清理将在下次启动时自动重试。"
+                        : "账号已删除，但部分小组件或显示偏好未能清理。",
+                      buttonLabel: "关闭",
+                    });
+                  }
                 }}
               />
             ) : selectedDestination?.kind === "dashboardWidget" ? (
@@ -391,7 +396,17 @@ export function SettingsPage(props: {
                         toggleStyle="switch"
                         value={shown}
                         onChanged={(value: boolean) => {
-                          setAccountShownInOverview(meta.id, account.id, value);
+                          if (
+                            !setAccountShownInOverview(
+                              meta.id,
+                              account.id,
+                              value,
+                            )
+                          ) {
+                            void showSettingsSaveFailure();
+                            refresh();
+                            return;
+                          }
                           props.onOverviewChange();
                           refresh();
                         }}
@@ -426,9 +441,14 @@ export function SettingsPage(props: {
               title="显示账号标识"
               value={dashboardPreferences.display.showAccountLabel}
               onChanged={(value: boolean) => {
-                setDashboardWidgetDisplayPreferences({
+                const result = setDashboardWidgetDisplayPreferences({
                   showAccountLabel: value,
                 });
+                if (!result.ok) {
+                  void showSettingsSaveFailure();
+                  refresh();
+                  return;
+                }
                 requestWidgetReloadAfterStorage();
                 refresh();
               }}
@@ -506,10 +526,15 @@ export function SettingsPage(props: {
             </Picker>
             <GlassDivider />
             <Picker
-              title="刷新间隔"
+              title="组件自动刷新间隔"
               value={String(settings.reloadMinutes)}
               onChanged={(value: string) => {
-                setAppReloadMinutes(Number(value));
+                const result = setAppReloadMinutes(Number(value));
+                if (!result.ok) {
+                  void showSettingsSaveFailure();
+                  refresh();
+                  return;
+                }
                 requestWidgetReload();
                 refresh();
               }}
@@ -523,6 +548,8 @@ export function SettingsPage(props: {
               <Text tag="30">30 分钟</Text>
               <Text tag="60">60 分钟</Text>
             </Picker>
+            <GlassDivider />
+            <GlassNoteRow text="该间隔同时控制组件建议重建时间与自动联网最短间隔；系统实际调度可能延后。" />
           </GlassGroup>
         </Section>
 

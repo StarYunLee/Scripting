@@ -17,13 +17,28 @@ function App() {
     useState<BackgroundThemeId>(() => getAppDisplaySettings().backgroundTheme);
   const [overviewRevision, setOverviewRevision] = useState(0);
 
-  function updateDemoMode(enabled: boolean) {
-    setDemoMode(enabled);
+  async function updateDemoMode(enabled: boolean) {
+    if (!setDemoMode(enabled)) {
+      await Dialog.alert({
+        title: "设置未保存",
+        message: "无法保存演示模式，请稍后重试。",
+        buttonLabel: "关闭",
+      });
+      return;
+    }
     setDemoModeState(enabled);
   }
 
-  function updateBackgroundTheme(theme: BackgroundThemeId) {
-    setAppBackgroundTheme(theme);
+  async function updateBackgroundTheme(theme: BackgroundThemeId) {
+    const result = setAppBackgroundTheme(theme);
+    if (!result.ok) {
+      await Dialog.alert({
+        title: "设置未保存",
+        message: "无法保存背景主题，请稍后重试。",
+        buttonLabel: "关闭",
+      });
+      return;
+    }
     setBackgroundThemeState(theme);
   }
 

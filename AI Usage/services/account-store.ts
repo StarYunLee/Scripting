@@ -27,6 +27,15 @@ type AccountStoreOptions<TProfile extends AccountProfileBase> = {
   ) => AccountRegistryBase<TProfile>;
 };
 
+export type AccountRemovalResult =
+  | { ok: true; pendingSecretCleanup: boolean }
+  | {
+      ok: false;
+      reason: "account_not_found" | "prepare_failed" | "registry_failed";
+    };
+
+export type SecretPatch = Record<string, string | null | undefined>;
+
 export type AccountStore<TProfile extends AccountProfileBase> = {
   ensure(): AccountRegistryBase<TProfile>;
   registry(): AccountRegistryBase<TProfile>;
@@ -37,9 +46,14 @@ export type AccountStore<TProfile extends AccountProfileBase> = {
     profileId: string,
     updater: (profile: TProfile, index: number) => TProfile,
   ): TProfile | null;
-  remove(profileId: string, secretFields: string[]): void;
+  remove(profileId: string, secretFields: string[]): AccountRemovalResult;
   getSecret(profileId: string, field: string): string | null;
   setSecret(profileId: string, field: string, value: string | null): boolean;
+  setSecrets(
+    profileId: string,
+    values: SecretPatch,
+    updater?: (profile: TProfile, index: number) => TProfile,
+  ): boolean;
 };
 
 function emptyRegistry<
@@ -86,17 +100,39 @@ export function createAccountStore<TProfile extends AccountProfileBase>(
 ): AccountStore<TProfile> {
   let registryCache: AccountRegistryBase<TProfile> | null = null;
   let migrationComplete = false;
+  let pendingSecretCleanupChecked = false;
 
   const secretKey = (profileId: string, field: string) =>
     `${options.secretPrefix}_${profileId}_${field}`;
+  const deletionMarkerKey = (profileId: string) =>
+    `${options.secretPrefix}_${profileId}_pending_deletion`;
+
+  function keychainValue(key: string):
+    | { ok: true; value: string | null }
+    | {
+        ok: false;
+      } {
+    try {
+      return { ok: true, value: Keychain.get(key) };
+    } catch {
+      return { ok: false };
+    }
+  }
+
+  function removeKeychainValue(key: string): boolean {
+    try {
+      if (Keychain.remove(key)) return true;
+      return Keychain.get(key) == null;
+    } catch {
+      return false;
+    }
+  }
 
   function getSecret(profileId: string, field: string): string | null {
-    try {
-      const value = Keychain.get(secretKey(profileId, field));
-      return typeof value === "string" && value.trim() ? value.trim() : null;
-    } catch {
-      return null;
-    }
+    const result = keychainValue(secretKey(profileId, field));
+    if (!result.ok) return null;
+    const value = result.value;
+    return typeof value === "string" && value.trim() ? value.trim() : null;
   }
 
   function setSecret(
@@ -104,14 +140,88 @@ export function createAccountStore<TProfile extends AccountProfileBase>(
     field: string,
     value: string | null,
   ): boolean {
+    const key = secretKey(profileId, field);
     try {
-      if (!value) {
-        Keychain.remove(secretKey(profileId, field));
-        return true;
-      }
-      return Keychain.set(secretKey(profileId, field), value.trim());
+      if (!value) return removeKeychainValue(key);
+      return Keychain.set(key, value.trim());
     } catch {
       return false;
+    }
+  }
+
+  function restoreSecret(
+    profileId: string,
+    field: string,
+    value: string | null,
+  ): boolean {
+    const key = secretKey(profileId, field);
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      try {
+        const restored = value
+          ? Keychain.set(key, value)
+          : removeKeychainValue(key);
+        if (restored) return true;
+      } catch {
+        /* retry once for a transient Keychain failure */
+      }
+    }
+    return false;
+  }
+
+  function cleanupDeletionMarker(
+    markerKey: string,
+    profileId: string,
+    fields: string[],
+  ): boolean {
+    let complete = true;
+    for (const field of fields) {
+      if (!setSecret(profileId, field, null)) complete = false;
+    }
+    if (!complete) return false;
+    return removeKeychainValue(markerKey);
+  }
+
+  function retryPendingSecretCleanup(
+    registry: AccountRegistryBase<TProfile>,
+  ): void {
+    let keys: string[];
+    try {
+      keys = Keychain.keys();
+    } catch {
+      return;
+    }
+    const prefix = `${options.secretPrefix}_`;
+    for (const markerKey of keys) {
+      if (
+        !markerKey.startsWith(prefix) ||
+        !markerKey.endsWith("_pending_deletion")
+      )
+        continue;
+      const result = keychainValue(markerKey);
+      if (!result.ok || !result.value) continue;
+      try {
+        const marker = JSON.parse(result.value) as {
+          profileId?: unknown;
+          fields?: unknown;
+        };
+        if (
+          typeof marker.profileId !== "string" ||
+          !Array.isArray(marker.fields) ||
+          !marker.fields.every((field) => typeof field === "string")
+        ) {
+          removeKeychainValue(markerKey);
+          continue;
+        }
+        if (
+          registry.accounts.some((account) => account.id === marker.profileId)
+        ) {
+          removeKeychainValue(markerKey);
+          continue;
+        }
+        cleanupDeletionMarker(markerKey, marker.profileId, marker.fields);
+      } catch {
+        removeKeychainValue(markerKey);
+      }
     }
   }
 
@@ -144,6 +254,10 @@ export function createAccountStore<TProfile extends AccountProfileBase>(
 
   function ensure(): AccountRegistryBase<TProfile> {
     let registry = readRaw();
+    if (!pendingSecretCleanupChecked) {
+      pendingSecretCleanupChecked = true;
+      retryPendingSecretCleanup(registry);
+    }
     if (migrationComplete) return registry;
     migrationComplete = true;
     if (options.migrate) {
@@ -210,6 +324,22 @@ export function createAccountStore<TProfile extends AccountProfileBase>(
     },
     remove(profileId, secretFields) {
       const registry = ensure();
+      if (!registry.accounts.some((account) => account.id === profileId)) {
+        return { ok: false, reason: "account_not_found" };
+      }
+      const markerKey = deletionMarkerKey(profileId);
+      const marker = JSON.stringify({
+        profileId,
+        fields: [...new Set(secretFields)],
+        createdAt: new Date().toISOString(),
+      });
+      try {
+        if (!Keychain.set(markerKey, marker)) {
+          return { ok: false, reason: "prepare_failed" };
+        }
+      } catch {
+        return { ok: false, reason: "prepare_failed" };
+      }
       const accounts = registry.accounts.filter(
         (account) => account.id !== profileId,
       );
@@ -221,11 +351,74 @@ export function createAccountStore<TProfile extends AccountProfileBase>(
             ? accounts[0]?.id || null
             : registry.defaultAccountId,
       };
-      if (!write(next)) return;
-      for (const field of secretFields) setSecret(profileId, field, null);
+      if (!write(next)) {
+        removeKeychainValue(markerKey);
+        return { ok: false, reason: "registry_failed" };
+      }
+      const cleaned = cleanupDeletionMarker(markerKey, profileId, secretFields);
+      return { ok: true, pendingSecretCleanup: !cleaned };
     },
     getSecret,
     setSecret,
+    setSecrets(profileId, values, updater) {
+      const registry = ensure();
+      const index = registry.accounts.findIndex(
+        (account) => account.id === profileId,
+      );
+      if (index < 0) return false;
+
+      const entries = Object.entries(values).filter(
+        (entry): entry is [string, string | null] => entry[1] !== undefined,
+      );
+      const previous = new Map<string, string | null>();
+      for (const [field] of entries) {
+        const result = keychainValue(secretKey(profileId, field));
+        if (!result.ok) return false;
+        previous.set(field, result.value);
+      }
+
+      const written: string[] = [];
+      for (const [field, value] of entries) {
+        if (setSecret(profileId, field, value)) {
+          written.push(field);
+          continue;
+        }
+        let rollbackComplete = true;
+        for (const rollbackField of written.reverse()) {
+          if (
+            !restoreSecret(
+              profileId,
+              rollbackField,
+              previous.get(rollbackField) || null,
+            )
+          ) {
+            rollbackComplete = false;
+          }
+        }
+        if (!rollbackComplete) {
+          throw new Error("凭据保存失败，且无法完整恢复旧值");
+        }
+        return false;
+      }
+
+      if (updater) {
+        const accounts = registry.accounts.slice();
+        accounts[index] = updater(accounts[index], index);
+        if (!write({ ...registry, accounts })) {
+          let rollbackComplete = true;
+          for (const [field, value] of previous) {
+            if (!restoreSecret(profileId, field, value)) {
+              rollbackComplete = false;
+            }
+          }
+          if (!rollbackComplete) {
+            throw new Error("账号信息保存失败，且无法完整恢复旧凭据");
+          }
+          return false;
+        }
+      }
+      return true;
+    },
   };
 
   return store;

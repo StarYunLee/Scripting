@@ -56,8 +56,8 @@ export function updateProfileIdentity(
   });
 }
 
-export function deleteAccount(profileId: string): void {
-  store.remove(profileId, ["access_token", "account_id"]);
+export function deleteAccount(profileId: string) {
+  return store.remove(profileId, ["access_token", "account_id"]);
 }
 
 export function getProfileAccessToken(
@@ -78,14 +78,23 @@ export function saveProfileCredentials(
 ): boolean {
   const profile = resolveProfile(profileId);
   if (!profile) return false;
-  const ok = store.setSecret(profile.id, "access_token", value.accessToken);
-  if (value.accountId)
-    store.setSecret(profile.id, "account_id", value.accountId);
-  if (value.accountId || value.email || value.name)
-    updateProfileIdentity(profile.id, {
-      accountId: value.accountId,
-      email: value.email,
-      name: value.name,
-    });
-  return ok;
+  return store.setSecrets(
+    profile.id,
+    {
+      access_token: value.accessToken,
+      account_id: value.accountId ?? undefined,
+    },
+    value.accountId != null || value.email != null || value.name != null
+      ? (account) => {
+          const email = value.email || account.email || null;
+          return {
+            ...account,
+            accountId: value.accountId || account.accountId,
+            email,
+            name: value.name || email || account.name,
+            updatedAt: new Date().toISOString(),
+          };
+        }
+      : undefined,
+  );
 }

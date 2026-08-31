@@ -1,14 +1,14 @@
 import { Image, Spacer, Text, VStack, Widget } from "scripting";
 import { resolveWidgetParameter } from "./widget/parameter";
-import { getProvider } from "./providers/registry";
 import { isDemoAccountId, isDemoMode, listDemoCards } from "./services/demo";
 import { WidgetDispatcher } from "./widget/WidgetDispatcher";
 import { getEffectiveWidgetWindows } from "./services/widget-prefs";
 import { getAppDisplaySettings } from "./services/settings";
 import { writeLog } from "./services/logger";
-import type { UsageWindowView } from "./models";
+import { loadWidgetAccountSnapshot } from "./services/widget-account-loader";
 import { loadDashboardWidgetUsage } from "./widget/dashboard-loader";
 import { DashboardWidgetView } from "./widget/dashboard/DashboardWidgetView";
+import { widgetFallbackWidth } from "./widget/family";
 
 function ErrorWidget({ message }: { message: string }) {
   return (
@@ -47,11 +47,7 @@ async function run() {
   if (resolved.mode === "dashboard") {
     try {
       const loaded = await loadDashboardWidgetUsage();
-      let width = family.toLowerCase().includes("large")
-        ? 364
-        : family.toLowerCase().includes("medium")
-          ? 338
-          : 158;
+      let width = widgetFallbackWidth(family);
       try {
         const actual = (Widget as { displaySize?: { width?: number } })
           .displaySize?.width;
@@ -143,36 +139,23 @@ async function run() {
     return;
   }
 
-  // 正常模式：先读取缓存，再尝试静默拉取最新数据
-  const api = getProvider(provider);
-  const cached = api.usage.cache(profileId);
-
-  let planLabel = cached?.planLabel || null;
-  let allWindows: UsageWindowView[] = cached?.windows || [];
-  let resetCredits = cached?.resetCredits || null;
-  let fetchedAt = cached?.fetchedAt || null;
-  let errorText: string | undefined;
-
-  try {
-    const result = await api.usage.fetch({
-      force: false,
-      profileId,
-    });
-    if (result.ok) {
-      const liveSnapshot = api.usage.cache(profileId);
-      if (liveSnapshot) {
-        planLabel = liveSnapshot.planLabel || planLabel;
-        allWindows = liveSnapshot.windows || allWindows;
-        resetCredits = liveSnapshot.resetCredits || resetCredits;
-        fetchedAt = liveSnapshot.fetchedAt || fetchedAt;
-      }
-    } else {
-      errorText = result.error.message;
-    }
-  } catch (err) {
-    errorText = err instanceof Error ? err.message : String(err);
+  // 正常模式：按自动刷新 Planner 决定使用缓存或联网。
+  const loaded = await loadWidgetAccountSnapshot({
+    provider,
+    profileId,
+    reloadMinutes,
+  });
+  const snapshot = loaded.snapshot;
+  const allWindows = snapshot?.windows || [];
+  if (!snapshot && (loaded.statusText || loaded.errorMessage)) {
+    Widget.present(
+      <ErrorWidget message={loaded.statusText || loaded.errorMessage!} />,
+      {
+        reloadPolicy,
+      },
+    );
+    return;
   }
-
   const effectiveWindows = getEffectiveWidgetWindows(
     provider,
     profileId,
@@ -182,12 +165,12 @@ async function run() {
   Widget.present(
     <WidgetDispatcher
       provider={provider}
-      planLabel={planLabel}
+      planLabel={snapshot?.planLabel || null}
       windows={effectiveWindows}
-      resetCredits={resetCredits}
-      fetchedAt={fetchedAt}
+      resetCredits={snapshot?.resetCredits || null}
+      fetchedAt={snapshot?.fetchedAt || null}
       family={family}
-      errorText={errorText}
+      errorText={loaded.statusText || loaded.errorMessage}
     />,
     { reloadPolicy },
   );

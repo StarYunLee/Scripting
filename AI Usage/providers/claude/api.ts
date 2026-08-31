@@ -336,7 +336,8 @@ export async function fetchUsage(options?: {
     if (!response.ok) {
       const unauthorized = response.status === 401 || response.status === 403;
       const rateLimited = response.status === 429;
-      if (rateLimited) writeBlockedUntil(profile.id, parseRetryAfter(response));
+      const retryAt = rateLimited ? parseRetryAfter(response) : null;
+      if (retryAt) writeBlockedUntil(profile.id, retryAt);
       const message = unauthorized
         ? "Claude OAuth 已失效或该账号无权读取用量"
         : rateLimited
@@ -353,6 +354,7 @@ export async function fetchUsage(options?: {
               : "http_error",
           message,
           status: response.status,
+          retryAt: retryAt ? new Date(retryAt).toISOString() : undefined,
         },
         cache,
       };

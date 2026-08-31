@@ -1,3 +1,8 @@
+import { activePendingAuthorization } from "../../services/oauth-pending";
+import {
+  CredentialPersistenceError,
+  isCredentialPersistenceError,
+} from "../../services/credential-errors";
 import { fetch, Response } from "scripting";
 import {
   getProfileAccessToken,
@@ -230,12 +235,15 @@ function tokenExpiry(tokens: TokenPayload): number {
 }
 
 export function hasPendingOAuth(): boolean {
-  const p = readPending();
-  return Boolean(p && Date.now() - p.createdAt <= PENDING_TTL_MS);
+  return Boolean(
+    activePendingAuthorization(readPending(), PENDING_TTL_MS, clearPending),
+  );
 }
 export function getPendingOAuthProfileId(): string | null {
-  const p = readPending();
-  return p && Date.now() - p.createdAt <= PENDING_TTL_MS ? p.profileId : null;
+  return (
+    activePendingAuthorization(readPending(), PENDING_TTL_MS, clearPending)
+      ?.profileId || null
+  );
 }
 export function clearPendingOAuth(): void {
   clearPending();
@@ -309,7 +317,7 @@ export async function refreshOAuthToken(
       client_id: CLIENT_ID,
     });
     const identity = identityFromTokens(tokens);
-    saveProfileCredentials(profileId, {
+    const saved = saveProfileCredentials(profileId, {
       accessToken: tokens.access_token!,
       refreshToken: tokens.refresh_token || refreshToken,
       idToken: tokens.id_token,
@@ -317,8 +325,10 @@ export async function refreshOAuthToken(
       accountId: identity.accountId,
       email: identity.email,
     });
+    if (!saved) throw new CredentialPersistenceError();
     return tokens.access_token || current;
-  } catch {
+  } catch (error) {
+    if (isCredentialPersistenceError(error)) throw error;
     return current;
   }
 }

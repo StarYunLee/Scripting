@@ -1,3 +1,5 @@
+import { activePendingAuthorization } from "../../services/oauth-pending";
+import { CredentialPersistenceError } from "../../services/credential-errors";
 import { fetch, Response } from "scripting";
 import {
   getProfileAccessToken,
@@ -205,12 +207,15 @@ async function exchangeCode(
 }
 
 export function hasPendingOAuth(): boolean {
-  const p = readPending();
-  return Boolean(p && Date.now() - p.createdAt <= PENDING_TTL_MS);
+  return Boolean(
+    activePendingAuthorization(readPending(), PENDING_TTL_MS, clearPending),
+  );
 }
 export function getPendingOAuthProfileId(): string | null {
-  const p = readPending();
-  return p && Date.now() - p.createdAt <= PENDING_TTL_MS ? p.profileId : null;
+  return (
+    activePendingAuthorization(readPending(), PENDING_TTL_MS, clearPending)
+      ?.profileId || null
+  );
 }
 export function clearPendingOAuth(): void {
   clearPending();
@@ -290,7 +295,7 @@ export async function refreshOAuthToken(
   const tokens = (await jsonObject(response)) as TokenPayload;
   if (!response.ok || !tokens.access_token) return current;
   const identity = await fetchIdentity(tokens.id_token || tokens.access_token);
-  saveProfileCredentials(profileId, {
+  const saved = saveProfileCredentials(profileId, {
     accessToken: tokens.access_token,
     refreshToken: tokens.refresh_token || refreshToken,
     idToken: tokens.id_token,
@@ -299,5 +304,6 @@ export async function refreshOAuthToken(
     accountId: identity.accountId,
     email: identity.email,
   });
+  if (!saved) throw new CredentialPersistenceError();
   return tokens.access_token;
 }

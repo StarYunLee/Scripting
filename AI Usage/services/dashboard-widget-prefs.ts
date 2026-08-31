@@ -93,23 +93,27 @@ export function getDashboardWidgetPreferences(): DashboardWidgetPreferences {
   }
 }
 
+export type DashboardWidgetPreferencesWriteResult =
+  | { ok: true; value: DashboardWidgetPreferences }
+  | { ok: false; value: DashboardWidgetPreferences };
+
 export function setDashboardWidgetPreferences(
   value: DashboardWidgetPreferences,
-): DashboardWidgetPreferences {
+): DashboardWidgetPreferencesWriteResult {
   const next = sanitizeDashboardWidgetPreferences(value);
-  inMemoryPreferences = next;
   try {
-    Storage.set(STORAGE_KEY, next);
+    if (!Storage.set(STORAGE_KEY, next)) return { ok: false, value: next };
+    inMemoryPreferences = next;
+    return { ok: true, value: next };
   } catch {
-    /* ignore */
+    return { ok: false, value: next };
   }
-  return next;
 }
 
 export function setDashboardWidgetAccountVisible(
   accountKey: string,
   visible: boolean,
-): DashboardWidgetPreferences {
+): DashboardWidgetPreferencesWriteResult {
   const preferences = getDashboardWidgetPreferences();
   const hidden = new Set(preferences.hiddenAccountKeys);
   if (visible) hidden.delete(accountKey);
@@ -123,7 +127,7 @@ export function setDashboardWidgetAccountVisible(
 export function setDashboardWidgetAccountWindows(
   accountKey: string,
   windowIds: string[],
-): DashboardWidgetPreferences {
+): DashboardWidgetPreferencesWriteResult {
   const preferences = getDashboardWidgetPreferences();
   return setDashboardWidgetPreferences({
     ...preferences,
@@ -136,7 +140,7 @@ export function setDashboardWidgetAccountWindows(
 
 export function setDashboardWidgetDisplayPreferences(
   patch: Partial<DashboardWidgetDisplayPreferences>,
-): DashboardWidgetPreferences {
+): DashboardWidgetPreferencesWriteResult {
   const preferences = getDashboardWidgetPreferences();
   return setDashboardWidgetPreferences({
     ...preferences,
@@ -181,14 +185,16 @@ export function applyDashboardWidgetPreferences(
 
 export function clearDashboardWidgetAccountPreferences(
   accountKey: string,
-): void {
+): boolean {
   const preferences = getDashboardWidgetPreferences();
-  preferences.hiddenAccountKeys = preferences.hiddenAccountKeys.filter(
-    (key) => key !== accountKey,
-  );
-  preferences.accountOrder = preferences.accountOrder.filter(
-    (key) => key !== accountKey,
-  );
-  delete preferences.windowIdsByAccount[accountKey];
-  setDashboardWidgetPreferences(preferences);
+  const next: DashboardWidgetPreferences = {
+    ...preferences,
+    hiddenAccountKeys: preferences.hiddenAccountKeys.filter(
+      (key) => key !== accountKey,
+    ),
+    accountOrder: preferences.accountOrder.filter((key) => key !== accountKey),
+    windowIdsByAccount: { ...preferences.windowIdsByAccount },
+  };
+  delete next.windowIdsByAccount[accountKey];
+  return setDashboardWidgetPreferences(next).ok;
 }

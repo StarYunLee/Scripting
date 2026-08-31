@@ -58,8 +58,8 @@ export function updateProfileInfo(
   }));
 }
 
-export function deleteAccount(profileId: string): void {
-  store.remove(profileId, [
+export function deleteAccount(profileId: string) {
+  return store.remove(profileId, [
     "access_token",
     "refresh_token",
     "id_token",
@@ -105,18 +105,27 @@ export function saveProfileCredentials(
 ): boolean {
   const p = resolveProfile(profileId);
   if (!p) return false;
-  const ok = store.setSecret(p.id, "access_token", value.accessToken);
-  if (value.refreshToken)
-    store.setSecret(p.id, "refresh_token", value.refreshToken);
-  if (value.idToken) store.setSecret(p.id, "id_token", value.idToken);
-  if (value.expiresAt)
-    store.setSecret(p.id, "expires_at", String(value.expiresAt));
-  if (value.email || value.accountId || value.projectId || value.planLabel)
-    updateProfileInfo(p.id, {
-      email: value.email,
-      accountId: value.accountId,
-      projectId: value.projectId,
-      planLabel: value.planLabel,
-    });
-  return ok;
+  return store.setSecrets(
+    p.id,
+    {
+      access_token: value.accessToken,
+      refresh_token: value.refreshToken ?? undefined,
+      id_token: value.idToken ?? undefined,
+      expires_at: value.expiresAt == null ? undefined : String(value.expiresAt),
+    },
+    value.email != null ||
+      value.accountId != null ||
+      value.projectId != null ||
+      value.planLabel != null
+      ? (account) => ({
+          ...account,
+          email: value.email || account.email || null,
+          accountId: value.accountId ?? account.accountId,
+          projectId: value.projectId ?? account.projectId,
+          planLabel: value.planLabel ?? account.planLabel,
+          name: value.email || account.email || account.name,
+          updatedAt: new Date().toISOString(),
+        })
+      : undefined,
+  );
 }

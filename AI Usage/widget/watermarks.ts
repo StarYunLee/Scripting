@@ -13,5 +13,5 @@ const WATERMARK_MAP: Record<ProviderId, string> = {
 };
 
 export function providerWatermarkPath(provider: ProviderId): string {
-  return WATERMARK_MAP[provider] || "assets/watermark-chatgpt.png";
+  return WATERMARK_MAP[provider];
 }

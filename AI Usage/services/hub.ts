@@ -17,6 +17,11 @@ import {
 import { clearAccountOverviewPreferences } from "./app-overview-prefs";
 import { clearAccountWidgetPreferences } from "./widget-prefs";
 import { clearDashboardWidgetAccountPreferences } from "./dashboard-widget-prefs";
+import { createAuthCoordinator } from "./auth-coordinator";
+import { openAuthorizationPage } from "./browser";
+import { getPendingAuthorizationState } from "../providers/copilot/oauth";
+import { clearWidgetRefreshMetadata } from "./widget-refresh-metadata";
+import { deleteAccountData } from "./account-deletion";
 import {
   buildWidgetCard as buildCard,
   listAuthorizedWidgetCards,
@@ -28,18 +33,14 @@ export function ensureAllMigrations(): void {
   for (const id of PROVIDER_IDS) getProvider(id).ensure();
 }
 
-export function findPendingAuth(): {
-  provider: ProviderId;
-  profileId: string;
-} | null {
-  for (const id of PROVIDER_IDS) {
-    const api = getProvider(id);
-    if (!api.auth.hasPending()) continue;
-    const profileId = api.auth.pendingId();
-    if (profileId) return { provider: id, profileId };
-  }
-  return null;
-}
+export const authCoordinator = createAuthCoordinator({
+  providerIds: PROVIDER_IDS,
+  getProvider,
+  isDemoMode,
+  openAuthorizationPage,
+  getCopilotAuthorizationState: getPendingAuthorizationState,
+  writeLog,
+});
 
 export { buildCard };
 
@@ -47,83 +48,6 @@ export function listAuthorizedCards(): ReturnType<
   typeof listAuthorizedWidgetCards
 > {
   return isDemoMode() ? listDemoCards() : listAuthorizedWidgetCards();
-}
-
-export async function beginProviderAuth(
-  provider: ProviderId,
-  profileId?: string,
-  input?: string,
-): Promise<{ profileId: string; url: string }> {
-  if (isDemoMode()) throw new Error("演示模式不会发起真实授权");
-  const api = getProvider(provider);
-  const account = profileId ? { id: profileId } : api.create();
-  try {
-    const url = await api.auth.start(account.id, input);
-    writeLog({
-      level: "info",
-      source: "app",
-      category: "auth",
-      event: "auth.started",
-      provider,
-      accountId: account.id,
-      message: "授权流程已开始",
-    });
-    return { profileId: account.id, url };
-  } catch (error) {
-    writeLog({
-      level: "error",
-      source: "app",
-      category: "auth",
-      event: "auth.start_failed",
-      provider,
-      accountId: account.id,
-      message: "启动授权失败",
-      code: error instanceof Error ? error.name : "unknown",
-    });
-    throw error;
-  }
-}
-
-export async function completeProviderAuth(
-  provider: ProviderId,
-  input: string,
-): Promise<void> {
-  if (isDemoMode()) throw new Error("演示模式不会完成真实授权");
-  try {
-    await getProvider(provider).auth.complete(input);
-    writeLog({
-      level: "info",
-      source: "app",
-      category: "auth",
-      event: "auth.succeeded",
-      provider,
-      message: "授权成功",
-    });
-  } catch (error) {
-    writeLog({
-      level: "error",
-      source: "app",
-      category: "auth",
-      event: "auth.failed",
-      provider,
-      message: "授权失败",
-      code: error instanceof Error ? error.name : "unknown",
-    });
-    throw error;
-  }
-}
-
-export function cancelProviderAuth(
-  provider: ProviderId,
-  profileId: string,
-): void {
-  const api = getProvider(provider);
-  api.auth.clearPending();
-  if (!api.token(profileId)) {
-    api.usage.clearCache(profileId);
-    api.clearSettings(profileId);
-    api.remove(profileId);
-  }
 }
 
 export async function refreshCard(
@@ -158,14 +82,22 @@ export async function refreshCard(
 export function deleteAuthorizedAccount(
   provider: ProviderId,
   profileId: string,
-): void {
+): ReturnType<typeof deleteAccountData> {
   const api = getProvider(provider);
-  api.usage.clearCache(profileId);
-  api.clearSettings(profileId);
-  clearAccountOverviewPreferences(provider, profileId);
-  clearAccountWidgetPreferences(provider, profileId);
-  clearDashboardWidgetAccountPreferences(`${provider}:${profileId}`);
-  api.remove(profileId);
+  return deleteAccountData({
+    remove: () => api.remove(profileId),
+    clearCache: () => api.usage.clearCache(profileId),
+    clearProviderSettings: () => {
+      api.clearSettings(profileId);
+    },
+    clearOverviewPreferences: () =>
+      clearAccountOverviewPreferences(provider, profileId),
+    clearWidgetPreferences: () =>
+      clearAccountWidgetPreferences(provider, profileId),
+    clearDashboardPreferences: () =>
+      clearDashboardWidgetAccountPreferences(`${provider}:${profileId}`),
+    clearRefreshMetadata: () => clearWidgetRefreshMetadata(provider, profileId),
+  });
 }
 
 export function cachedUsageWindows(
