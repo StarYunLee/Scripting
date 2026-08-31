@@ -1,3 +1,5 @@
+import { activePendingAuthorization } from "../../services/oauth-pending";
+import { CredentialPersistenceError } from "../../services/credential-errors";
 import { fetch, Response } from "scripting";
 import { parseJwtPayload } from "../../services/jwt-payload";
 import {
@@ -324,15 +326,16 @@ async function pollForTokens(
 }
 
 export function hasPendingOAuth(): boolean {
-  const pending = readPending();
-  return Boolean(pending && Date.now() - pending.createdAt <= PENDING_TTL_MS);
+  return Boolean(
+    activePendingAuthorization(readPending(), PENDING_TTL_MS, clearPending),
+  );
 }
 
 export function getPendingOAuthProfileId(): string | null {
-  const pending = readPending();
-  return pending && Date.now() - pending.createdAt <= PENDING_TTL_MS
-    ? pending.profileId
-    : null;
+  return (
+    activePendingAuthorization(readPending(), PENDING_TTL_MS, clearPending)
+      ?.profileId || null
+  );
 }
 
 export function clearPendingOAuth(): void {
@@ -402,12 +405,12 @@ export async function ensureAccountEmail(
   const identity = await resolveIdentity(accessToken);
   // 只有拿到邮箱才回写，避免仅有 accountId 时把展示名写成 acct_ id。
   if (!identity.email) return null;
-  saveProfileCredentials(profileId, {
+  const saved = saveProfileCredentials(profileId, {
     accessToken,
     accountId: identity.accountId,
     email: identity.email,
   });
-  return identity.email;
+  return saved ? identity.email : null;
 }
 
 export async function refreshOAuthToken(
@@ -440,7 +443,7 @@ export async function refreshOAuthToken(
     return current;
   }
   const identity = await resolveIdentity(data.accessToken, data);
-  saveProfileCredentials(profileId, {
+  const saved = saveProfileCredentials(profileId, {
     accessToken: data.accessToken,
     refreshToken:
       typeof data.refreshToken === "string" ? data.refreshToken : refreshToken,
@@ -448,5 +451,6 @@ export async function refreshOAuthToken(
     accountId: identity.accountId,
     email: identity.email,
   });
+  if (!saved) throw new CredentialPersistenceError();
   return data.accessToken;
 }

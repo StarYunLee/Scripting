@@ -57,6 +57,7 @@ export type UsageResult =
         message: string;
         status?: number;
         detail?: string;
+        retryAt?: string;
       };
       cache?: UsageSnapshot | null;
     };

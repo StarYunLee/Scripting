@@ -1,3 +1,5 @@
+import { activePendingAuthorization } from "../../services/oauth-pending";
+import { CredentialPersistenceError } from "../../services/credential-errors";
 import { fetch, Response } from "scripting";
 import { formEncode } from "../../services/form-encoding";
 import {
@@ -124,15 +126,16 @@ export function kimiRequestHeaders(
 }
 
 export function hasPendingOAuth(): boolean {
-  const pending = readPending();
-  return Boolean(pending && Date.now() - pending.createdAt <= PENDING_TTL_MS);
+  return Boolean(
+    activePendingAuthorization(readPending(), PENDING_TTL_MS, clearPending),
+  );
 }
 
 export function getPendingOAuthProfileId(): string | null {
-  const pending = readPending();
-  return pending && Date.now() - pending.createdAt <= PENDING_TTL_MS
-    ? pending.profileId
-    : null;
+  return (
+    activePendingAuthorization(readPending(), PENDING_TTL_MS, clearPending)
+      ?.profileId || null
+  );
 }
 
 export function clearPendingOAuth(): void {
@@ -320,7 +323,7 @@ export async function refreshOAuthToken(
   const data = (await jsonObject(response)) as TokenPayload;
   if (!response.ok || !data.access_token) return current;
   const identity = await fetchIdentity(data.access_token);
-  saveProfileCredentials(profileId, {
+  const saved = saveProfileCredentials(profileId, {
     accessToken: data.access_token,
     refreshToken: data.refresh_token || refreshToken,
     expiresAt:
@@ -329,5 +332,6 @@ export async function refreshOAuthToken(
     email: identity.email,
     name: identity.name,
   });
+  if (!saved) throw new CredentialPersistenceError();
   return data.access_token;
 }

@@ -1,12 +1,16 @@
-import { getProvider } from "../providers/registry";
+import { getSnapshotProvider } from "../providers/snapshot-registry";
 import type { ProviderAccount } from "../providers/contracts";
 import { PROVIDER_IDS, type ProviderId, type UsageCard } from "../models";
+import {
+  buildWidgetCardFromProvider,
+  listAuthorizedWidgetCardsFromProviders,
+  type WidgetCardExtras,
+} from "./widget-card-model";
 
-type WidgetCardExtras = {
-  refreshing?: boolean;
-  errorMessage?: string;
-  source?: UsageCard["source"];
-};
+export {
+  buildWidgetCardFromProvider,
+  listAuthorizedWidgetCardsFromProviders,
+} from "./widget-card-model";
 
 /**
  * Widget-safe account snapshot builder.
@@ -20,38 +24,18 @@ export function buildWidgetCard(
   account: ProviderAccount,
   extras?: WidgetCardExtras,
 ): UsageCard {
-  const api = getProvider(provider);
-  const authorized = Boolean(api.token(account.id));
-  const cache = authorized ? api.usage.cache(account.id) : null;
-  return {
-    key: `${provider}:${account.id}`,
+  return buildWidgetCardFromProvider(
     provider,
-    accountId: account.id,
-    title: account.email || account.name,
-    planLabel: cache?.planLabel || null,
-    authorized,
-    windows: cache?.windows || [],
-    resetCredits: cache?.resetCredits || null,
-    fetchedAt: cache?.fetchedAt || null,
-    source: extras?.errorMessage
-      ? "error"
-      : extras?.source || cache?.source || "empty",
-    errorMessage: extras?.errorMessage,
-    refreshing: Boolean(extras?.refreshing),
-  };
+    getSnapshotProvider(provider),
+    account,
+    extras,
+  );
 }
 
 /** Read authorized accounts and their local usage snapshots only. */
 export function listAuthorizedWidgetCards(): UsageCard[] {
-  const cards: UsageCard[] = [];
-  for (const provider of PROVIDER_IDS) {
-    const api = getProvider(provider);
-    const authorized = (api.list() as ProviderAccount[])
-      .filter((account) => api.token(account.id))
-      .sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)));
-    for (const account of authorized) {
-      cards.push(buildWidgetCard(provider, account));
-    }
-  }
-  return cards;
+  return listAuthorizedWidgetCardsFromProviders(
+    PROVIDER_IDS,
+    getSnapshotProvider,
+  );
 }

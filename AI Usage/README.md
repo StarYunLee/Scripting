@@ -17,7 +17,7 @@
 
 面向 [Scripting App](https://scriptingapp.github.io/) 的非官方多平台用量查看应用。在一个项目里管理 Codex、Grok、Claude、Antigravity、Cursor、Kimi Code、GitHub Copilot、Z.ai 与 MiniMax 的多账号用量、主屏幕小组件和自动化刷新。
 
-当前版本：`1.5.1`
+当前版本：`1.5.2`
 
 > 本项目不是 OpenAI、xAI、Anthropic、Google 或 Scripting App 官方产品，与上述平台无隶属或合作关系。
 
@@ -158,7 +158,7 @@ dashboard
 
 - 按账号所选窗口自适应：1 个窗口显示单额度详情，2 个窗口上下排列
 - 单额度详情同时列出已用和剩余百分比，主数字与进度条仍表示剩余
-- 超过 2 项时只显示前 2 项
+- 超过 2 项时只显示所选顺序中的前 2 项
 
 ### Medium
 
@@ -229,7 +229,8 @@ iOS WidgetKit 可能根据系统调度延后刷新。所选时间是请求的最
 - OAuth 成功不代表所有账号都具有对应用量查询资格
 - 账号实际拥有的额度窗口由服务端决定，缺失窗口显示 `—`
 - WidgetKit 不保证严格按照所选分钟数刷新
-- Small 和 Medium 以外的组件尺寸未专门适配
+- 单账号小组件未专门适配 Large；未知或不支持的尺寸按现有回退渲染
+- Small 使用所选窗口顺序中的前 2 项
 - 演示模式只用于预览界面，不会写入真实账号或发起授权请求
 
 ## 项目结构
@@ -238,9 +239,11 @@ iOS WidgetKit 可能根据系统调度延后刷新。所选时间是请求的最
 AI Usage/
 ├── assets/                   平台 Logo、水印与展示图
 ├── components/               共享 UI 与用量卡片
+├── docs/                     当前架构说明与历史验收记录
 ├── pages/                    用量、设置、账号详情、日志页
 ├── providers/                Codex / Grok / Claude / Antigravity / Cursor / Kimi / Copilot / Z.ai / MiniMax 适配
 ├── services/                 刷新编排、配色、设置、演示与存储
+├── tests/                    业务回归测试；tsc/esbuild/测试门禁由 Mac Build Worker 执行
 ├── widget/                   小组件分发、Loader 与平台布局
 ├── app_intents.tsx           系统 App Intent
 ├── index.tsx                 应用入口

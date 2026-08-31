@@ -58,8 +58,8 @@ export function updateProfileIdentity(
   });
 }
 
-export function deleteAccount(profileId: string): void {
-  store.remove(profileId, [
+export function deleteAccount(profileId: string) {
+  return store.remove(profileId, [
     "access_token",
     "refresh_token",
     "expires_at",
@@ -103,20 +103,27 @@ export function saveProfileCredentials(
 ): boolean {
   const profile = resolveProfile(profileId);
   if (!profile) return false;
-  const ok = store.setSecret(profile.id, "access_token", value.accessToken);
-  if (value.refreshToken)
-    store.setSecret(profile.id, "refresh_token", value.refreshToken);
-  if (value.expiresAt)
-    store.setSecret(profile.id, "expires_at", String(value.expiresAt));
-  if (value.accountId)
-    store.setSecret(profile.id, "account_id", value.accountId);
-  if (value.accountId || value.email || value.name)
-    updateProfileIdentity(profile.id, {
-      accountId: value.accountId,
-      email: value.email,
-      name: value.name,
-    });
-  return ok;
+  return store.setSecrets(
+    profile.id,
+    {
+      access_token: value.accessToken,
+      refresh_token: value.refreshToken ?? undefined,
+      expires_at: value.expiresAt == null ? undefined : String(value.expiresAt),
+      account_id: value.accountId ?? undefined,
+    },
+    value.accountId != null || value.email != null || value.name != null
+      ? (account) => {
+          const email = value.email || account.email || null;
+          return {
+            ...account,
+            accountId: value.accountId || account.accountId,
+            email,
+            name: value.name || email || account.name,
+            updatedAt: new Date().toISOString(),
+          };
+        }
+      : undefined,
+  );
 }
 
 /** 为 Kimi Code 请求生成稳定 Device-Id（Keychain 持久化）。 */

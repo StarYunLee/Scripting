@@ -43,6 +43,14 @@ export function DashboardWidgetSettingsPage(props: {
     requestWidgetReloadAfterStorage();
   }
 
+  async function saveFailure(): Promise<void> {
+    await Dialog.alert({
+      title: "设置未保存",
+      message: "无法写入多账号小组件设置，请稍后重试。",
+      buttonLabel: "关闭",
+    });
+  }
+
   async function previewWidget(
     family: "systemSmall" | "systemMedium" | "systemLarge",
   ): Promise<void> {
@@ -167,7 +175,15 @@ export function DashboardWidgetSettingsPage(props: {
                     toggleStyle="switch"
                     value={visible}
                     onChanged={(value: boolean) => {
-                      setDashboardWidgetAccountVisible(card.key, value);
+                      const result = setDashboardWidgetAccountVisible(
+                        card.key,
+                        value,
+                      );
+                      if (!result.ok) {
+                        void saveFailure();
+                        setTick((current) => current + 1);
+                        return;
+                      }
                       changed();
                     }}
                   />
@@ -184,10 +200,20 @@ export function DashboardWidgetSettingsPage(props: {
                             ? secondary
                             : card.windows.find((window) => window.id !== value)
                                 ?.id || "none";
-                        setDashboardWidgetAccountWindows(card.key, [
-                          value,
-                          ...(nextSecondary === "none" ? [] : [nextSecondary]),
-                        ]);
+                        const result = setDashboardWidgetAccountWindows(
+                          card.key,
+                          [
+                            value,
+                            ...(nextSecondary === "none"
+                              ? []
+                              : [nextSecondary]),
+                          ],
+                        );
+                        if (!result.ok) {
+                          void saveFailure();
+                          setTick((current) => current + 1);
+                          return;
+                        }
                         changed();
                       }}
                       pickerStyle="menu"
@@ -205,10 +231,15 @@ export function DashboardWidgetSettingsPage(props: {
                       title="额度窗口 2"
                       value={secondary}
                       onChanged={(value: string) => {
-                        setDashboardWidgetAccountWindows(card.key, [
-                          primary,
-                          ...(value === "none" ? [] : [value]),
-                        ]);
+                        const result = setDashboardWidgetAccountWindows(
+                          card.key,
+                          [primary, ...(value === "none" ? [] : [value])],
+                        );
+                        if (!result.ok) {
+                          void saveFailure();
+                          setTick((current) => current + 1);
+                          return;
+                        }
                         changed();
                       }}
                       pickerStyle="menu"

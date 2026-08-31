@@ -1,3 +1,5 @@
+import { activePendingAuthorization } from "../../services/oauth-pending";
+import { CredentialPersistenceError } from "../../services/credential-errors";
 import { fetch, Response } from "scripting";
 import {
   getProfileAccessToken,
@@ -77,14 +79,15 @@ function readPending(): PendingOAuth | null {
   }
 }
 export function hasPendingOAuth(): boolean {
-  const pending = readPending();
-  return Boolean(pending && Date.now() - pending.createdAt <= PENDING_TTL_MS);
+  return Boolean(
+    activePendingAuthorization(readPending(), PENDING_TTL_MS, clearPending),
+  );
 }
 export function getPendingOAuthProfileId(): string | null {
-  const pending = readPending();
-  return pending && Date.now() - pending.createdAt <= PENDING_TTL_MS
-    ? pending.profileId
-    : null;
+  return (
+    activePendingAuthorization(readPending(), PENDING_TTL_MS, clearPending)
+      ?.profileId || null
+  );
 }
 export function clearPendingOAuth(): void {
   clearPending();
@@ -276,7 +279,7 @@ export async function refreshOAuthToken(
   });
   const tokens = (await parseJson(response)) as TokenPayload;
   if (!response.ok || !tokens.access_token) return current;
-  saveProfileCredentials(profileId, {
+  const saved = saveProfileCredentials(profileId, {
     accessToken: tokens.access_token,
     refreshToken: tokens.refresh_token || refreshToken,
     idToken: tokens.id_token,
@@ -284,5 +287,6 @@ export async function refreshOAuthToken(
       Date.now() + Math.max(60, Number(tokens.expires_in) || 3600) * 1000,
     accountId: accountIdFromToken(tokens.id_token || tokens.access_token),
   });
+  if (!saved) throw new CredentialPersistenceError();
   return tokens.access_token;
 }

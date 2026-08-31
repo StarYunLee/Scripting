@@ -1,7 +1,8 @@
 import { HStack, Image, Spacer, Text, VStack, ZStack } from "scripting";
 import type { Color, DynamicShapeStyle } from "scripting";
 import { PlanBadge } from "../../components/PlanBadge";
-import { formatResetCountdown } from "../../providers/codex/format";
+import { formatResetCountdown } from "../../services/usage-format";
+import { parseWidgetFamily } from "../family";
 import { providerMeta, type UsageWindowView } from "../../models";
 import { usageTint } from "../../services/usage-colors";
 import {
@@ -11,7 +12,6 @@ import {
 import {
   planDashboard,
   type DashboardAccount,
-  type DashboardFamily,
   type DashboardPlan,
 } from "./model";
 
@@ -552,15 +552,7 @@ export function DashboardWidgetView(props: {
   hasErrors?: boolean;
   display?: DashboardWidgetDisplayPreferences;
 }) {
-  const rawFamily = props.family.toLowerCase();
-  const family: DashboardFamily | null =
-    rawFamily.includes("small") && !rawFamily.includes("medium")
-      ? "small"
-      : rawFamily.includes("large")
-        ? "large"
-        : rawFamily.includes("medium")
-          ? "medium"
-          : null;
+  const family = parseWidgetFamily(props.family);
   const display = props.display || getDashboardWidgetPreferences().display;
   if (!family) {
     return <EmptyDashboard message="暂不支持此小组件尺寸" />;

@@ -75,8 +75,8 @@ export function updateProfileIdentity(
   });
 }
 
-export function deleteAccount(profileId: string): void {
-  store.remove(profileId, [
+export function deleteAccount(profileId: string) {
+  return store.remove(profileId, [
     "access_token",
     "refresh_token",
     "id_token",
@@ -126,17 +126,26 @@ export function saveProfileCredentials(
 ): boolean {
   const p = resolveProfile(profileId);
   if (!p) return false;
-  const ok = store.setSecret(p.id, "access_token", value.accessToken);
-  if (value.refreshToken)
-    store.setSecret(p.id, "refresh_token", value.refreshToken);
-  if (value.idToken) store.setSecret(p.id, "id_token", value.idToken);
-  if (value.expiresAt)
-    store.setSecret(p.id, "expires_at", String(value.expiresAt));
-  if (value.accountId) store.setSecret(p.id, "account_id", value.accountId);
-  if (value.accountId || value.email)
-    updateProfileIdentity(p.id, {
-      accountId: value.accountId,
-      email: value.email,
-    });
-  return ok;
+  return store.setSecrets(
+    p.id,
+    {
+      access_token: value.accessToken,
+      refresh_token: value.refreshToken ?? undefined,
+      id_token: value.idToken ?? undefined,
+      expires_at: value.expiresAt == null ? undefined : String(value.expiresAt),
+      account_id: value.accountId ?? undefined,
+    },
+    value.accountId != null || value.email != null
+      ? (account) => {
+          const email = value.email || account.email || null;
+          return {
+            ...account,
+            accountId: value.accountId || account.accountId,
+            email,
+            name: email || account.name,
+            updatedAt: new Date().toISOString(),
+          };
+        }
+      : undefined,
+  );
 }
