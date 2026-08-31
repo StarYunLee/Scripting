@@ -135,7 +135,7 @@ export async function fetchUsage(options?: {
       preferred === "cn" ? ["cn", "intl"] : ["intl", "cn"];
     let payload: Record<string, unknown> | null = null;
     let region: ZaiRegion | null = null;
-    let lastStatus = 0;
+    const statuses: Partial<Record<ZaiRegion, number>> = {};
 
     for (const candidate of order) {
       const result = await requestQuota(token, candidate);
@@ -144,22 +144,34 @@ export async function fetchUsage(options?: {
         region = candidate;
         break;
       }
-      lastStatus = result.status;
-      if (result.status === 401 || result.status === 403) continue;
+      statuses[candidate] = result.status;
     }
 
     if (!payload || !region) {
       const recovered = recoverRecentCache(profile.id, Boolean(options?.force));
       if (recovered) return recovered;
-      const unauthorized = lastStatus === 401 || lastStatus === 403;
+      const isAuth = (status: number | undefined) =>
+        status === 401 || status === 403;
+      const preferredStatus = statuses[preferred];
+      const tried = order.filter((item) => statuses[item] != null);
+      const bothAuthFailed =
+        tried.length >= 2 && tried.every((item) => isAuth(statuses[item]));
+      // Only treat as bad key when the preferred region itself is 401/403,
+      // or every region we tried failed auth. A preferred 5xx + fallback 401
+      // must surface the preferred HTTP error, not "API Key 无效".
+      const unauthorized = isAuth(preferredStatus) || bothAuthFailed;
+      const reportStatus =
+        preferredStatus ??
+        statuses[order.find((item) => item !== preferred)!] ??
+        0;
       return {
         ok: false,
         error: {
           code: unauthorized ? "unauthorized" : "http_error",
           message: unauthorized
             ? "Z.ai API Key 无效或已过期，请重新配置"
-            : `Z.ai 用量请求失败（HTTP ${lastStatus || "?"}）`,
-          status: lastStatus || undefined,
+            : `Z.ai 用量请求失败（HTTP ${reportStatus || "?"}）`,
+          status: reportStatus || undefined,
         },
         cache: readCache(profile.id) || cache,
       };
@@ -188,6 +200,7 @@ export async function fetchUsage(options?: {
 
     const planLabel =
       (await fetchPlanLabel(token, region)) ||
+      parsed.planLabel ||
       cache?.planLabel ||
       cache?.planType ||
       null;
