@@ -39,9 +39,13 @@ async function run() {
   const family = String(Widget.family || "systemSmall");
   const resolved = resolveWidgetParameter(Widget.parameter);
   const reloadMinutes = getAppDisplaySettings().reloadMinutes;
+  // 手动（0）时仍给系统一个较长的建议重建窗口，避免立刻反复唤醒。
   const reloadPolicy = {
     policy: "after" as const,
-    date: new Date(Date.now() + reloadMinutes * 60 * 1000),
+    date: new Date(
+      Date.now() +
+        (reloadMinutes > 0 ? reloadMinutes : 24 * 60) * 60 * 1000,
+    ),
   };
 
   if (resolved.mode === "dashboard") {

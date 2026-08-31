@@ -34,6 +34,10 @@ export function planWidgetAutomaticRefresh(input: {
     };
   }
   if (fetchedAt == null) return { action: "fetch", reason: "missing_cache" };
+  // 0 = 手动：小组件不自动联网，仅展示缓存。
+  if (input.reloadMinutes <= 0) {
+    return { action: "use_cache", reason: "fresh" };
+  }
   const interval = Math.max(5, Math.min(360, input.reloadMinutes)) * 60_000;
   if (now - fetchedAt < interval) {
     return { action: "use_cache", reason: "fresh" };

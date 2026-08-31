@@ -19,7 +19,10 @@ import { type AuthSheet, type ProviderId, type UsageCard } from "../models";
 import { parseMinimaxAuthChoice } from "../providers/minimax/auth-choice";
 import { refreshAccounts } from "../services/refresh";
 import { requestWidgetReload } from "../services/widgets";
-import { type BackgroundThemeId } from "../services/settings";
+import {
+  getAppDisplaySettings,
+  type BackgroundThemeId,
+} from "../services/settings";
 import {
   applyOverviewPreferences,
   isAccountShownInOverview,
@@ -87,10 +90,23 @@ export function StatusPage(props: {
   useEffect(() => {
     const authorized = listAuthorizedCards();
     if (!authorized.length || props.demoMode) return;
+    // 启动刷新尊重用户设置的刷新间隔：缓存未超期的账号不发请求。
+    // reloadMinutes === 0（手动）时启动完全跳过联网；下拉 refreshAll 不受限。
+    // provider 内部的 MIN_LIVE_INTERVAL_MS 是防连点下限，这层闸门在它之上。
+    const reloadMinutes = getAppDisplaySettings().reloadMinutes;
+    if (reloadMinutes <= 0) return;
+    const reloadMs = reloadMinutes * 60_000;
+    const now = Date.now();
+    const stale = authorized.filter((card) => {
+      if (!card.fetchedAt) return true;
+      const age = now - new Date(card.fetchedAt).getTime();
+      return !Number.isFinite(age) || age >= reloadMs;
+    });
+    if (!stale.length) return;
     let cancelled = false;
     (async () => {
       const summary = await refreshAccounts(
-        authorized.map((card) => ({
+        stale.map((card) => ({
           provider: card.provider,
           profileId: card.accountId,
         })),
