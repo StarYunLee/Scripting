@@ -5,10 +5,18 @@ import {
   resolveProfile,
   saveProfileCredentials,
 } from "./accounts";
-import { formatPlanLabel, inferPlanFromLimit } from "./format";
+import {
+  buildPlanDisplayLabel,
+  inferPlanFromLimit,
+  sanitizeCachedPlanType,
+} from "./format";
 import { minimaxRequestHeaders, refreshOAuthToken } from "./oauth";
-import { quotaUrls, regionProbeOrder } from "./regions";
-import { hasMinimaxQuotaRows, parseMinimaxQuota } from "./usage-parser";
+import { planInfoUrls, quotaUrls, regionProbeOrder } from "./regions";
+import {
+  hasMinimaxQuotaRows,
+  parseMinimaxPlanPayload,
+  parseMinimaxQuota,
+} from "./usage-parser";
 import { createUsageCache } from "../../services/usage-cache";
 import type { MinimaxRegion, UsageResult, UsageSnapshot } from "./types";
 
@@ -21,12 +29,49 @@ const usageCache = createUsageCache<UsageSnapshot>({
   recentMs: MIN_LIVE_INTERVAL_MS,
 });
 
+/** 读取时清洗旧缓存：planType 只保留 raw，planLabel 由 raw 重建。 */
+function sanitizeSnapshot(
+  snapshot: UsageSnapshot | null,
+): UsageSnapshot | null {
+  if (!snapshot) return null;
+  const region = snapshot.region === "cn" || snapshot.region === "intl"
+    ? snapshot.region
+    : null;
+  const rawPlanType =
+    sanitizeCachedPlanType(snapshot.planType) ||
+    sanitizeCachedPlanType(snapshot.planLabel);
+  if (!region) {
+    return {
+      ...snapshot,
+      planType: rawPlanType,
+      planLabel: rawPlanType || snapshot.planLabel,
+    };
+  }
+  return {
+    ...snapshot,
+    planType: rawPlanType,
+    planLabel: buildPlanDisplayLabel(rawPlanType, region),
+  };
+}
+
 function readCache(profileId?: string | null): UsageSnapshot | null {
-  return usageCache.read(profileId);
+  const cached = usageCache.read(profileId);
+  const sanitized = sanitizeSnapshot(cached);
+  const id = resolveProfile(profileId)?.id;
+  if (
+    id &&
+    cached &&
+    sanitized &&
+    (cached.planType !== sanitized.planType ||
+      cached.planLabel !== sanitized.planLabel)
+  ) {
+    usageCache.write(id, sanitized);
+  }
+  return sanitized;
 }
 
 function writeCache(profileId: string, value: UsageSnapshot): void {
-  usageCache.write(profileId, value);
+  usageCache.write(profileId, sanitizeSnapshot(value) || value);
 }
 
 export const getCachedUsage = readCache;
@@ -39,7 +84,16 @@ function recoverRecentCache(
   profileId: string,
   force: boolean,
 ): UsageResult | null {
-  return usageCache.recoverRecent(profileId, force) as UsageResult | null;
+  const recovered = usageCache.recoverRecent(profileId, force) as UsageResult | null;
+  if (!recovered) return null;
+  if (recovered.ok) {
+    const snapshot = sanitizeSnapshot(recovered.snapshot);
+    return snapshot ? { ok: true, snapshot } : recovered;
+  }
+  return {
+    ...recovered,
+    cache: sanitizeSnapshot(recovered.cache || null),
+  };
 }
 
 type QuotaRequestResult =
@@ -74,6 +128,33 @@ async function requestQuota(
     }
   }
   return { ok: false, status: lastStatus };
+}
+
+/** 独立套餐接口拉取真实档位（对齐 zai/kimi 的 fetchPlanLabel）。 */
+async function fetchPlanLabel(
+  token: string,
+  region: MinimaxRegion,
+): Promise<string | null> {
+  for (const url of planInfoUrls(region)) {
+    try {
+      const response = await fetch(url, {
+        method: "GET",
+        headers: minimaxRequestHeaders(token),
+        timeout: 15,
+        debugLabel:
+          region === "intl" ? "MinimaxPlanInfoIntl" : "MinimaxPlanInfoCn",
+      });
+      if (response.status === 401 || response.status === 403) continue;
+      if (!response.ok) continue;
+      const text = await response.text();
+      if (!text.trim() || text.trim().startsWith("<")) continue;
+      const plan = parseMinimaxPlanPayload(JSON.parse(text));
+      if (plan) return plan;
+    } catch {
+      /* try next URL */
+    }
+  }
+  return null;
 }
 
 export async function fetchUsage(options?: {
@@ -154,22 +235,22 @@ export async function fetchUsage(options?: {
     if (getProfileRegion(profile.id) !== region) {
       saveProfileCredentials(profile.id, { accessToken: token, region });
     }
-    const planLabel =
-      parsed.planLabel ||
+
+    // planType 只存原始档位；回退链绝不用带站点后缀的 planLabel（对齐 zai/kimi）。
+    const planType =
+      (await fetchPlanLabel(token, region)) ||
+      parsed.planType ||
       inferPlanFromLimit(parsed.intervalTotal, region) ||
-      cache?.planLabel ||
-      cache?.planType ||
+      sanitizeCachedPlanType(cache?.planType) ||
       null;
+
     const snapshot: UsageSnapshot = {
       windows: parsed.windows,
       fiveHour: parsed.fiveHour,
       weekly: parsed.weekly,
-      planType: planLabel,
-      planLabel: planLabel
-        ? `${formatPlanLabel(planLabel)} · ${region === "cn" ? "国内站" : "国际站"}`
-        : region === "cn"
-          ? "国内站"
-          : "国际站",
+      planType,
+      // MiniMax 需要区分站点，展示串在此层拼接一次；下次回退只用 planType。
+      planLabel: buildPlanDisplayLabel(planType, region),
       region,
       fetchedAt: new Date().toISOString(),
       source: "live",

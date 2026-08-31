@@ -1,9 +1,15 @@
 import { createAccountStore } from "../../services/account-store";
+import { parseJwtPayload } from "../../services/jwt-payload";
 import type {
   AccountRegistry,
   MinimaxAccountProfile,
   MinimaxRegion,
 } from "./types";
+
+function jwtEmail(token: string | null): string | null {
+  const value = parseJwtPayload(token)?.email;
+  return typeof value === "string" && value.includes("@") ? value : null;
+}
 
 const store = createAccountStore<MinimaxAccountProfile>({
   registryKey: "ai_usage_minimax_account_registry_v1",
@@ -16,6 +22,22 @@ const store = createAccountStore<MinimaxAccountProfile>({
     createdAt: now,
     updatedAt: now,
   }),
+  migrate: (registry, { getSecret }) => {
+    let changed = false;
+    const accounts = registry.accounts.map((account) => {
+      if (account.email) return account;
+      const email = jwtEmail(getSecret(account.id, "access_token"));
+      if (!email) return account;
+      changed = true;
+      return {
+        ...account,
+        email,
+        name: email,
+        updatedAt: new Date().toISOString(),
+      };
+    });
+    return changed ? { ...registry, accounts } : registry;
+  },
 });
 
 export function ensureAccountMigration(): AccountRegistry {
