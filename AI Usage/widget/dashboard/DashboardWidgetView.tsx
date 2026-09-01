@@ -6,7 +6,7 @@ import { parseWidgetFamily } from "../family";
 import { providerMeta, type UsageWindowView } from "../../models";
 import { usageTint } from "../../services/usage-colors";
 import {
-  getDashboardWidgetPreferences,
+  readDashboardWidgetPreferences,
   type DashboardWidgetDisplayPreferences,
 } from "../../services/dashboard-widget-prefs";
 import {
@@ -553,7 +553,7 @@ export function DashboardWidgetView(props: {
   display?: DashboardWidgetDisplayPreferences;
 }) {
   const family = parseWidgetFamily(props.family);
-  const display = props.display || getDashboardWidgetPreferences().display;
+  const display = props.display || readDashboardWidgetPreferences().display;
   if (!family) {
     return <EmptyDashboard message="暂不支持此小组件尺寸" />;
   }

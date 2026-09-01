@@ -2,23 +2,88 @@ import type { UsageCard } from "../models";
 import { isDemoMode, listDemoCards } from "../services/demo";
 import {
   applyDashboardWidgetPreferences,
-  getDashboardWidgetPreferences,
+  readDashboardWidgetPreferences,
 } from "../services/dashboard-widget-prefs";
 import { listAuthorizedWidgetCards } from "../services/widget-cards";
+import { parseWidgetFamily } from "./family";
+import {
+  dashboardWidgetCandidateCards as dashboardWidgetCandidateCardsCore,
+  executeDashboardWidgetRefresh,
+  type DashboardReloadPolicy,
+} from "../services/dashboard-widget-loader-core";
+import { getWidgetRefreshMetadata } from "../services/widget-refresh-metadata";
+import { loadWidgetAccountSnapshot } from "../services/widget-account-loader";
+import { resolveWidgetReloadPolicy } from "../services/widget-refresh-planner";
 
 export type DashboardWidgetData = {
   cards: UsageCard[];
   hasErrors: boolean;
-  display: ReturnType<typeof getDashboardWidgetPreferences>["display"];
+  display: ReturnType<typeof readDashboardWidgetPreferences>["display"];
+  reloadPolicy: DashboardReloadPolicy;
 };
 
-export async function loadDashboardWidgetUsage(): Promise<DashboardWidgetData> {
-  const preferences = getDashboardWidgetPreferences();
-  const allCards = isDemoMode() ? listDemoCards() : listAuthorizedWidgetCards();
-  const selected = applyDashboardWidgetPreferences(allCards, preferences);
+export const dashboardWidgetCandidateCards = dashboardWidgetCandidateCardsCore;
+
+function emptyMetadata() {
   return {
-    cards: selected,
-    hasErrors: selected.some((card) => card.source === "error"),
+    version: 1 as const,
+    lastAttemptAt: null,
+    lastSuccessAt: null,
+    lastFailureAt: null,
+    failureCount: 0,
+    nextAutomaticAttemptAt: null,
+    lastErrorCode: null,
+    lastHttpStatus: null,
+  };
+}
+
+function fallbackReloadPolicy(reloadMinutes: number): DashboardReloadPolicy {
+  return resolveWidgetReloadPolicy({
+    snapshot: null,
+    metadata: emptyMetadata(),
+    reloadMinutes,
+  });
+}
+
+export async function loadDashboardWidgetUsage(input: {
+  family: string;
+  reloadMinutes: number;
+}): Promise<DashboardWidgetData> {
+  const preferences = readDashboardWidgetPreferences();
+  const raw = isDemoMode() ? listDemoCards() : listAuthorizedWidgetCards();
+  const selected = applyDashboardWidgetPreferences(raw, preferences);
+  const kind = parseWidgetFamily(input.family);
+  if (isDemoMode()) {
+    return {
+      cards: selected,
+      hasErrors: selected.some((card) => card.source === "error"),
+      display: preferences.display,
+      reloadPolicy: fallbackReloadPolicy(input.reloadMinutes),
+    };
+  }
+  if (!kind) {
+    return {
+      cards: selected,
+      hasErrors: selected.some((card) => card.source === "error"),
+      display: preferences.display,
+      reloadPolicy: { policy: "never" },
+    };
+  }
+  const candidates = dashboardWidgetCandidateCards(selected, input.family);
+  const result = await executeDashboardWidgetRefresh({
+    cards: candidates,
+    reloadMinutes: input.reloadMinutes,
+    now: Date.now(),
+    readMetadata: getWidgetRefreshMetadata,
+    loadAccount: loadWidgetAccountSnapshot,
+  });
+  const refreshedByKey = new Map(result.cards.map((card) => [card.key, card]));
+  const mergedRaw = raw.map((card) => refreshedByKey.get(card.key) || card);
+  const finalSelected = applyDashboardWidgetPreferences(mergedRaw, preferences);
+  return {
+    cards: finalSelected,
+    hasErrors: finalSelected.some((card) => card.source === "error"),
     display: preferences.display,
+    reloadPolicy: result.reloadPolicy,
   };
 }

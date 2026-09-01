@@ -6,6 +6,14 @@ export type ChangelogEntry = {
 
 export const CHANGELOG = [
   {
+    version: "1.5.4",
+    date: "2026-09-01",
+    changes: [
+      "优化多账号主屏幕小组件自动刷新：按当前尺寸轮转更新账号用量，失败时保留最近缓存。",
+      "修改多账号小组件的账号和额度窗口后，主屏幕会尽快同步显示，不必等到下次自动刷新。",
+    ],
+  },
+  {
     version: "1.5.3",
     date: "2026-09-01",
     changes: [

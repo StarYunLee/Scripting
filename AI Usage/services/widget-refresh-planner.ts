@@ -1,5 +1,12 @@
 import type { WidgetRefreshMetadata } from "./widget-refresh-metadata";
 
+export type WidgetReloadPolicy =
+  { policy: "never" } | { policy: "after"; date: Date };
+
+export type WidgetReloadPolicySnapshot = {
+  fetchedAt: string | null;
+};
+
 export type WidgetRefreshPlan =
   | { action: "fetch"; reason: "missing_cache" | "stale" }
   | {
@@ -12,6 +19,40 @@ function time(value: string | null | undefined): number | null {
   if (!value) return null;
   const parsed = new Date(value).getTime();
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+function clampReloadMinutes(value: number): number {
+  return Math.max(5, Math.min(360, value));
+}
+
+export function resolveWidgetReloadPolicy(input: {
+  snapshot: WidgetReloadPolicySnapshot | null;
+  metadata: WidgetRefreshMetadata;
+  reloadMinutes: number;
+  now?: number;
+}): WidgetReloadPolicy {
+  const now = input.now ?? Date.now();
+  if (input.metadata.lastErrorCode === "unauthorized") {
+    return { policy: "never" };
+  }
+  const retryAt = time(input.metadata.nextAutomaticAttemptAt);
+  if (retryAt != null && retryAt > now) {
+    return { policy: "after", date: new Date(retryAt) };
+  }
+  // 手动模式不按 fetchedAt 安排自动刷新，只给系统一个较长重建窗口。
+  if (input.reloadMinutes <= 0) {
+    return { policy: "after", date: new Date(now + 24 * 60 * 60_000) };
+  }
+  const fetchedAt = time(input.snapshot?.fetchedAt);
+  if (fetchedAt != null) {
+    return {
+      policy: "after",
+      date: new Date(
+        fetchedAt + clampReloadMinutes(input.reloadMinutes) * 60_000,
+      ),
+    };
+  }
+  return { policy: "after", date: new Date(now + 5 * 60_000) };
 }
 
 export function planWidgetAutomaticRefresh(input: {
@@ -37,7 +78,7 @@ export function planWidgetAutomaticRefresh(input: {
     return { action: "use_cache", reason: "manual" };
   }
   if (fetchedAt == null) return { action: "fetch", reason: "missing_cache" };
-  const interval = Math.max(5, Math.min(360, input.reloadMinutes)) * 60_000;
+  const interval = clampReloadMinutes(input.reloadMinutes) * 60_000;
   if (now - fetchedAt < interval) {
     return { action: "use_cache", reason: "fresh" };
   }

@@ -5,14 +5,17 @@ import { nextWidgetRefreshFailure } from "./widget-refresh-state";
 import type { WidgetRefreshMetadata } from "./widget-refresh-metadata";
 import {
   planWidgetAutomaticRefresh,
+  resolveWidgetReloadPolicy,
   widgetRefreshStatusText,
   type WidgetRefreshPlan,
+  type WidgetReloadPolicy,
 } from "./widget-refresh-planner";
 
 export type LoadedWidgetSnapshot = {
   snapshot: NormalizedUsageSnapshot | null;
   plan: WidgetRefreshPlan;
   metadata: WidgetRefreshMetadata;
+  reloadPolicy: WidgetReloadPolicy;
   statusText?: string;
   errorMessage?: string;
 };
@@ -90,14 +93,21 @@ export async function loadWidgetAccountSnapshotWith(
     dependencies.writeMetadata(metadata);
   }
 
+  const finalNow = dependencies.now();
   return {
     snapshot,
     plan,
     metadata,
+    reloadPolicy: resolveWidgetReloadPolicy({
+      snapshot,
+      metadata,
+      reloadMinutes: input.reloadMinutes,
+      now: finalNow,
+    }),
     statusText: widgetRefreshStatusText({
       fetchedAt: snapshot?.fetchedAt || null,
       metadata,
-      now: dependencies.now(),
+      now: finalNow,
     }),
     errorMessage,
   };

@@ -27,7 +27,9 @@ const DEFAULT_PREFERENCES: DashboardWidgetPreferences = {
 };
 
 // App 页面内连续点击 Toggle/Picker 时，优先使用已确认的本地快照，
-// 避免下一次事件在 Storage 跨进程落盘前又读回旧值。
+// 避免下一次事件在 Storage 异步落盘前又读回旧值。
+// Widget 进程可能复用 JS 运行时：时间线重建必须走 readDashboardWidgetPreferences()，
+// 不得使用这份快照，否则会一直显示改配置前的账号/额度窗口。
 let inMemoryPreferences: DashboardWidgetPreferences | null = null;
 
 function strings(value: unknown): string[] {
@@ -77,20 +79,21 @@ export function sanitizeDashboardWidgetPreferences(
   };
 }
 
-export function getDashboardWidgetPreferences(): DashboardWidgetPreferences {
-  if (inMemoryPreferences) return inMemoryPreferences;
+export function readDashboardWidgetPreferences(): DashboardWidgetPreferences {
   try {
-    const next = sanitizeDashboardWidgetPreferences(Storage.get(STORAGE_KEY));
-    inMemoryPreferences = next;
-    return next;
+    return sanitizeDashboardWidgetPreferences(Storage.get(STORAGE_KEY));
   } catch {
-    const fallback = {
+    return {
       ...DEFAULT_PREFERENCES,
       display: { ...DEFAULT_DISPLAY },
     };
-    inMemoryPreferences = fallback;
-    return fallback;
   }
+}
+
+export function getDashboardWidgetPreferences(): DashboardWidgetPreferences {
+  if (inMemoryPreferences) return inMemoryPreferences;
+  inMemoryPreferences = readDashboardWidgetPreferences();
+  return inMemoryPreferences;
 }
 
 export type DashboardWidgetPreferencesWriteResult =

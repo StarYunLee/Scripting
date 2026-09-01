@@ -39,8 +39,8 @@ async function run() {
   const family = String(Widget.family || "systemSmall");
   const resolved = resolveWidgetParameter(Widget.parameter);
   const reloadMinutes = getAppDisplaySettings().reloadMinutes;
-  // 手动（0）时仍给系统一个较长的建议重建窗口，避免立刻反复唤醒。
-  const reloadPolicy = {
+  // 手动（0）或规划失败时的兜底：给系统一个较长重建窗口，避免立刻反复唤醒。
+  const fallbackReloadPolicy = {
     policy: "after" as const,
     date: new Date(
       Date.now() + (reloadMinutes > 0 ? reloadMinutes : 24 * 60) * 60 * 1000,
@@ -49,7 +49,10 @@ async function run() {
 
   if (resolved.mode === "dashboard") {
     try {
-      const loaded = await loadDashboardWidgetUsage();
+      const loaded = await loadDashboardWidgetUsage({
+        family,
+        reloadMinutes,
+      });
       let width = widgetFallbackWidth(family);
       try {
         const actual = (Widget as { displaySize?: { width?: number } })
@@ -66,7 +69,7 @@ async function run() {
           hasErrors={loaded.hasErrors}
           display={loaded.display}
         />,
-        { reloadPolicy },
+        { reloadPolicy: loaded.reloadPolicy },
       );
     } catch (error) {
       writeLog({
@@ -85,7 +88,7 @@ async function run() {
               : "多账号小组件加载失败"
           }
         />,
-        { reloadPolicy },
+        { reloadPolicy: fallbackReloadPolicy },
       );
     }
     return;
@@ -117,7 +120,7 @@ async function run() {
 
     if (!demoCard) {
       Widget.present(<ErrorWidget message="演示账号数据不存在" />, {
-        reloadPolicy,
+        reloadPolicy: fallbackReloadPolicy,
       });
       return;
     }
@@ -137,7 +140,7 @@ async function run() {
         fetchedAt={demoCard.fetchedAt}
         family={family}
       />,
-      { reloadPolicy },
+      { reloadPolicy: fallbackReloadPolicy },
     );
     return;
   }
@@ -154,7 +157,7 @@ async function run() {
     Widget.present(
       <ErrorWidget message={loaded.statusText || loaded.errorMessage!} />,
       {
-        reloadPolicy,
+        reloadPolicy: loaded.reloadPolicy,
       },
     );
     return;
@@ -175,7 +178,7 @@ async function run() {
       family={family}
       errorText={loaded.statusText || loaded.errorMessage}
     />,
-    { reloadPolicy },
+    { reloadPolicy: loaded.reloadPolicy },
   );
 }
 

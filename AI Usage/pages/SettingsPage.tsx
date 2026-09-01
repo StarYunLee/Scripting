@@ -55,10 +55,7 @@ import {
   getDashboardWidgetPreferences,
   setDashboardWidgetDisplayPreferences,
 } from "../services/dashboard-widget-prefs";
-import {
-  requestWidgetReload,
-  requestWidgetReloadAfterStorage,
-} from "../services/widgets";
+import { requestWidgetReloadAfterStorage } from "../services/widgets";
 import {
   isAccountShownInOverview,
   setAccountShownInOverview,
@@ -171,7 +168,7 @@ export function SettingsPage(props: {
       setSheet({ ...sheet, status: "正在验证授权…" });
       await authCoordinator.complete(sheet);
       setSheet(null);
-      requestWidgetReload();
+      requestWidgetReloadAfterStorage();
       refresh();
     } catch (error) {
       setSheet((current) =>
@@ -274,7 +271,7 @@ export function SettingsPage(props: {
                     selectedDestination.provider,
                     selectedDestination.account.id,
                   );
-                  requestWidgetReload();
+                  requestWidgetReloadAfterStorage();
                   setSelectedDestination(null);
                   refresh();
                   if (
@@ -538,7 +535,7 @@ export function SettingsPage(props: {
                   refresh();
                   return;
                 }
-                requestWidgetReload();
+                requestWidgetReloadAfterStorage();
                 refresh();
               }}
               pickerStyle="menu"

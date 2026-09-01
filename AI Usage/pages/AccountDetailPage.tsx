@@ -25,7 +25,7 @@ import {
   glassRowBackground,
 } from "../components/GlassList";
 import type { BackgroundThemeId } from "../services/settings";
-import { requestWidgetReload } from "../services/widgets";
+import { requestWidgetReloadAfterStorage } from "../services/widgets";
 import type { UsageWindowView } from "../models";
 import {
   isWindowShownInOverview,
@@ -89,7 +89,7 @@ export function AccountDetailPage(props: {
   const title = props.account.email || props.account.name;
 
   function changed() {
-    requestWidgetReload();
+    requestWidgetReloadAfterStorage();
   }
 
   async function previewWidget(

@@ -18,7 +18,10 @@ import { UsageCardView } from "../components/UsageCardView";
 import { type AuthSheet, type ProviderId, type UsageCard } from "../models";
 import { parseMinimaxAuthChoice } from "../providers/minimax/auth-choice";
 import { refreshAccounts } from "../services/refresh";
-import { requestWidgetReload } from "../services/widgets";
+import {
+  requestWidgetReload,
+  requestWidgetReloadAfterStorage,
+} from "../services/widgets";
 import {
   getAppDisplaySettings,
   type BackgroundThemeId,
@@ -447,7 +450,7 @@ export function StatusPage(props: {
                   openedCard.provider,
                   openedCard.accountId,
                 );
-                requestWidgetReload();
+                requestWidgetReloadAfterStorage();
                 setOpenedCard(null);
                 reloadCards();
                 if (
