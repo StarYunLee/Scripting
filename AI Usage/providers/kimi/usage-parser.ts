@@ -190,7 +190,8 @@ export function parseKimiUsage(
     const descriptor = asObject(root.window);
     const seconds = windowSeconds(descriptor);
     const percents = quotaPercents(detail);
-    const used = percents.used ?? (descriptor ? 0 : null);
+    // 仅有 window 描述、算不出用量时跳过，禁止伪造 usedPercent=0。
+    const used = percents.used;
     if (used == null) continue;
     const reset = resetTime(detail);
     rolling.push({

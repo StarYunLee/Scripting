@@ -1,4 +1,8 @@
-import { formatPlanLabel } from "./format";
+import {
+  formatPlanLabel,
+  planTypeFromComboId,
+  sanitizeCachedPlanType,
+} from "./format";
 import type { LimitWindow, MinimaxRegion } from "./types";
 
 const MINIMAX_WINDOW = {
@@ -10,7 +14,8 @@ export type ParsedMinimaxQuota = {
   windows: LimitWindow[];
   fiveHour: LimitWindow | null;
   weekly: LimitWindow | null;
-  planLabel: string | null;
+  /** 原始档位（不含区域后缀），可供缓存回退 */
+  planType: string | null;
   intervalTotal: number | null;
 };
 
@@ -33,6 +38,13 @@ function toNumber(value: unknown): number | null {
 
 function clamp(value: number): number {
   return Math.max(0, Math.min(100, value));
+}
+
+function firstString(...values: unknown[]): string | null {
+  for (const value of values) {
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  return null;
 }
 
 function quotaRows(payload: unknown): Record<string, unknown>[] {
@@ -142,6 +154,62 @@ function windowFromCounts(options: {
   };
 }
 
+function extractPlanType(
+  object: Record<string, unknown>,
+  row: Record<string, unknown> | null,
+): string | null {
+  const nested =
+    asObject(object.data) ||
+    asObject(object.subscription) ||
+    asObject(object.token_plan) ||
+    asObject(object.coding_plan) ||
+    asObject(row?.subscription) ||
+    null;
+  const comboId =
+    toNumber(row?.combo_id) ??
+    toNumber(row?.package_id) ??
+    toNumber(object.combo_id) ??
+    toNumber(object.package_id) ??
+    toNumber(nested?.combo_id) ??
+    toNumber(nested?.package_id);
+  const fromCombo = planTypeFromComboId(comboId);
+  if (fromCombo) return fromCombo;
+
+  const planRaw = firstString(
+    row?.current_subscribe_title,
+    row?.plan_name,
+    row?.plan,
+    row?.subscribe_title,
+    row?.package_name,
+    row?.product_name,
+    row?.combo_name,
+    object.current_subscribe_title,
+    object.plan_name,
+    object.plan,
+    object.subscribe_title,
+    object.package_name,
+    nested?.current_subscribe_title,
+    nested?.plan_name,
+    nested?.plan,
+    nested?.subscribe_title,
+    nested?.package_name,
+    nested?.title,
+  );
+  return sanitizeCachedPlanType(planRaw) || formatPlanLabel(planRaw);
+}
+
+/** 从 remains_percent / 套餐信息响应中解析档位。 */
+export function parseMinimaxPlanPayload(payload: unknown): string | null {
+  const object = asObject(payload);
+  if (!object) return null;
+  const base = asObject(object.base_resp);
+  const statusCode = toNumber(base?.status_code);
+  if (statusCode != null && statusCode !== 0) return null;
+  const data = asObject(object.data) || object;
+  const row = pickPrimaryRow(quotaRows(object)) || asObject(data);
+  return extractPlanType(object, row);
+}
+
 export function parseMinimaxQuota(
   payload: unknown,
   region: MinimaxRegion,
@@ -186,19 +254,11 @@ export function parseMinimaxQuota(
   if (fiveHour) windows.push(fiveHour);
   if (weekly) windows.push(weekly);
   if (!windows.length) return null;
-  const planRaw =
-    (typeof row.current_subscribe_title === "string" &&
-      row.current_subscribe_title) ||
-    (typeof row.plan_name === "string" && row.plan_name) ||
-    (typeof row.plan === "string" && row.plan) ||
-    (typeof object.current_subscribe_title === "string" &&
-      object.current_subscribe_title) ||
-    null;
   return {
     windows,
     fiveHour,
     weekly,
-    planLabel: formatPlanLabel(planRaw),
+    planType: extractPlanType(object, row),
     intervalTotal,
   };
 }

@@ -17,7 +17,7 @@
 
 面向 [Scripting App](https://scriptingapp.github.io/) 的非官方多平台用量查看应用。在一个项目里管理 Codex、Grok、Claude、Antigravity、Cursor、Kimi Code、GitHub Copilot、Z.ai 与 MiniMax 的多账号用量、主屏幕小组件和自动化刷新。
 
-当前版本：`1.5.2`
+当前版本：`1.5.3`
 
 > 本项目不是 OpenAI、xAI、Anthropic、Google 或 Scripting App 官方产品，与上述平台无隶属或合作关系。
 
@@ -177,13 +177,13 @@ dashboard
 
 ### 刷新频率
 
-- 5 分钟
-- 10 分钟
+- 手动
+- 5 分钟（默认）
 - 15 分钟
-- 30 分钟（默认）
+- 30 分钟
 - 60 分钟
 
-iOS WidgetKit 可能根据系统调度延后刷新。所选时间是请求的最早刷新时间，不是严格定时器。更准时的更新请配合快捷指令自动化。
+该设置同时控制应用启动自动刷新与小组件自动联网的最短间隔；选择“手动”后，仅在下拉、点击刷新或运行快捷指令时联网。iOS WidgetKit 可能根据系统调度延后小组件重建，所选时间不是严格定时器。
 
 ## 数据来源
 

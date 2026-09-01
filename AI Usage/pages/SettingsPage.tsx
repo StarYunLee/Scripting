@@ -27,7 +27,10 @@ import {
 import {
   BACKGROUND_THEMES,
   getAppDisplaySettings,
+  RELOAD_MINUTE_LABELS,
+  RELOAD_MINUTE_OPTIONS,
   setAppReloadMinutes,
+  snapReloadMinutes,
   type BackgroundThemeId,
 } from "../services/settings";
 import {
@@ -526,8 +529,8 @@ export function SettingsPage(props: {
             </Picker>
             <GlassDivider />
             <Picker
-              title="组件自动刷新间隔"
-              value={String(settings.reloadMinutes)}
+              title="刷新间隔"
+              value={String(snapReloadMinutes(settings.reloadMinutes))}
               onChanged={(value: string) => {
                 const result = setAppReloadMinutes(Number(value));
                 if (!result.ok) {
@@ -542,14 +545,14 @@ export function SettingsPage(props: {
               padding={{ vertical: true }}
               frame={{ minHeight: 44, maxWidth: "infinity" }}
             >
-              <Text tag="5">5 分钟</Text>
-              <Text tag="10">10 分钟</Text>
-              <Text tag="15">15 分钟</Text>
-              <Text tag="30">30 分钟</Text>
-              <Text tag="60">60 分钟</Text>
+              {RELOAD_MINUTE_OPTIONS.map((minutes) => (
+                <Text key={minutes} tag={String(minutes)}>
+                  {RELOAD_MINUTE_LABELS[minutes]}
+                </Text>
+              ))}
             </Picker>
             <GlassDivider />
-            <GlassNoteRow text="该间隔同时控制组件建议重建时间与自动联网最短间隔；系统实际调度可能延后。" />
+            <GlassNoteRow text="控制 App 启动自动刷新与小组件自动联网最短间隔；选「手动」则仅下拉/点刷新时联网。系统实际调度小组件可能延后。" />
           </GlassGroup>
         </Section>
 

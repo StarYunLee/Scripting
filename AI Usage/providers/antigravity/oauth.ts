@@ -10,6 +10,7 @@ import {
   getProfileTokenExpiresAt,
   saveProfileCredentials,
 } from "./accounts";
+import { shouldStopCodeAssistHostLoop } from "./host-failover";
 import { parseOAuthCallback, parseProjectInfo } from "./parsing";
 import type { AntigravityProjectInfo } from "./types";
 
@@ -327,7 +328,7 @@ export async function fetchAccountInfo(
         `Antigravity 账号信息请求失败 HTTP ${response.status}`,
         response.status,
       );
-      if (response.status >= 400 && response.status < 500) break;
+      if (shouldStopCodeAssistHostLoop(response.status)) break;
     } catch (error) {
       lastError = error;
     }

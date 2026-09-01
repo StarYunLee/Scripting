@@ -4,7 +4,7 @@ export type WidgetRefreshPlan =
   | { action: "fetch"; reason: "missing_cache" | "stale" }
   | {
       action: "use_cache";
-      reason: "fresh" | "backoff" | "authorization_required";
+      reason: "fresh" | "manual" | "backoff" | "authorization_required";
       retryAt?: string;
     };
 
@@ -32,6 +32,9 @@ export function planWidgetAutomaticRefresh(input: {
       reason: "backoff",
       retryAt: new Date(nextAttempt).toISOString(),
     };
+  }
+  if (input.reloadMinutes <= 0) {
+    return { action: "use_cache", reason: "manual" };
   }
   if (fetchedAt == null) return { action: "fetch", reason: "missing_cache" };
   const interval = Math.max(5, Math.min(360, input.reloadMinutes)) * 60_000;

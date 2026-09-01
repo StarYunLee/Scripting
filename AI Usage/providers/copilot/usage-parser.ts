@@ -110,9 +110,14 @@ function parseQuota(
     entitlement != null && entitlement > 0 && remaining != null
       ? (remaining / entitlement) * 100
       : null;
-  const remainingPercent = clamp(
-    explicitRemainingPercent ?? derivedRemainingPercent ?? 0,
-  );
+  // 无法从 percent_remaining 或 entitlement+remaining 推导时，禁止把「未知」写成 0%。
+  const remainingPercent =
+    explicitRemainingPercent != null
+      ? clamp(explicitRemainingPercent)
+      : derivedRemainingPercent != null
+        ? clamp(derivedRemainingPercent)
+        : null;
+  if (remainingPercent == null) return null;
   return {
     id: `copilot:${name}`,
     name,

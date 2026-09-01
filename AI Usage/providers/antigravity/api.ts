@@ -4,6 +4,7 @@ import {
   resolveProfile,
   updateProfileInfo,
 } from "./accounts";
+import { shouldStopCodeAssistHostLoop } from "./host-failover";
 import { fetchAccountInfo, refreshOAuthToken } from "./oauth";
 import {
   asObject,
@@ -125,7 +126,7 @@ async function postQuota(
       }
     }
     const status = (lastError as UpstreamError | null)?.status;
-    if (status && status >= 400 && status < 500) break;
+    if (shouldStopCodeAssistHostLoop(status)) break;
   }
   if (lastError instanceof Error) throw lastError;
   throw new Error("Antigravity 用量请求失败");

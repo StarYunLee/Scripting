@@ -6,6 +6,15 @@ export type ChangelogEntry = {
 
 export const CHANGELOG = [
   {
+    version: "1.5.3",
+    date: "2026-09-01",
+    changes: [
+      "修复 MiniMax 套餐、账号信息和站点标签异常，并增强 Z.ai 额度窗口、套餐识别与区域错误处理。",
+      "优化 Claude 与 Antigravity 的限流和备用服务恢复，避免 Copilot 与 Kimi 的未知额度被错误显示为 0%。",
+      "统一应用与小组件刷新间隔，支持手动刷新模式并减少启动时不必要的网络请求。",
+    ],
+  },
+  {
     version: "1.5.2",
     date: "2026-08-31",
     changes: [

@@ -1,4 +1,11 @@
-import { Navigation, Script, Tab, TabView, useState } from "scripting";
+import {
+  Navigation,
+  Script,
+  Tab,
+  TabView,
+  useEffect,
+  useState,
+} from "scripting";
 import { SettingsPage } from "./pages/SettingsPage";
 import { StatusPage } from "./pages/StatusPage";
 import { isDemoMode, setDemoMode } from "./services/demo";
@@ -9,13 +16,17 @@ import {
   type BackgroundThemeId,
 } from "./services/settings";
 
-ensureAllMigrations();
-
 function App() {
   const [demoMode, setDemoModeState] = useState(() => isDemoMode());
   const [backgroundTheme, setBackgroundThemeState] =
     useState<BackgroundThemeId>(() => getAppDisplaySettings().backgroundTheme);
   const [overviewRevision, setOverviewRevision] = useState(0);
+
+  // 迁移不挡首帧：各 provider 读取/写入路径（store.ensure）会惰性补齐，
+  // 顶层只保证旧版本升级后尽早跑完未触达的 provider。
+  useEffect(() => {
+    ensureAllMigrations();
+  }, []);
 
   async function updateDemoMode(enabled: boolean) {
     if (!setDemoMode(enabled)) {

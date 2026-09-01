@@ -21,6 +21,7 @@ export type BackgroundThemeId =
   "system_default" | "cool_blue" | "warm_paper" | "mist_haze";
 
 export type AppDisplaySettings = {
+  /** 0 = 手动（App 启动不自动联网；小组件也不自动拉新） */
   reloadMinutes: number;
   backgroundTheme: BackgroundThemeId;
 };
@@ -47,15 +48,38 @@ export const BACKGROUND_THEMES: Array<{
   },
 ];
 
+/** 设置页刷新间隔档位：0 = 手动 */
+export const RELOAD_MINUTE_OPTIONS = [0, 5, 15, 30, 60] as const;
+
+export const RELOAD_MINUTE_LABELS: Record<number, string> = {
+  0: "手动",
+  5: "5 分钟",
+  15: "15 分钟",
+  30: "30 分钟",
+  60: "1 小时",
+};
+
 const DEFAULT_SETTINGS: AppDisplaySettings = {
-  reloadMinutes: 30,
+  // 贴近原先「打开几乎会刷一次」的体验，同时允许短时复用缓存秒开。
+  reloadMinutes: 5,
   backgroundTheme: "system_default",
 };
 
+/** 把任意遗留值吸附到最近档位，保证 Picker 有选中项。 */
+export function snapReloadMinutes(value: number): number {
+  let nearest: number = RELOAD_MINUTE_OPTIONS[0];
+  for (const option of RELOAD_MINUTE_OPTIONS) {
+    if (Math.abs(option - value) < Math.abs(nearest - value)) nearest = option;
+  }
+  return nearest;
+}
+
 function clampMinutes(value: unknown): number {
   const n = typeof value === "number" ? value : Number(value);
-  if (!Number.isFinite(n) || n < 5) return DEFAULT_SETTINGS.reloadMinutes;
-  return Math.min(360, n);
+  if (!Number.isFinite(n)) return DEFAULT_SETTINGS.reloadMinutes;
+  if (n === 0) return 0;
+  if (n < 5) return DEFAULT_SETTINGS.reloadMinutes;
+  return snapReloadMinutes(Math.min(360, n));
 }
 
 function normalizeTheme(value: unknown): BackgroundThemeId {
@@ -117,10 +141,13 @@ export function setAppReloadMinutes(
   } catch {
     return { ok: false, value: next };
   }
-  setCodexReloadMinutes(next.reloadMinutes);
-  setGrokReloadMinutes(next.reloadMinutes);
-  setClaudeReloadMinutes(next.reloadMinutes);
-  setAntigravityReloadMinutes(next.reloadMinutes);
+  // provider 凭证层不接受 0（手动）；仅在有效自动间隔时向下同步。
+  if (next.reloadMinutes > 0) {
+    setCodexReloadMinutes(next.reloadMinutes);
+    setGrokReloadMinutes(next.reloadMinutes);
+    setClaudeReloadMinutes(next.reloadMinutes);
+    setAntigravityReloadMinutes(next.reloadMinutes);
+  }
   return { ok: true, value: next };
 }
 

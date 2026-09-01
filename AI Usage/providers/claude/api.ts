@@ -1,5 +1,6 @@
 import { fetch, Response } from "scripting";
 import { getProfileAccessToken, resolveProfile } from "./accounts";
+import { decideClaudeFetchGate } from "./fetch-gate";
 import { refreshOAuthToken } from "./oauth";
 import type { LimitWindow, UsageResult, UsageSnapshot } from "./types";
 import { claudeScopedWindowTitle, claudeWindowTitle } from "./window-titles";
@@ -286,21 +287,24 @@ export async function fetchUsage(options?: {
     };
   }
   const cache = readCache(profile.id);
-  const blockedUntil = readBlockedUntil(profile.id);
-  if (blockedUntil) {
+  const gate = decideClaudeFetchGate({
+    force: Boolean(options?.force),
+    cacheIsRecent: recent(cache),
+    blockedUntil: readBlockedUntil(profile.id),
+  });
+  if (gate.action === "use_cache") {
+    return { ok: true, snapshot: cache! };
+  }
+  if (gate.action === "rate_limited") {
     return {
       ok: false,
       error: {
         code: "rate_limited",
-        message: `Anthropic 用量接口限流，请在 ${new Date(blockedUntil).toLocaleTimeString()} 后重试`,
+        message: `Anthropic 用量接口限流，请在 ${new Date(gate.blockedUntil).toLocaleTimeString()} 后重试`,
         status: 429,
       },
       cache,
     };
-  }
-  const cacheIsRecent = recent(cache);
-  if (!options?.force && cacheIsRecent) {
-    return { ok: true, snapshot: cache! };
   }
 
   let token = await refreshOAuthToken(profile.id);

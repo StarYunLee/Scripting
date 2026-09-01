@@ -1,12 +1,14 @@
 import { activePendingAuthorization } from "../../services/oauth-pending";
 import { fetch } from "scripting";
+import { parseJwtPayload } from "../../services/jwt-payload";
 import {
   getProfileAccessToken,
   getProfileRegion,
   saveProfileCredentials,
 } from "./accounts";
+import { regionDisplayName } from "./format";
 import { chooseMinimaxRegion } from "./region-selection";
-import { consoleUrlForRegion, quotaUrls } from "./regions";
+import { consoleUrlForRegion, quotaUrls, userInfoUrls } from "./regions";
 import type { MinimaxRegion } from "./types";
 
 const PENDING_KEY = "ai_usage_minimax_oauth_pending_v1";
@@ -16,6 +18,12 @@ type PendingAuth = {
   createdAt: number;
   profileId: string;
   region: MinimaxRegion;
+};
+
+export type MinimaxIdentity = {
+  email: string | null;
+  accountId: string | null;
+  name: string | null;
 };
 
 function savePending(value: PendingAuth): void {
@@ -105,6 +113,127 @@ function normalizeApiKey(input: string): string {
   return trimmed;
 }
 
+function asObject(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function firstString(...values: unknown[]): string | null {
+  for (const value of values) {
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  return null;
+}
+
+function parseIdentityPayload(payload: unknown): MinimaxIdentity | null {
+  const object = asObject(payload);
+  if (!object) return null;
+  const base = asObject(object.base_resp);
+  const statusCode =
+    typeof base?.status_code === "number" ? base.status_code : null;
+  if (statusCode != null && statusCode !== 0) return null;
+
+  const data =
+    asObject(object.data) ||
+    asObject(object.user) ||
+    asObject(object.user_info) ||
+    asObject(object.biz_info) ||
+    object;
+
+  const email = firstString(
+    data.email,
+    data.mail,
+    data.user_email,
+    object.email,
+    object.mail,
+  );
+  const emailOk = email && email.includes("@") ? email : null;
+
+  const accountId = firstString(
+    data.user_id,
+    data.uid,
+    data.id,
+    data.account_id,
+    data.subject,
+    object.user_id,
+    object.uid,
+    object.account_id,
+  );
+
+  const org = firstString(
+    data.org_name,
+    data.organization_name,
+    data.organization,
+    data.group_name,
+    data.company_name,
+    data.team_name,
+  );
+  const nickname = firstString(
+    data.nickname,
+    data.nick_name,
+    data.user_name,
+    data.username,
+    data.name,
+    data.display_name,
+    object.nickname,
+    object.name,
+  );
+
+  const name = nickname || org || emailOk;
+  if (!emailOk && !accountId && !name) return null;
+  return { email: emailOk, accountId, name };
+}
+
+function identityFromJwt(token: string): MinimaxIdentity | null {
+  const jwt = parseJwtPayload(token);
+  if (!jwt) return null;
+  const emailRaw = firstString(jwt.email, jwt.mail, jwt.user_email);
+  const email = emailRaw && emailRaw.includes("@") ? emailRaw : null;
+  const accountId = firstString(
+    jwt.sub,
+    jwt.user_id,
+    jwt.uid,
+    jwt.id,
+    jwt.account_id,
+  );
+  const name = firstString(
+    jwt.nickname,
+    jwt.name,
+    jwt.preferred_username,
+    jwt.username,
+  );
+  if (!email && !accountId && !name) return null;
+  return { email, accountId, name };
+}
+
+/** 登录完成后拉取用户信息（对齐 antigravity fetchUserInfo / claude JWT）。 */
+export async function fetchUserInfo(
+  token: string,
+  region: MinimaxRegion,
+): Promise<MinimaxIdentity> {
+  for (const url of userInfoUrls(region)) {
+    try {
+      const response = await fetch(url, {
+        method: "GET",
+        headers: minimaxRequestHeaders(token),
+        timeout: 15,
+        debugLabel:
+          region === "intl" ? "MinimaxUserInfoIntl" : "MinimaxUserInfoCn",
+      });
+      if (response.status === 401 || response.status === 403) continue;
+      if (!response.ok) continue;
+      const text = await response.text();
+      if (!text.trim() || text.trim().startsWith("<")) continue;
+      const identity = parseIdentityPayload(JSON.parse(text));
+      if (identity) return identity;
+    } catch {
+      /* try next endpoint */
+    }
+  }
+  return identityFromJwt(token) || { email: null, accountId: null, name: null };
+}
+
 async function probeRegionPayload(
   apiKey: string,
   region: MinimaxRegion,
@@ -149,14 +278,14 @@ export async function completeMinimaxLogin(input?: string): Promise<void> {
       );
 
     const masked = `${apiKey.slice(0, 4)}…${apiKey.slice(-4)}`;
+    const fallbackName = `MiniMax ${regionDisplayName(region)} ${masked}`;
+    const identity = await fetchUserInfo(apiKey, region);
     const saved = saveProfileCredentials(pending.profileId, {
       accessToken: apiKey,
       region,
-      name:
-        region === "cn"
-          ? `MiniMax 国内站 ${masked}`
-          : `MiniMax 国际站 ${masked}`,
-      accountId: masked,
+      name: identity.name || identity.email || fallbackName,
+      email: identity.email,
+      accountId: identity.accountId || masked,
     });
     if (!saved)
       throw new Error("Subscription Key 已验证，但本机 Keychain 保存失败");
