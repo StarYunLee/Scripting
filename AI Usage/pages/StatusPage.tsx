@@ -415,6 +415,7 @@ export function StatusPage(props: {
         navigationBarTitleDisplayMode="inline"
         scrollContentBackground="hidden"
         listStyle="plain"
+        listRowSeparator="hidden"
         listRowSpacing={0}
         background={<PageBackground theme={props.backgroundTheme} />}
         toolbar={toolbar}

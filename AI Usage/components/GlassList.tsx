@@ -7,6 +7,7 @@ function GlassRowBackground() {
   return (
     <VStack
       frame={{ maxWidth: "infinity", maxHeight: "infinity" }}
+      listRowSeparator="hidden"
       glassEffect={{
         glass: UIGlass.regular(),
         shape: {
@@ -27,6 +28,7 @@ export function GlassGroup(props: { children: VStackProps["children"] }) {
       spacing={0}
       frame={{ maxWidth: "infinity" }}
       listRowInsets={{ top: 0, bottom: 0, leading: 16, trailing: 16 }}
+      listRowSeparator="hidden"
     >
       {props.children}
     </VStack>

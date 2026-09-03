@@ -202,6 +202,7 @@ export function LogPage(props: { backgroundTheme: BackgroundThemeId }) {
       navigationBarTitleDisplayMode="inline"
       scrollContentBackground="hidden"
       listStyle="plain"
+      listRowSeparator="hidden"
       listRowSpacing={12}
       listSectionSpacing={12}
       contentMargins={{

@@ -6,6 +6,7 @@ import {
   formatPercent,
   formatRelativeFetchedAt,
   formatRelativeResetAt,
+  formatSingleWindowResetAt,
   formatSmallDate,
   formatSmallRelativeFetchedAt,
 } from "../services/usage-format";
@@ -116,7 +117,7 @@ export function WidgetDispatcher(props: Props) {
           usedText={formatPercent(w.usedPercent)}
           remainingText={formatPercent(w.remainingPercent)}
           fetchedText={singleFetchedText}
-          resetText={formatRelativeResetAt(w.resetAt)}
+          resetText={formatSingleWindowResetAt(w.resetAt)}
           optionalMeta={optionalMeta.small}
         />
       );
@@ -160,7 +161,7 @@ export function WidgetDispatcher(props: Props) {
         usedText={formatPercent(w.usedPercent)}
         remainingText={formatPercent(w.remainingPercent)}
         fetchedText={fetchedText}
-        resetText={formatRelativeResetAt(w.resetAt)}
+        resetText={formatSingleWindowResetAt(w.resetAt)}
         optionalMeta={optionalMeta.medium}
         errorText={props.errorText}
       />

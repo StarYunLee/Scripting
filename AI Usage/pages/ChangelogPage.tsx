@@ -8,6 +8,7 @@ function ChangelogRowBackground() {
   return (
     <VStack
       frame={{ maxWidth: "infinity", maxHeight: "infinity" }}
+      listRowSeparator="hidden"
       glassEffect={{
         glass: UIGlass.regular(),
         shape: { type: "rect", cornerRadius: 20, style: "continuous" },
@@ -26,6 +27,7 @@ function ChangelogGroup(props: { children: VStackProps["children"] }) {
       frame={{ maxWidth: "infinity", alignment: "leading" }}
       padding={{ vertical: true }}
       listRowInsets={{ top: 0, bottom: 0, leading: 16, trailing: 16 }}
+      listRowSeparator="hidden"
     >
       {props.children}
     </VStack>
@@ -56,6 +58,7 @@ export function ChangelogPage(props: { backgroundTheme: BackgroundThemeId }) {
       navigationBarTitleDisplayMode="inline"
       scrollContentBackground="hidden"
       listStyle="plain"
+      listRowSeparator="hidden"
       listRowSpacing={12}
       listSectionSpacing={12}
       contentMargins={{

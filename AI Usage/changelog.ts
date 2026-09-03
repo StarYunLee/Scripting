@@ -6,6 +6,14 @@ export type ChangelogEntry = {
 
 export const CHANGELOG = [
   {
+    version: "1.5.5",
+    date: "2026-09-04",
+    changes: [
+      "重置倒计时增加天与小时、小时与分钟的双单位显示，并优化应用用量卡与多种主屏幕小组件的信息精度。",
+      "修复应用内毛玻璃卡片底部高光可能被系统分割线遮挡的问题，完善深浅色界面边缘表现。",
+    ],
+  },
+  {
     version: "1.5.4",
     date: "2026-09-01",
     changes: [

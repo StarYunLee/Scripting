@@ -2,6 +2,7 @@ import {
   Button,
   Divider,
   HStack,
+  Image,
   ProgressView,
   Spacer,
   Text,
@@ -150,9 +151,20 @@ export function UsageCardView(props: {
                   {percentLabel} {formatPercent(value)}
                 </Text>
               </HStack>
-              <Text font={12} foregroundStyle="secondaryLabel">
-                {formatRelativeResetAt(window.resetAt)}
-              </Text>
+              <HStack spacing={4}>
+                <Image
+                  systemName="timer"
+                  font={10}
+                  foregroundStyle="secondaryLabel"
+                />
+                <Text
+                  font={12}
+                  foregroundStyle="secondaryLabel"
+                  monospacedDigit
+                >
+                  {formatRelativeResetAt(window.resetAt)}
+                </Text>
+              </HStack>
               {value == null ? (
                 <Text font={12} foregroundStyle="secondaryLabel">
                   暂无进度

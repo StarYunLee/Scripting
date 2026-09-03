@@ -42,20 +42,51 @@ export function formatSmallRelativeFetchedAt(
   return formatTimeOnly(iso);
 }
 
+const MINUTE_MS = 60_000;
+
+function resetDiffMs(iso: string | null | undefined): number | null {
+  if (!iso) return null;
+  const time = new Date(iso).getTime();
+  if (Number.isNaN(time)) return null;
+  return time - Date.now();
+}
+
+function resetDurationParts(diffMs: number): {
+  days: number;
+  hours: number;
+  minutes: number;
+} {
+  const totalMinutes = Math.floor(diffMs / MINUTE_MS);
+  return {
+    days: Math.floor(totalMinutes / (24 * 60)),
+    hours: Math.floor((totalMinutes % (24 * 60)) / 60),
+    minutes: totalMinutes % 60,
+  };
+}
+
+function fullResetDuration(diffMs: number): string {
+  const { days, hours, minutes } = resetDurationParts(diffMs);
+  if (days > 0) return `${days}天${hours}小时`;
+  if (hours > 0) return `${hours}小时${minutes}分`;
+  return `${Math.max(1, minutes)}分钟`;
+}
+
 export function formatRelativeResetAt(iso: string | null | undefined): string {
-  if (!iso) return "—";
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return "—";
-  const diffMs = date.getTime() - Date.now();
+  const diffMs = resetDiffMs(iso);
+  if (diffMs == null) return "—";
   if (diffMs < 0) return "已重置";
-  if (diffMs < 60_000) return "即将重置";
-  if (diffMs < 3_600_000) return `${Math.floor(diffMs / 60_000)} 分钟后重置`;
-  if (diffMs < 86_400_000)
-    return `${Math.floor(diffMs / 3_600_000)} 小时后重置`;
-  if (diffMs < 86_400_000 * 7) {
-    return `${Math.floor(diffMs / 86_400_000)} 天后重置`;
-  }
-  return `${date.getMonth() + 1}月${date.getDate()}日重置`;
+  if (diffMs < MINUTE_MS) return "即将重置";
+  return `${fullResetDuration(diffMs)}后重置`;
+}
+
+export function formatSingleWindowResetAt(
+  iso: string | null | undefined,
+): string {
+  const diffMs = resetDiffMs(iso);
+  if (diffMs == null) return "—";
+  if (diffMs < 0) return "已重置";
+  if (diffMs < MINUTE_MS) return "即将重置";
+  return fullResetDuration(diffMs);
 }
 
 export function formatSmallDate(resetAtIso: string | null | undefined): string {
@@ -90,33 +121,19 @@ export function formatCompactDate(iso: string | null | undefined): string {
 }
 
 export function formatResetCountdown(iso: string | null | undefined): string {
-  if (!iso) return "";
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return "";
-  const diffMs = date.getTime() - Date.now();
-  if (diffMs < 0) return "";
-  if (diffMs < 60_000) return "1m";
-  if (diffMs < 3_600_000) return `${Math.max(1, Math.floor(diffMs / 60_000))}m`;
-  if (diffMs < 86_400_000)
-    return `${Math.max(1, Math.floor(diffMs / 3_600_000))}h`;
-  return `${Math.max(1, Math.floor(diffMs / 86_400_000))}d`;
+  const diffMs = resetDiffMs(iso);
+  if (diffMs == null || diffMs < 0) return "";
+  if (diffMs < MINUTE_MS) return "1m";
+  const { days, hours, minutes } = resetDurationParts(diffMs);
+  if (days > 0) return `${days}d${hours}h`;
+  if (hours > 0) return `${hours}h${minutes}m`;
+  return `${Math.max(1, minutes)}m`;
 }
 
 export function formatCompactRelativeResetAt(
   iso: string | null | undefined,
 ): string {
-  if (!iso) return "—";
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return "—";
-  const diffMs = date.getTime() - Date.now();
-  if (diffMs < 0) return "已重置";
-  if (diffMs < 60_000) return "即将重置";
-  if (diffMs < 3_600_000) return `${Math.floor(diffMs / 60_000)}分钟后重置`;
-  if (diffMs < 86_400_000) return `${Math.floor(diffMs / 3_600_000)}小时后重置`;
-  if (diffMs < 86_400_000 * 30) {
-    return `${Math.floor(diffMs / 86_400_000)}天后重置`;
-  }
-  return `${date.getMonth() + 1}月${date.getDate()}日重置`;
+  return formatRelativeResetAt(iso);
 }
 
 export function formatResetDate(resetAtIso: string | null | undefined): string {
