@@ -6,6 +6,17 @@ export type ChangelogEntry = {
 
 export const CHANGELOG = [
   {
+    version: "1.0.1",
+    date: "2026-09-03",
+    changes: [
+      "重构数据刷新与并发调度机制，支持各资源独立请求去重、失败退避与代际校验，避免旧响应覆盖新状态。",
+      "为 Star、自定义列表、仓库归属与本人仓库引入实体级串行队列，防止连续操作产生并发冲突。",
+      "优化启动与后台静默校验策略，按资源记录同步时间，并为列表归属增加来源指纹与缓存有效期。",
+      "改进网络错误与限流识别，只读请求支持单页重试并遵守服务端限流重置时间。",
+      "消除列表卡片与设置页选项下边缘的系统分割线遮挡，保持毛玻璃连续圆角高光完整。",
+    ],
+  },
+  {
     version: "1.0.0",
     date: "2026-08-26",
     changes: [
@@ -18,16 +29,12 @@ export const CHANGELOG = [
   {
     version: "0.9.0",
     date: "2026-08-25",
-    changes: [
-      "Stars 页支持粘贴仓库链接或 owner/repo 手动添加 Star。",
-    ],
+    changes: ["Stars 页支持粘贴仓库链接或 owner/repo 手动添加 Star。"],
   },
   {
     version: "0.8.0",
     date: "2026-08-25",
-    changes: [
-      "个人资料卡新增 GitHub 主页钉选仓库，点击即可在 App 内预览。",
-    ],
+    changes: ["个人资料卡新增 GitHub 主页钉选仓库，点击即可在 App 内预览。"],
   },
   {
     version: "0.7.0",

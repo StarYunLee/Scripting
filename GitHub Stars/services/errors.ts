@@ -1,5 +1,35 @@
 import type { GitHubError, GitHubErrorKind } from "../types";
 
+type HeaderReadableResponse = {
+  status: number;
+  headers: { get(name: string): string | null };
+};
+
+export function responseRetryAfter(
+  response: HeaderReadableResponse,
+  now = Date.now(),
+): string | null {
+  const retryAfter = response.headers.get("Retry-After")?.trim();
+  if (retryAfter) return retryAfter;
+  const reset = Number(response.headers.get("X-RateLimit-Reset"));
+  if (Number.isFinite(reset) && reset > Math.floor(now / 1000)) {
+    return String(Math.max(1, Math.ceil(reset - now / 1000)));
+  }
+  return null;
+}
+
+export function isRateLimitedResponse(
+  response: HeaderReadableResponse,
+): boolean {
+  const retryAfter = response.headers.get("Retry-After")?.trim();
+  return (
+    response.status === 429 ||
+    (response.status === 403 &&
+      (response.headers.get("X-RateLimit-Remaining") === "0" ||
+        Boolean(retryAfter)))
+  );
+}
+
 export function createGitHubError(
   kind: GitHubErrorKind,
   message: string,
@@ -31,10 +61,13 @@ export function displayError(error: GitHubError | null): string | null {
         : "GitHub 拒绝了请求，可能是权限不足。";
     case "not_found":
       return error.message;
-    case "rate_limited":
-      return error.retryAfter
-        ? `GitHub API 已限流，请在 ${error.retryAfter} 后重试。`
-        : "GitHub API 已限流，请稍后重试。";
+    case "rate_limited": {
+      const retryAfter = error.retryAfter?.trim();
+      if (!retryAfter) return "GitHub API 已限流，请稍后重试。";
+      return /^\d+(?:\.\d+)?$/.test(retryAfter)
+        ? `GitHub API 已限流，请在约 ${retryAfter} 秒后重试。`
+        : `GitHub API 已限流，请在 ${retryAfter} 后重试。`;
+    }
     case "network":
       return "网络请求失败，请检查网络后重试。";
     case "graphql":

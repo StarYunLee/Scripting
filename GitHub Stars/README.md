@@ -11,7 +11,7 @@
 
 面向 [Scripting App](https://scriptingapp.github.io/) 的非官方 GitHub Stars 与公开仓库管理应用。在 iPhone 上浏览 Stars、维护自定义列表与本人公开仓库，并查看个人资料、贡献热力图与常用语言。
 
-当前版本：`1.0.0`
+当前版本：`1.0.1`
 
 > 本项目不是 GitHub 或 Scripting App 官方产品，与上述平台无隶属或合作关系。
 
@@ -73,7 +73,6 @@ Fine-grained PAT 可以只读 Stars，但不能稳定管理自定义列表。完
 - **取消 Star**：仅 Stars 页支持长按卡片；列表详情页不提供该操作，避免误当成移出当前分组。
 - **列表**：删除自定义列表只去掉分组，不会取消仓库 Star。
 - **仓库**：默认只显示本人公开仓库；设置页可开启私有仓库，需 Classic PAT 的 `repo` 权限。已设置为 GitHub Pinned 的仓库会按 GitHub 顺序置顶显示，并标注 Pinned。可编辑描述、Homepage、Topics 和 Issues；Fork 可同步上游默认分支，冲突时不会强制覆盖；归档前必须输入仓库名称确认。
-
 
 ## 数据来源
 

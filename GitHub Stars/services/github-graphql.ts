@@ -1,6 +1,11 @@
 import { fetch, type RequestInit, type Response } from "scripting";
 import { readToken } from "../auth/token";
-import { createGitHubError } from "./errors";
+import {
+  createGitHubError,
+  isRateLimitedResponse,
+  responseRetryAfter,
+} from "./errors";
+import { retryDelayMs, wait } from "./request-retry";
 import type { GitHubContributionCalendar } from "../types";
 
 const ENDPOINT = "https://api.github.com/graphql";
@@ -161,6 +166,22 @@ function authHeaders(): Record<string, string> {
 async function executeGraphQL<T>(
   query: string,
   variables: Record<string, unknown> = {},
+  retryRead = false,
+): Promise<T> {
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      return await executeGraphQLOnce<T>(query, variables);
+    } catch (error) {
+      const delay = retryRead ? retryDelayMs(error, attempt) : null;
+      if (delay === null) throw error;
+      await wait(delay);
+    }
+  }
+}
+
+async function executeGraphQLOnce<T>(
+  query: string,
+  variables: Record<string, unknown> = {},
 ): Promise<T> {
   let response: Response;
   try {
@@ -174,6 +195,25 @@ async function executeGraphQL<T>(
   } catch {
     throw createGitHubError("network", "网络请求失败");
   }
+  if (!response.ok) {
+    const rateLimited = isRateLimitedResponse(response);
+    const kind = rateLimited
+      ? "rate_limited"
+      : response.status === 401
+        ? "unauthorized"
+        : response.status === 403
+          ? "forbidden"
+          : response.status >= 500
+            ? "server"
+            : "graphql";
+    throw createGitHubError(
+      kind,
+      `HTTP ${response.status}`,
+      response.status,
+      rateLimited ? responseRetryAfter(response) : null,
+    );
+  }
+
   const raw = await response.text();
   let body: GraphQLResponse<T>;
   try {
@@ -185,22 +225,18 @@ async function executeGraphQL<T>(
       response.status,
     );
   }
-  if (!response.ok) {
-    const kind =
-      response.status === 401
-        ? "unauthorized"
-        : response.status === 403
-          ? "forbidden"
-          : response.status >= 500
-            ? "server"
-            : "graphql";
-    throw createGitHubError(kind, `HTTP ${response.status}`, response.status);
-  }
   if (body.errors?.length) {
+    const message = body.errors
+      .map((item) => item.message ?? "未知错误")
+      .join("；");
+    const rateLimited =
+      isRateLimitedResponse(response) ||
+      /(?:primary|secondary)?\s*rate limit/i.test(message);
     throw createGitHubError(
-      "graphql",
-      body.errors.map((item) => item.message ?? "未知错误").join("；"),
+      rateLimited ? "rate_limited" : "graphql",
+      message,
       response.status,
+      rateLimited ? responseRetryAfter(response) : null,
     );
   }
   if (!body.data)
@@ -273,6 +309,7 @@ export async function fetchViewerSummary(): Promise<
     }
   }`,
     { from, to },
+    true,
   );
   return result.viewer;
 }
@@ -303,6 +340,7 @@ export async function fetchContributionsByYear(
     }
   }`,
     { from, to },
+    true,
   );
   return result.viewer.contributionsCollection.contributionCalendar;
 }
@@ -328,6 +366,7 @@ export async function fetchListSummaries(): Promise<
       }
     }`,
       { cursor },
+      true,
     );
     all.push(
       ...result.viewer.lists.nodes.filter(
@@ -395,6 +434,7 @@ export async function fetchListItems(
     }
   }`,
     { id: listId, cursor },
+    true,
   );
   return result.node;
 }

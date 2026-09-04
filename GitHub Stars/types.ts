@@ -63,10 +63,19 @@ export type RepositoryMembership = {
   listName: string;
 };
 
+export type ResourceSyncTimestamps = {
+  viewer: string | null;
+  stars: string | null;
+  lists: string | null;
+  ownedRepositories: string | null;
+  memberships: string | null;
+};
+
 export type MembershipSnapshot = {
   version: 1;
   repositories: Record<string, RepositoryMembership[]>;
   savedAt: string;
+  sourceFingerprint?: string;
 };
 
 export type GitHubContributionDay = {
@@ -144,6 +153,7 @@ export type AppState = {
   lists: GitHubListSummary[];
   ownedRepositories: OwnedRepository[];
   memberships: MembershipSnapshot | null;
+  resourceSyncedAt: ResourceSyncTimestamps;
   listDetails: Record<string, GitHubListDetail>;
   viewerState: LoadState;
   starsState: LoadState;
@@ -156,6 +166,7 @@ export type AppState = {
   ownedRepositoriesError: GitHubError | null;
   detailErrors: Record<string, GitHubError | null>;
   lastSyncedAt: string | null;
+  hasCachedMain: boolean;
 };
 
 export type CacheEnvelope = {
@@ -164,4 +175,5 @@ export type CacheEnvelope = {
   stars: GitHubRepository[];
   lists: GitHubListSummary[];
   savedAt: string;
+  resourceSyncedAt?: ResourceSyncTimestamps;
 };

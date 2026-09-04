@@ -115,9 +115,15 @@ export function ListDetailPage(props: {
             />
           </GlassGroup>
         ) : null}
-        {loading && !detail ? <EmptyState title="正在加载分组内容" /> : null}
+        {loading && !detail ? (
+          <GlassGroup>
+            <EmptyState title="正在加载分组内容" />
+          </GlassGroup>
+        ) : null}
         {!loading && !error && detail && detail.items.length === 0 ? (
-          <EmptyState title="分组为空" />
+          <GlassGroup>
+            <EmptyState title="分组为空" />
+          </GlassGroup>
         ) : null}
         {detail?.items.map((repo) => (
           <RepositoryCard

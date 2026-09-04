@@ -1,6 +1,12 @@
 import { fetch, type RequestInit, type Response } from "scripting";
 import { readToken } from "../auth/token";
-import { createGitHubError } from "./errors";
+import {
+  createGitHubError,
+  isRateLimitedResponse,
+  responseRetryAfter,
+} from "./errors";
+
+import { retryDelayMs, wait } from "./request-retry";
 
 const API_BASE = "https://api.github.com";
 const API_VERSION = "2026-03-10";
@@ -74,14 +80,16 @@ function headers(
   };
 }
 
-async function request(
-  path: string,
-  init: RequestInit = {},
-): Promise<{
+type RequestResult = {
   status: number;
   body: unknown;
   oauthScopes: string | null;
-}> {
+};
+
+async function requestOnce(
+  path: string,
+  init: RequestInit = {},
+): Promise<RequestResult> {
   let response: Response;
   try {
     response = await fetch(`${API_BASE}${path}`, {
@@ -108,18 +116,21 @@ async function request(
       typeof body === "object" && body !== null && "message" in body
         ? String((body as { message: unknown }).message)
         : `HTTP ${response.status}`;
-    const kind =
-      response.status === 401
+    const rateLimited =
+      isRateLimitedResponse(response) ||
+      (response.status === 403 &&
+        /(?:primary|secondary)?\s*rate limit/i.test(message));
+    const kind = rateLimited
+      ? "rate_limited"
+      : response.status === 401
         ? "unauthorized"
         : response.status === 403
           ? "forbidden"
           : response.status === 404
             ? "not_found"
-            : response.status === 429
-              ? "rate_limited"
-              : response.status >= 500
-                ? "server"
-                : "unknown";
+            : response.status >= 500
+              ? "server"
+              : "unknown";
     const mappedMessage =
       kind === "not_found" &&
       (init.method === "DELETE" || init.method === "PUT")
@@ -129,13 +140,37 @@ async function request(
         : kind === "forbidden"
           ? "GitHub 拒绝了请求，可能是权限不足。公开仓库需要 public_repo，私有仓库需要 repo。"
           : message;
-    throw createGitHubError(kind, mappedMessage, response.status, null);
+    throw createGitHubError(
+      kind,
+      mappedMessage,
+      response.status,
+      rateLimited ? responseRetryAfter(response) : null,
+    );
   }
   return {
     status: response.status,
     body,
     oauthScopes: response.headers.get("X-OAuth-Scopes"),
   };
+}
+
+function isReadMethod(init: RequestInit): boolean {
+  return !init.method || init.method === "GET";
+}
+
+async function request(
+  path: string,
+  init: RequestInit = {},
+): Promise<RequestResult> {
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      return await requestOnce(path, init);
+    } catch (error) {
+      const delay = isReadMethod(init) ? retryDelayMs(error, attempt) : null;
+      if (delay === null) throw error;
+      await wait(delay);
+    }
+  }
 }
 
 async function requestJsonWithScopes<T>(
@@ -236,10 +271,11 @@ export async function fetchOwnedRepositories(
 ): Promise<RestStarredRepository[]> {
   const result: RestStarredRepository[] = [];
   const visibility = includePrivateRepositories ? "all" : "public";
-  const { data, oauthScopes } =
-    await requestJsonWithScopes<RestStarredRepository[]>(
-      `/user/repos?affiliation=owner&visibility=${visibility}&sort=pushed&direction=desc&per_page=100&page=1`,
-    );
+  const { data, oauthScopes } = await requestJsonWithScopes<
+    RestStarredRepository[]
+  >(
+    `/user/repos?affiliation=owner&visibility=${visibility}&sort=pushed&direction=desc&per_page=100&page=1`,
+  );
   if (includePrivateRepositories) {
     const scopes = (oauthScopes ?? "")
       .split(",")
@@ -357,11 +393,14 @@ export async function syncOwnedFork(
   fullName: string,
   branch: string,
 ): Promise<SyncForkResponse> {
-  return requestJson<SyncForkResponse>(`${repositoryPath(fullName)}/merge-upstream`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ branch }),
-  });
+  return requestJson<SyncForkResponse>(
+    `${repositoryPath(fullName)}/merge-upstream`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ branch }),
+    },
+  );
 }
 
 export async function fetchRepository(

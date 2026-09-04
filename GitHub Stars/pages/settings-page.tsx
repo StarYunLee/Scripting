@@ -59,10 +59,9 @@ export function SettingsPage(props: { store: GitHubDataStore }) {
     }
     const confirmed = await Dialog.confirm({
       title: hasToken() ? "更换个人访问令牌" : "保存个人访问令牌",
-      message:
-        state.includePrivateRepositories
-          ? "需要 Personal access token (classic) 的 user 与 repo 权限。repo 用于私有仓库访问，也覆盖公开仓库管理和 Star 写入。令牌只保存在本机 Keychain。"
-          : "需要 Personal access token (classic) 的 user 与 public_repo 权限。public_repo 用于公开仓库管理和 Star 写入，令牌只保存在本机 Keychain。",
+      message: state.includePrivateRepositories
+        ? "需要 Personal access token (classic) 的 user 与 repo 权限。repo 用于私有仓库访问，也覆盖公开仓库管理和 Star 写入。令牌只保存在本机 Keychain。"
+        : "需要 Personal access token (classic) 的 user 与 public_repo 权限。public_repo 用于公开仓库管理和 Star 写入，令牌只保存在本机 Keychain。",
       cancelLabel: "取消",
       confirmLabel: "保存并验证",
     });
@@ -72,7 +71,7 @@ export function SettingsPage(props: { store: GitHubDataStore }) {
       saveToken(raw);
       setSavedTokenMask(storedTokenMask());
       setTokenDraft("");
-      store.refreshTokenState();
+      store.refreshTokenState(true);
       await store.refreshAll(true);
       if (state.includePrivateRepositories) {
         await store.refreshOwnedRepositories();
