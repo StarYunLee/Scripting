@@ -3,6 +3,17 @@ export function formatError(error: unknown): string {
     error instanceof Error && error.message ? error.message : String(error);
   const lower = raw.toLowerCase();
   if (
+    lower.includes("403") ||
+    lower.includes("resource not accessible by personal access token") ||
+    lower.includes("permission denied") ||
+    lower.includes("insufficient permission") ||
+    lower.includes("push access") ||
+    lower.includes("write permission") ||
+    lower.includes("写入权限")
+  ) {
+    return "目标仓库没有写入权限。请确认 Token 已授权目标仓库，并授予 Contents: Read and write。";
+  }
+  if (
     lower.includes("bad credentials") ||
     lower.includes("401") ||
     lower.includes("unauthorized") ||

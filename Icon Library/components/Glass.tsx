@@ -15,6 +15,7 @@ function GlassRowBackground() {
   return (
     <VStack
       frame={{ maxWidth: "infinity", maxHeight: "infinity" }}
+      listRowSeparator="hidden"
       glassEffect={{
         glass: UIGlass.regular(),
         shape: {
@@ -35,6 +36,7 @@ export function GlassGroup(props: { children: VStackProps["children"] }) {
       spacing={0}
       frame={{ maxWidth: "infinity" }}
       listRowInsets={{ top: 0, bottom: 0, leading: 16, trailing: 16 }}
+      listRowSeparator="hidden"
     >
       {props.children}
     </VStack>
@@ -82,6 +84,104 @@ export function GlassActionRow(props: {
         <Spacer />
       </HStack>
     </Button>
+  );
+}
+
+export function GlassCenteredActionRow(props: {
+  title: string;
+  action: () => void | Promise<void>;
+  destructive?: boolean;
+  disabled?: boolean;
+}) {
+  return (
+    <Button
+      buttonStyle="plain"
+      role={props.destructive ? "destructive" : undefined}
+      frame={{ maxWidth: "infinity" }}
+      action={props.action}
+      disabled={props.disabled}
+    >
+      <HStack
+        padding={{ vertical: true }}
+        frame={{ minHeight: 44, maxWidth: "infinity", alignment: "center" }}
+        contentShape="rect"
+      >
+        <Text
+          foregroundStyle={
+            props.destructive
+              ? "systemRed"
+              : props.disabled
+                ? "secondaryLabel"
+                : "accentColor"
+          }
+          multilineTextAlignment="center"
+          frame={{ maxWidth: "infinity" }}
+        >
+          {props.title}
+        </Text>
+      </HStack>
+    </Button>
+  );
+}
+
+export function GlassEmptyStateCard(props: {
+  systemImage: string;
+  title: string;
+  message: string;
+  actionTitle: string;
+  action: () => void | Promise<void>;
+}) {
+  return (
+    <VStack
+      alignment="center"
+      spacing={12}
+      padding={{ horizontal: 20, vertical: 24 }}
+      frame={{ maxWidth: "infinity", alignment: "center" }}
+      glassEffect={{
+        glass: UIGlass.regular(),
+        shape: {
+          type: "rect",
+          cornerRadius: CARD_RADIUS,
+          style: "continuous",
+        },
+      }}
+    >
+      <VStack
+        alignment="center"
+        frame={{ width: 56, height: 56 }}
+        glassEffect={{
+          glass: UIGlass.regular(),
+          shape: {
+            type: "rect",
+            cornerRadius: 16,
+            style: "continuous",
+          },
+        }}
+      >
+        <Image systemName={props.systemImage} foregroundStyle="accentColor" />
+      </VStack>
+      <Text
+        font={17}
+        fontWeight="semibold"
+        multilineTextAlignment="center"
+        frame={{ maxWidth: "infinity" }}
+      >
+        {props.title}
+      </Text>
+      <Text
+        font={14}
+        foregroundStyle="secondaryLabel"
+        multilineTextAlignment="center"
+        fixedSize={{ horizontal: false, vertical: true }}
+        frame={{ maxWidth: "infinity" }}
+      >
+        {props.message}
+      </Text>
+      <GlassCenteredActionRow
+        title={props.actionTitle}
+        action={props.action}
+      />
+    </VStack>
   );
 }
 
@@ -140,6 +240,45 @@ export function GlassInfoRow(props: {
         ) : null}
       </VStack>
     </HStack>
+  );
+}
+
+export function GlassCopyInfoRow(props: {
+  value: string;
+  note: string;
+  action: () => void | Promise<void>;
+}) {
+  return (
+    <Button
+      buttonStyle="plain"
+      frame={{ maxWidth: "infinity" }}
+      action={props.action}
+    >
+      <HStack
+        spacing={12}
+        padding={{ vertical: true }}
+        frame={{ minHeight: 44, maxWidth: "infinity", alignment: "leading" }}
+        contentShape="rect"
+      >
+        <VStack
+          alignment="leading"
+          spacing={6}
+          frame={{ maxWidth: "infinity", alignment: "leading" }}
+        >
+          <Text
+            font={14}
+            multilineTextAlignment="leading"
+            fixedSize={{ horizontal: false, vertical: true }}
+          >
+            {props.value}
+          </Text>
+          <Text font={12} foregroundStyle="tertiaryLabel">
+            {props.note}
+          </Text>
+        </VStack>
+        <Image systemName="doc.on.doc" foregroundStyle="tertiaryLabel" />
+      </HStack>
+    </Button>
   );
 }
 
@@ -210,6 +349,7 @@ export const glassListShell = {
   listStyle: "plain" as const,
   listRowSpacing: 12,
   listSectionSpacing: 12,
+  listRowSeparator: "hidden" as const,
   contentMargins: {
     edges: "horizontal" as const,
     insets: 16,

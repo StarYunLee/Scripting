@@ -37,6 +37,7 @@ function LibraryManageRow(props: {
       spacing={0}
       frame={{ maxWidth: "infinity" }}
       listRowInsets={{ top: 0, bottom: 0, leading: 16, trailing: 16 }}
+      listRowSeparator="hidden"
       onTapGesture={() => {
         if (!isCurrent) {
           onSelect();

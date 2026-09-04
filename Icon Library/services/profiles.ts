@@ -212,25 +212,34 @@ export function renameProfile(
   });
 }
 
-export function deleteProfile(profileId: string): RepoProfileStore {
-  const store = loadProfileStore();
-  const index = store.profiles.findIndex((item) => item.id === profileId);
-  if (index < 0) {
-    throw new Error("仓库配置不存在。");
+export function deleteProfiles(profileIds: string[]): RepoProfileStore {
+  const ids = new Set(profileIds.filter((id) => id.trim()));
+  if (ids.size === 0) {
+    return loadProfileStore();
   }
 
-  const profiles = store.profiles.filter((item) => item.id !== profileId);
+  const store = loadProfileStore();
+  const removedIds = store.profiles
+    .filter((profile) => ids.has(profile.id))
+    .map((profile) => profile.id);
+  if (removedIds.length === 0) {
+    return store;
+  }
+
+  const profiles = store.profiles.filter((profile) => !ids.has(profile.id));
   const activeId =
-    store.activeId === profileId
-      ? (profiles[index]?.id ?? profiles[index - 1]?.id ?? null)
+    store.activeId && ids.has(store.activeId)
+      ? (profiles[0]?.id ?? null)
       : store.activeId;
 
-  // 先持久化 profile store；成功后再删除 Keychain PAT，避免写入失败时丢凭证。
+  // 先持久化 profile store；成功后再清除令牌，避免写入失败时丢凭证。
   const saved = saveStore({ profiles, activeId });
-  try {
-    removeProfilePat(profileId);
-  } catch {
-    // Profile 已删除且 id 不会复用；即使 Keychain 清理失败也不能让 UI 保留幽灵配置。
+  for (const profileId of removedIds) {
+    try {
+      removeProfilePat(profileId);
+    } catch {
+      // Profile 已删除；清理失败不能让 UI 保留幽灵配置。
+    }
   }
   return saved;
 }

@@ -12,6 +12,8 @@ export type IconLibrarySettings = {
 export type RepoContext = {
   profileId: string;
   settings: IconLibrarySettings;
+  /** 仅用于未持久化编辑草稿的远程请求，不写入 Storage 或 Keychain。 */
+  token?: string;
 };
 
 export type CatalogIcon = {

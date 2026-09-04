@@ -18,6 +18,7 @@ function ChangelogGroup(props: { children: VStackProps["children"] }) {
       spacing={10}
       frame={{ maxWidth: "infinity", alignment: "leading" }}
       padding={{ vertical: true }}
+      listRowSeparator="hidden"
       listRowInsets={{ top: 0, bottom: 0, leading: 16, trailing: 16 }}
     >
       {props.children}

@@ -14,6 +14,7 @@ export function glassListPageProps() {
     listStyle: glassListShell.listStyle,
     listRowSpacing: glassListShell.listRowSpacing,
     listSectionSpacing: glassListShell.listSectionSpacing,
+    listRowSeparator: glassListShell.listRowSeparator,
     contentMargins: glassListShell.contentMargins,
     background: <PageBackground />,
   };

@@ -77,6 +77,11 @@ export function removeProfilePat(profileId: string): void {
   Keychain.remove(patKeyForProfile(profileId));
 }
 
+function contextToken(context: RepoContext): string | null {
+  const draftToken = context.token?.trim();
+  return draftToken || getProfilePat(context.profileId);
+}
+
 export function getGithubAvailability(
   profileId: string | null | undefined,
 ): GithubAvailabilityState {
@@ -156,45 +161,8 @@ async function ensurePublicRepository(context: RepoContext): Promise<void> {
   if (Date.now() - verifiedAt < PUBLIC_REPO_CACHE_TTL_MS) {
     return;
   }
-  await validatePublicRepository(
-    context.settings,
-    getProfilePat(context.profileId) ?? undefined,
-  );
+  await validatePublicRepository(context.settings);
   verifiedPublicRepos.set(key, Date.now());
-}
-
-export async function validatePat(
-  token: string,
-  settings?: IconLibrarySettings,
-): Promise<string> {
-  const value = token.trim();
-  if (!value) {
-    throw new Error("请先粘贴个人访问令牌。");
-  }
-
-  const headers = {
-    Accept: "application/vnd.github+json",
-    Authorization: `Bearer ${value}`,
-    "X-GitHub-Api-Version": "2022-11-28",
-    "User-Agent": "Icon-Library",
-  };
-
-  const userResponse = await fetch("https://api.github.com/user", { headers });
-  if (userResponse.status === 401 || userResponse.status === 403) {
-    throw new Error("个人访问令牌无效或权限不足。");
-  }
-  if (userResponse.status === 502 || userResponse.status === 503 || userResponse.status === 504) {
-    throw new Error("GitHub 暂时不可用，令牌未判定为无效。请稍后重试。");
-  }
-  if (!userResponse.ok) {
-    throw new Error(`校验令牌失败：HTTP ${userResponse.status}`);
-  }
-
-  if (settings && settings.owner && settings.repo) {
-    await validatePublicRepository(settings, value);
-  }
-
-  return "个人访问令牌有效，当前仓库为公开仓库。";
 }
 
 function apiUrl(settings: IconLibrarySettings, repoPath: string): string {
@@ -226,8 +194,8 @@ async function fallbackRequest(
   const { profileId, settings } = context;
   await ensurePublicRepository(context);
   const method = (init?.method ?? "GET").toUpperCase();
-  const token = getProfilePat(profileId);
   const isRead = method === "GET";
+  const token = isRead ? null : contextToken(context);
 
   // 写操作必须有 PAT；读操作允许匿名（公开仓库）。
   if (!token && !isRead) {
@@ -334,6 +302,21 @@ async function findFileInParentDir(
   };
 }
 
+function writeRequestError(
+  status: number,
+  fallback: string,
+): Error {
+  if (status === 401) {
+    return new Error("GitHub 凭证无效或已过期。");
+  }
+  if (status === 403 || status === 404) {
+    return new Error(
+      "目标仓库没有写入权限。请确认 Token 已授权目标仓库，并授予 Contents: Read and write。",
+    );
+  }
+  return new Error(fallback || `GitHub 请求失败：HTTP ${status}`);
+}
+
 export async function putFile(options: {
   context: RepoContext;
   repoPath: string;
@@ -359,7 +342,10 @@ export async function putFile(options: {
   });
   if (status >= 400 || Array.isArray(json)) {
     const messageText = Array.isArray(json) ? "上传失败" : json.message;
-    throw new Error(messageText || `上传失败：HTTP ${status}`);
+    throw writeRequestError(
+      status,
+      messageText || `上传失败：HTTP ${status}`,
+    );
   }
   const nestedContent =
     json.content && typeof json.content === "object"
@@ -409,7 +395,10 @@ export async function deleteFile(options: {
   });
   if (status >= 400) {
     const messageText = Array.isArray(json) ? "删除失败" : json.message;
-    throw new Error(messageText || `删除失败：HTTP ${status}`);
+    throw writeRequestError(
+      status,
+      messageText || `删除失败：HTTP ${status}`,
+    );
   }
 }
 
@@ -577,7 +566,7 @@ export async function commitFiles(options: {
     `git/ref/heads/${encodeURIComponent(settings.branch)}`,
   );
   if (ref.status >= 400 || typeof ref.json.object !== "object" || !ref.json.object) {
-    throw new Error("读取分支失败，无法一次提交多文件。");
+    throw writeRequestError(ref.status, "读取分支失败，无法一次提交多文件。");
   }
   const headSha = (ref.json.object as JsonObject).sha;
   if (typeof headSha !== "string" || !headSha) {
@@ -590,7 +579,7 @@ export async function commitFiles(options: {
       ? ((commit.json.tree as JsonObject).sha as string | undefined)
       : undefined;
   if (commit.status >= 400 || !baseTree) {
-    throw new Error("读取提交树失败。");
+    throw writeRequestError(commit.status, "读取提交树失败。");
   }
 
   const treeItems: JsonObject[] = [];
@@ -605,7 +594,7 @@ export async function commitFiles(options: {
     });
     const blobSha = blob.json.sha;
     if (blob.status >= 400 || typeof blobSha !== "string") {
-      throw new Error(`创建文件失败：${file.path}`);
+      throw writeRequestError(blob.status, `创建文件失败：${file.path}`);
     }
     treeItems.push({
       path: file.path,
@@ -633,7 +622,7 @@ export async function commitFiles(options: {
   });
   const treeSha = tree.json.sha;
   if (tree.status >= 400 || typeof treeSha !== "string") {
-    throw new Error("创建提交树失败。");
+    throw writeRequestError(tree.status, "创建提交树失败。");
   }
 
   const created = await gitApi(context, "git/commits", {
@@ -647,7 +636,7 @@ export async function commitFiles(options: {
   });
   const newSha = created.json.sha;
   if (created.status >= 400 || typeof newSha !== "string") {
-    throw new Error("创建提交失败。");
+    throw writeRequestError(created.status, "创建提交失败。");
   }
 
   const updated = await gitApi(
@@ -660,7 +649,7 @@ export async function commitFiles(options: {
     },
   );
   if (updated.status >= 400) {
-    throw new Error("更新分支失败。");
+    throw writeRequestError(updated.status, "更新分支失败。");
   }
 }
 

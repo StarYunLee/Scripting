@@ -1,6 +1,6 @@
-import { List, Picker, Section, Text, useEffect, useState } from "scripting";
+import { List, Navigation, Picker, Section, Text, useEffect, useState } from "scripting";
 import {
-  GlassActionRow,
+  GlassCenteredActionRow,
   GlassDivider,
   GlassGroup,
   GlassSectionHeader,
@@ -22,17 +22,23 @@ import type {
 export function ConnectLibraryPage(props: {
   profileId: string;
   settings: IconLibrarySettings;
-  onSettingsChange: (
+  onSettingsChange?: (
     profileId: string,
     next: IconLibrarySettings,
   ) => void;
+  draftOnly?: boolean;
+  token?: string;
+  onConfigured?: (next: IconLibrarySettings) => void;
 }) {
   const {
     profileId,
     settings,
     onSettingsChange,
+    draftOnly = false,
+    token,
+    onConfigured,
   } = props;
-  const context: RepoContext = { profileId, settings };
+  const context: RepoContext = { profileId, settings, token };
   const [dirs, setDirs] = useState<RepoEntry[]>([]);
   const [jsons, setJsons] = useState<RepoEntry[]>([]);
   const [iconDir, setIconDir] = useState("");
@@ -40,6 +46,7 @@ export function ConnectLibraryPage(props: {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const dismiss = Navigation.useDismiss();
   const repoKey = `${settings.owner}/${settings.repo}@${settings.branch}`;
 
   async function loadCandidates(activeContext: RepoContext) {
@@ -87,11 +94,22 @@ export function ConnectLibraryPage(props: {
         iconDir,
         jsonPath,
       });
-      onSettingsChange(profileId, next);
-      await Dialog.alert({
-        title: "已连接",
-        message: `目录 ${next.iconDir}/，索引 ${next.jsonPath}。App 不会改这份 JSON 或仓库里的 workflow。`,
-      });
+      if (draftOnly) {
+        onConfigured?.(next);
+        dismiss();
+      } else if (onSettingsChange) {
+        onSettingsChange(profileId, next);
+        await Dialog.alert({
+          title: "已连接",
+          message: `目录 ${next.iconDir}/，索引 ${next.jsonPath}。App 不会改这份 JSON 或仓库里的 workflow。`,
+        });
+      } else {
+        await Dialog.alert({
+          title: "无法连接",
+          message: "保存入口不可用，请重新打开页面。",
+        });
+        return;
+      }
     } catch (err) {
       await Dialog.alert({
         title: "连接失败",
@@ -180,16 +198,22 @@ export function ConnectLibraryPage(props: {
       </Section>
       <Section listRowBackground={glassRowBackground}>
         <GlassGroup>
-          <GlassActionRow
-            title={loading ? "刷新列表" : "重新读取仓库"}
+          <GlassCenteredActionRow
+            title={loading ? "读取中…" : "重新扫描仓库"}
             disabled={loading}
             action={() => {
               void loadCandidates(context);
             }}
           />
           <GlassDivider />
-          <GlassActionRow
-            title={busy ? "连接中…" : "连接"}
+          <GlassCenteredActionRow
+            title={
+              busy
+                ? "确认中…"
+                : draftOnly
+                  ? "确认目录和索引"
+                  : "连接"
+            }
             disabled={busy || loading || !iconDir || !jsonPath}
             action={() => {
               void connect();

@@ -5,7 +5,7 @@
     "moduleResolution": "Bundler",
     "baseUrl": ".",
     "paths": {
-      "scripting": ["./types/device/scripting.d.ts"]
+      "scripting": ["./scripting.d.ts"]
     },
     "lib": ["ES2022"],
     "strict": true,
@@ -16,6 +16,6 @@
     "skipLibCheck": true,
     "jsx": "preserve"
   },
-  "include": ["./**/*.ts", "./**/*.tsx", "./types/device/*.d.ts"],
-  "exclude": ["node_modules", "dist", "build"]
+  "include": ["./**/*.ts", "./**/*.tsx", "./scripting.d.ts", "./global.d.ts", "./web-globals.d.ts"],
+  "exclude": ["node_modules", "dist", "build", "types/device"]
 }

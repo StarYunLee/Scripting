@@ -55,6 +55,7 @@ function StatusFooter(props: { text: string }) {
       font="caption"
       foregroundStyle="secondaryLabel"
       listRowBackground={<Rectangle fill="clear" />}
+      listRowSeparator="hidden"
     >
       {props.text}
     </Text>

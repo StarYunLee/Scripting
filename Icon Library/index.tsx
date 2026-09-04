@@ -12,6 +12,7 @@ import { GalleryPage } from "./pages/GalleryPage";
 import { IconsPage } from "./pages/IconsPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { UploadPage } from "./pages/UploadPage";
+import { setProfilePat } from "./services/github";
 import { loadCachedCatalog, loadCatalog } from "./services/catalog";
 import { formatError } from "./services/errors";
 import type {
@@ -22,7 +23,7 @@ import type {
 } from "./services/models";
 import {
   currentSettings,
-  deleteProfile,
+  deleteProfiles,
   loadProfileStore,
   renameProfile,
   saveProfileSettings,
@@ -142,27 +143,27 @@ function App() {
     setStore(renameProfile(targetProfileId, label));
   }
 
-  function handleDeleteProfile(targetProfileId: string) {
-    setStore(deleteProfile(targetProfileId));
+  function handleDeleteProfiles(profileIds: string[]) {
+    setStore(deleteProfiles(profileIds));
   }
 
   function handleSelectProfile(id: string) {
     setStore(selectProfile(id));
   }
 
-  function handleAddProfile() {
-    const next = upsertProfile({
-      label: "新仓库",
-      settings: {
-        owner: "",
-        repo: "",
-        branch: "main",
-        iconDir: "icon",
-        jsonPath: "icons.json",
-        mode: "unconfigured",
-      },
+  function handleCreateProfile(
+    label: string,
+    nextSettings: IconLibrarySettings,
+    token: string,
+  ) {
+    const nextStore = upsertProfile({
+      label,
+      settings: nextSettings,
     });
-    setStore(next);
+    if (nextStore.activeId && token.trim()) {
+      setProfilePat(nextStore.activeId, token);
+    }
+    setStore(nextStore);
   }
 
   return (
@@ -178,6 +179,7 @@ function App() {
             context ? refreshCatalog(context) : Promise.resolve()
           }
           onOpenSettings={() => setRootTab("settings")}
+          onOpenUpload={() => setRootTab("upload")}
         />
       </Tab>
       <Tab title="订阅" systemImage="rectangle.stack" value="gallery">
@@ -198,14 +200,13 @@ function App() {
       </Tab>
       <Tab title="设置" systemImage="gearshape.fill" value="settings">
         <SettingsPage
-          key={`settings-${profileId ?? "none"}`}
           store={store}
           settings={settings}
           onSettingsChange={handleSettingsChange}
           onRenameProfile={handleRenameProfile}
-          onDeleteProfile={handleDeleteProfile}
+          onDeleteProfiles={handleDeleteProfiles}
           onSelectProfile={handleSelectProfile}
-          onAddProfile={handleAddProfile}
+          onCreateProfile={handleCreateProfile}
         />
       </Tab>
     </TabView>

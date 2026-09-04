@@ -13,6 +13,7 @@ import {
   useState,
 } from "scripting";
 import { IconGlassTile } from "../components/IconGlassTile";
+import { GlassEmptyStateCard } from "../components/Glass";
 import { PageBackground } from "../components/PageBackground";
 import { countPendingIcons } from "../services/catalog";
 import { formatError } from "../services/errors";
@@ -23,7 +24,7 @@ import type {
   IconLibrarySettings,
   RepoContext,
 } from "../services/models";
-import { isLibraryReady } from "../services/settings";
+import { isLibraryReady, isRepoConfigured } from "../services/settings";
 import { IconDetailPage } from "./IconDetailPage";
 import { handleMissingProfilePat } from "./patGuide";
 import { useRootToolbar } from "./rootToolbar";
@@ -72,6 +73,7 @@ export function IconsPage(props: {
   error: string | null;
   onRefresh: () => Promise<void>;
   onOpenSettings: () => void;
+  onOpenUpload: () => void;
 }) {
   const {
     profileId,
@@ -80,6 +82,7 @@ export function IconsPage(props: {
     error,
     onRefresh,
     onOpenSettings,
+    onOpenUpload,
   } = props;
   const context: RepoContext = { profileId, settings };
   const [query, setQuery] = useState("");
@@ -91,6 +94,7 @@ export function IconsPage(props: {
   const rootToolbar = useRootToolbar();
   const dismiss = Navigation.useDismiss();
   const configured = isLibraryReady(settings);
+  const hasRepository = isRepoConfigured(settings);
   const icons = catalog ? filterIcons(catalog.icons, query) : [];
   const pendingCount = countPendingIcons(catalog);
 
@@ -158,19 +162,6 @@ export function IconsPage(props: {
     } finally {
       setBusy(false);
     }
-  }
-
-  function emptyMessage(): string {
-    if (!configured) {
-      return "请先在设置中保存仓库，再创建或连接图标库";
-    }
-    if (query.trim()) {
-      return "没有匹配的图标";
-    }
-    if (error) {
-      return error;
-    }
-    return "图标库是空的";
   }
 
   const toolbar = selecting ? (
@@ -265,9 +256,13 @@ export function IconsPage(props: {
             >
               {refreshNote}
             </Text>
-          ) : error ? (
+          ) : error && icons.length > 0 ? (
             <Text font={12} foregroundStyle="systemRed">
               {error}
+            </Text>
+          ) : catalog && icons.length > 0 ? (
+            <Text font={12} foregroundStyle="secondaryLabel">
+              {`${catalog.icons.length} 个图标`}
             </Text>
           ) : null}
           {pendingCount > 0 ? (
@@ -276,13 +271,55 @@ export function IconsPage(props: {
             </Text>
           ) : null}
           {icons.length === 0 ? (
-            <Text
-              foregroundStyle="secondaryLabel"
-              frame={{ maxWidth: "infinity" }}
-              padding={{ vertical: 20 }}
-            >
-              {emptyMessage()}
-            </Text>
+            !hasRepository ? (
+              <GlassEmptyStateCard
+                systemImage="square.grid.2x2"
+                title="还没有图标库"
+                message="添加一个公开 GitHub 仓库并选择图标库类型，即可开始管理图标。"
+                actionTitle="去设置"
+                action={onOpenSettings}
+              />
+            ) : !configured ? (
+              <GlassEmptyStateCard
+                systemImage="square.grid.2x2"
+                title="还未配置图标库"
+                message="仓库已保存，请在设置中选择创建图标库或连接已有图标库。"
+                actionTitle="去设置"
+                action={onOpenSettings}
+              />
+            ) : query.trim() ? (
+              <Text
+                foregroundStyle="secondaryLabel"
+                frame={{ maxWidth: "infinity" }}
+                padding={{ vertical: 20 }}
+              >
+                没有匹配的图标
+              </Text>
+            ) : error ? (
+              <GlassEmptyStateCard
+                systemImage="exclamationmark.triangle"
+                title="图标读取失败"
+                message={error}
+                actionTitle="重新扫描"
+                action={handleRefresh}
+              />
+            ) : catalog ? (
+              <GlassEmptyStateCard
+                systemImage="square.grid.2x2"
+                title="图标库还是空的"
+                message="从相册、文件、Lobe Icons 或 App Store 添加图标。"
+                actionTitle="去上传图标"
+                action={onOpenUpload}
+              />
+            ) : (
+              <GlassEmptyStateCard
+                systemImage="square.grid.2x2"
+                title="正在读取图标"
+                message="正在从公开仓库读取图标目录。"
+                actionTitle="重新扫描"
+                action={handleRefresh}
+              />
+            )
           ) : (
             <LazyVGrid
               columns={GRID_COLUMNS}

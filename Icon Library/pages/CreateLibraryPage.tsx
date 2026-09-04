@@ -1,6 +1,13 @@
-import { List, Section, Text, TextField, useState } from "scripting";
 import {
-  GlassActionRow,
+  List,
+  Navigation,
+  Section,
+  Text,
+  TextField,
+  useState,
+} from "scripting";
+import {
+  GlassCenteredActionRow,
   GlassDivider,
   GlassGroup,
   GlassNavRow,
@@ -33,21 +40,30 @@ type PreviewKind = "workflow" | "script" | null;
 export function CreateLibraryPage(props: {
   profileId: string;
   settings: IconLibrarySettings;
-  onSettingsChange: (
+  onSettingsChange?: (
     profileId: string,
     next: IconLibrarySettings,
   ) => void;
+  draftOnly?: boolean;
+  onConfigured?: (next: IconLibrarySettings) => void;
 }) {
   const {
     profileId,
     settings,
     onSettingsChange,
+    draftOnly = false,
+    onConfigured,
   } = props;
   const context: RepoContext = { profileId, settings };
-  const [iconDir, setIconDir] = useState("");
-  const [jsonPath, setJsonPath] = useState("");
+  const [iconDir, setIconDir] = useState(
+    settings.mode === "create" ? settings.iconDir : "",
+  );
+  const [jsonPath, setJsonPath] = useState(
+    settings.mode === "create" ? settings.jsonPath : "",
+  );
   const [busy, setBusy] = useState(false);
   const [preview, setPreview] = useState<PreviewKind>(null);
+  const dismiss = Navigation.useDismiss();
 
   const resolved: IconLibrarySettings = {
     ...settings,
@@ -57,7 +73,29 @@ export function CreateLibraryPage(props: {
   const workflowText = buildGenerateIconsWorkflow(resolved);
   const scriptText = buildGenerateIconsScript(resolved);
 
+  function chooseCreateMode() {
+    const next: IconLibrarySettings = {
+      ...resolved,
+      mode: "create",
+    };
+    if (onConfigured) {
+      onConfigured(next);
+    }
+    dismiss();
+  }
+
   async function create(overwriteStandard = false) {
+    if (draftOnly) {
+      chooseCreateMode();
+      return;
+    }
+    if (!onSettingsChange) {
+      await Dialog.alert({
+        title: "无法创建图标库",
+        message: "保存入口不可用，请重新打开页面。",
+      });
+      return;
+    }
     if (busy) return;
     setBusy(true);
     try {
@@ -180,15 +218,23 @@ export function CreateLibraryPage(props: {
             padding={{ vertical: true }}
             frame={{ maxWidth: "infinity" }}
           >
-            {`只读预览，内容已按当前目录「${resolved.iconDir}」和索引「${resolved.jsonPath}」生成。创建时写入仓库，不能在这里改。`}
+            {draftOnly
+              ? "这里只选择创建方式；返回后点击编辑页右上角「保存」才会写入仓库。"
+              : `只读预览，内容已按当前目录「${resolved.iconDir}」和索引「${resolved.jsonPath}」生成。创建时写入仓库，不能在这里改。`}
           </Text>
         </GlassGroup>
       </Section>
 
       <Section listRowBackground={glassRowBackground}>
         <GlassGroup>
-          <GlassActionRow
-            title={busy ? "创建中…" : "创建并写入标准 workflow"}
+          <GlassCenteredActionRow
+            title={
+              draftOnly
+                ? "确定创建"
+                : busy
+                  ? "创建中…"
+                  : "创建并写入标准 workflow"
+            }
             disabled={busy}
             action={() => {
               void create(false);

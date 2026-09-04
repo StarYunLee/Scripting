@@ -14,6 +14,9 @@ import {
   useEffect,
   useState,
 } from "scripting";
+import {
+  GlassEmptyStateCard,
+} from "../components/Glass";
 import { IconGlassTile } from "../components/IconGlassTile";
 import { PageBackground } from "../components/PageBackground";
 import { formatError } from "../services/errors";
@@ -162,22 +165,6 @@ export function GalleryPage() {
     }
   }
 
-  function emptyMessage(): string {
-    if (!initialized) {
-      return "正在载入订阅…";
-    }
-    if (!current) {
-      return "添加一份公开图标库 JSON，即可在这里浏览";
-    }
-    if (query.trim()) {
-      return "没有匹配的图标";
-    }
-    if (error) {
-      return error;
-    }
-    return "这个图标库是空的";
-  }
-
   return (
     <NavigationStack>
       <ScrollView
@@ -212,45 +199,47 @@ export function GalleryPage() {
                 action={dismiss}
               />
             </ToolbarItem>
-            <ToolbarItem placement="primaryAction">
-              <Menu title="管理">
-                {store.libraries.map((item) =>
-                  item.id === store.currentId ? (
-                    <Button
-                      key={item.id}
-                      title={item.title}
-                      systemImage="checkmark"
-                      action={() => {}}
-                    />
-                  ) : (
-                    <Button
-                      key={item.id}
-                      title={item.title}
-                      action={() => {
-                        try {
-                          setStore(selectRemoteLibrary(item.id));
-                          setQuery("");
-                          setOpened(null);
-                        } catch (err) {
-                          void Dialog.alert({
-                            title: "切换失败",
-                            message: formatError(err),
-                          });
-                        }
-                      }}
-                    />
-                  ),
-                )}
-                {store.libraries.length > 0 ? <Divider /> : null}
-                <Button
-                  title="管理订阅"
-                  action={() => {
-                    setOpened(null);
-                    setManaging(true);
-                  }}
-                />
-              </Menu>
-            </ToolbarItem>
+            {store.libraries.length > 0 ? (
+              <ToolbarItem placement="primaryAction">
+                <Menu title="管理">
+                  {store.libraries.map((item) =>
+                    item.id === store.currentId ? (
+                      <Button
+                        key={item.id}
+                        title={item.title}
+                        systemImage="checkmark"
+                        action={() => {}}
+                      />
+                    ) : (
+                      <Button
+                        key={item.id}
+                        title={item.title}
+                        action={() => {
+                          try {
+                            setStore(selectRemoteLibrary(item.id));
+                            setQuery("");
+                            setOpened(null);
+                          } catch (err) {
+                            void Dialog.alert({
+                              title: "切换失败",
+                              message: formatError(err),
+                            });
+                          }
+                        }}
+                      />
+                    ),
+                  )}
+                  <Divider />
+                  <Button
+                    title="管理订阅"
+                    action={() => {
+                      setOpened(null);
+                      setManaging(true);
+                    }}
+                  />
+                </Menu>
+              </ToolbarItem>
+            ) : null}
           </Toolbar>
         }
         navigationDestination={
@@ -301,32 +290,68 @@ export function GalleryPage() {
             >
               {refreshNote}
             </Text>
-          ) : error ? (
+          ) : error && icons.length > 0 ? (
             <Text font={12} foregroundStyle="systemRed">
               {error}
             </Text>
-          ) : catalog ? (
+          ) : catalog && icons.length > 0 ? (
             <Text font={12} foregroundStyle="secondaryLabel">
               {`${catalog.icons.length} 个图标`}
             </Text>
           ) : null}
 
-          {icons.length === 0 ? (
-            <VStack
-              spacing={12}
+          {!initialized ? (
+            <Text
+              foregroundStyle="secondaryLabel"
               padding={{ vertical: 20 }}
               frame={{ maxWidth: "infinity" }}
             >
+              正在载入订阅…
+            </Text>
+          ) : !current ? (
+            <GlassEmptyStateCard
+              systemImage="rectangle.stack"
+              title="还没有订阅"
+              message="添加公开图标库 JSON 后，即可在这里只读浏览图标。"
+              actionTitle="添加订阅"
+              action={() => {
+                void addLibrary();
+              }}
+            />
+          ) : icons.length === 0 ? (
+            query.trim() ? (
               <Text
                 foregroundStyle="secondaryLabel"
                 frame={{ maxWidth: "infinity" }}
+                padding={{ vertical: 20 }}
               >
-                {emptyMessage()}
+                没有匹配的图标
               </Text>
-              {!current ? (
-                <Button title="添加订阅" action={() => void addLibrary()} />
-              ) : null}
-            </VStack>
+            ) : error ? (
+              <GlassEmptyStateCard
+                systemImage="exclamationmark.triangle"
+                title="订阅读取失败"
+                message={error}
+                actionTitle="重新扫描"
+                action={handleRefresh}
+              />
+            ) : catalog ? (
+              <GlassEmptyStateCard
+                systemImage="rectangle.stack"
+                title="这个订阅还没有图标"
+                message="可以下拉刷新，或切换其他公开图标库。"
+                actionTitle="重新扫描"
+                action={handleRefresh}
+              />
+            ) : (
+              <GlassEmptyStateCard
+                systemImage="rectangle.stack"
+                title="正在读取订阅"
+                message="正在从公开 JSON 读取图标目录。"
+                actionTitle="重新扫描"
+                action={handleRefresh}
+              />
+            )
           ) : (
             <LazyVGrid
               columns={GRID_COLUMNS}
