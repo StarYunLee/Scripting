@@ -89,6 +89,16 @@ export function formatSingleWindowResetAt(
   return fullResetDuration(diffMs);
 }
 
+export function formatResetExpirationCountdown(
+  iso: string | null | undefined,
+): string {
+  const diffMs = resetDiffMs(iso);
+  if (diffMs == null) return "到期时间未知";
+  if (diffMs < 0) return "已到期";
+  if (diffMs < MINUTE_MS) return "即将到期";
+  return `${fullResetDuration(diffMs)}后到期`;
+}
+
 export function formatSmallDate(resetAtIso: string | null | undefined): string {
   if (!resetAtIso) return "—";
   const date = new Date(resetAtIso);

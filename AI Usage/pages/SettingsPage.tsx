@@ -102,7 +102,9 @@ export function SettingsPage(props: {
     useState<SelectedDestination | null>(null);
   const [busy, setBusy] = useState(false);
   const settings = getAppDisplaySettings();
-  const dashboardPreferences = getDashboardWidgetPreferences();
+  const dashboardPreferences = getDashboardWidgetPreferences(
+    props.demoMode ? "demo" : "live",
+  );
 
   function refresh() {
     setTick((value) => value + 1);
@@ -293,6 +295,7 @@ export function SettingsPage(props: {
               <DashboardWidgetSettingsPage
                 cards={props.demoMode ? listDemoCards() : listAuthorizedCards()}
                 backgroundTheme={props.backgroundTheme}
+                dataSource={props.demoMode ? "demo" : "live"}
               />
             ) : selectedDestination?.kind === "log" ? (
               <LogPage backgroundTheme={props.backgroundTheme} />
@@ -442,9 +445,10 @@ export function SettingsPage(props: {
               title="显示账号标识"
               value={dashboardPreferences.display.showAccountLabel}
               onChanged={(value: boolean) => {
-                const result = setDashboardWidgetDisplayPreferences({
-                  showAccountLabel: value,
-                });
+                const result = setDashboardWidgetDisplayPreferences(
+                  { showAccountLabel: value },
+                  props.demoMode ? "demo" : "live",
+                );
                 if (!result.ok) {
                   void showSettingsSaveFailure();
                   refresh();
@@ -480,11 +484,15 @@ export function SettingsPage(props: {
               buttonStyle="plain"
               frame={{ maxWidth: "infinity" }}
               action={async () => {
-                await Pasteboard.setString("dashboard");
+                const parameter = props.demoMode
+                  ? "dashboard:demo"
+                  : "dashboard";
+                await Pasteboard.setString(parameter);
                 await Dialog.alert({
                   title: "已复制小组件参数",
-                  message:
-                    "添加 AI Usage 小组件后，将参数粘贴为 dashboard。只影响多账号桌面小组件。",
+                  message: props.demoMode
+                    ? "添加 AI Usage 小组件后，将参数粘贴为 dashboard:demo。该参数只显示演示账号，不影响真实 Dashboard。"
+                    : "添加 AI Usage 小组件后，将参数粘贴为 dashboard。只影响真实多账号桌面小组件。",
                   buttonLabel: "知道了",
                 });
               }}

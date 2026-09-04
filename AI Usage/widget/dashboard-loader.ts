@@ -1,11 +1,12 @@
 import type { UsageCard } from "../models";
-import { isDemoMode, listDemoCards } from "../services/demo";
+import { listDemoCards } from "../services/demo";
 import {
   applyDashboardWidgetPreferences,
   readDashboardWidgetPreferences,
 } from "../services/dashboard-widget-prefs";
 import { listAuthorizedWidgetCards } from "../services/widget-cards";
 import { parseWidgetFamily } from "./family";
+import type { WidgetDataSource } from "./parameter";
 import {
   dashboardWidgetCandidateCards as dashboardWidgetCandidateCardsCore,
   executeDashboardWidgetRefresh,
@@ -48,12 +49,14 @@ function fallbackReloadPolicy(reloadMinutes: number): DashboardReloadPolicy {
 export async function loadDashboardWidgetUsage(input: {
   family: string;
   reloadMinutes: number;
+  dataSource: WidgetDataSource;
 }): Promise<DashboardWidgetData> {
-  const preferences = readDashboardWidgetPreferences();
-  const raw = isDemoMode() ? listDemoCards() : listAuthorizedWidgetCards();
+  const preferences = readDashboardWidgetPreferences(input.dataSource);
+  const raw =
+    input.dataSource === "demo" ? listDemoCards() : listAuthorizedWidgetCards();
   const selected = applyDashboardWidgetPreferences(raw, preferences);
   const kind = parseWidgetFamily(input.family);
-  if (isDemoMode()) {
+  if (input.dataSource === "demo") {
     return {
       cards: selected,
       hasErrors: selected.some((card) => card.source === "error"),

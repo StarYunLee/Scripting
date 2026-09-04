@@ -66,7 +66,9 @@ function resolveOptionalMeta(resetCredits?: NormalizedResetCredits | null): {
     },
     medium: {
       label: countText,
-      value: expirationText,
+      value: resetCredits.nearestExpiration
+        ? `最近到期 ${expirationText}`
+        : "到期时间未知",
     },
   };
 }
@@ -142,6 +144,7 @@ export function WidgetDispatcher(props: Props) {
         first={toSmallWindow(w1)}
         second={toSmallWindow(w2)}
         fetchedText={singleFetchedText}
+        optionalMeta={optionalMeta.small}
       />
     );
   }

@@ -41,7 +41,11 @@ export type UsageCard = {
   planLabel: string | null;
   authorized: boolean;
   windows: UsageWindowView[];
-  resetCredits: { available: number; nearestExpiration: string | null } | null;
+  resetCredits: {
+    available: number;
+    nearestExpiration: string | null;
+    expirations: string[];
+  } | null;
   fetchedAt: string | null;
   source: "live" | "cache" | "error" | "empty";
   errorMessage?: string;

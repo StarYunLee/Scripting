@@ -1,6 +1,6 @@
 import { Image, Spacer, Text, VStack, Widget } from "scripting";
 import { resolveWidgetParameter } from "./widget/parameter";
-import { isDemoAccountId, isDemoMode, listDemoCards } from "./services/demo";
+import { isDemoAccountId, listDemoCards } from "./services/demo";
 import { WidgetDispatcher } from "./widget/WidgetDispatcher";
 import { getEffectiveWidgetWindows } from "./services/widget-prefs";
 import { getAppDisplaySettings } from "./services/settings";
@@ -52,6 +52,7 @@ async function run() {
       const loaded = await loadDashboardWidgetUsage({
         family,
         reloadMinutes,
+        dataSource: resolved.dataSource,
       });
       let width = widgetFallbackWidth(family);
       try {
@@ -109,14 +110,11 @@ async function run() {
 
   const { provider, profileId } = resolved.account;
 
-  // 处理演示模式账号
-  if (isDemoAccountId(profileId) || isDemoMode()) {
-    const demoCard =
-      listDemoCards().find(
-        (c) => c.provider === provider && c.accountId === profileId,
-      ) ||
-      listDemoCards().find((c) => c.provider === provider) ||
-      listDemoCards()[0];
+  // 演示账号由参数显式选择，不受 App 演示模式开关影响。
+  if (isDemoAccountId(profileId)) {
+    const demoCard = listDemoCards().find(
+      (card) => card.provider === provider && card.accountId === profileId,
+    );
 
     if (!demoCard) {
       Widget.present(<ErrorWidget message="演示账号数据不存在" />, {

@@ -1,6 +1,11 @@
 import type { ProviderId, UsageWindowView } from "../models";
 
-const STORAGE_KEY = "ai_usage_widget_window_preferences_v1";
+const LIVE_STORAGE_KEY = "ai_usage_widget_window_preferences_v1";
+const DEMO_STORAGE_KEY = "ai_usage_demo_widget_window_preferences_v1";
+
+function storageKey(accountId: string): string {
+  return accountId.startsWith("demo_") ? DEMO_STORAGE_KEY : LIVE_STORAGE_KEY;
+}
 
 type StoredWidgetPreferences = {
   // Key 格式: `${provider}:${accountId}` -> 选中的 windowId 列表（有序，1~4 个）
@@ -9,6 +14,11 @@ type StoredWidgetPreferences = {
 
 function accountKey(provider: ProviderId, accountId: string): string {
   return `${provider}:${accountId}`;
+}
+
+function belongsToDemo(key: string): boolean {
+  const separator = key.indexOf(":");
+  return separator >= 0 && key.slice(separator + 1).startsWith("demo_");
 }
 
 function uniqueStrings(value: unknown): string[] {
@@ -22,28 +32,76 @@ function uniqueStrings(value: unknown): string[] {
   ];
 }
 
-function readPreferences(): StoredWidgetPreferences {
+function migrateLegacyWidgetPreferences(): void {
   try {
-    const stored = Storage.get<StoredWidgetPreferences>(STORAGE_KEY);
+    if (Storage.get(DEMO_STORAGE_KEY)) return;
+    const legacy = Storage.get<StoredWidgetPreferences>(LIVE_STORAGE_KEY);
+    if (
+      !legacy?.selectedWindows ||
+      typeof legacy.selectedWindows !== "object"
+    ) {
+      return;
+    }
+    const demoSelectedWindows = Object.fromEntries(
+      Object.entries(legacy.selectedWindows).filter(([key]) =>
+        belongsToDemo(key),
+      ),
+    );
+    if (!Object.keys(demoSelectedWindows).length) return;
+    const liveSelectedWindows = Object.fromEntries(
+      Object.entries(legacy.selectedWindows).filter(
+        ([key]) => !belongsToDemo(key),
+      ),
+    );
+    if (
+      !Storage.set(DEMO_STORAGE_KEY, { selectedWindows: demoSelectedWindows })
+    ) {
+      return;
+    }
+    Storage.set(LIVE_STORAGE_KEY, { selectedWindows: liveSelectedWindows });
+  } catch {
+    /* 保留旧 Key，读取时仍按账号类型过滤。 */
+  }
+}
+
+function readPreferences(accountId: string): StoredWidgetPreferences {
+  try {
+    migrateLegacyWidgetPreferences();
+    const key = storageKey(accountId);
+    const direct = Storage.get<StoredWidgetPreferences>(key);
+    const stored =
+      direct ||
+      (accountId.startsWith("demo_")
+        ? Storage.get<StoredWidgetPreferences>(LIVE_STORAGE_KEY)
+        : null);
     if (!stored || typeof stored !== "object") {
       return { selectedWindows: {} };
     }
     const selectedWindows: Record<string, string[]> = {};
+    const demoScope = accountId.startsWith("demo_");
     if (stored.selectedWindows && typeof stored.selectedWindows === "object") {
       for (const [key, value] of Object.entries(stored.selectedWindows)) {
+        if (belongsToDemo(key) !== demoScope) continue;
         const ids = uniqueStrings(value);
         if (ids.length > 0) selectedWindows[key] = ids;
       }
     }
-    return { selectedWindows };
+    const result = { selectedWindows };
+    if (!direct && accountId.startsWith("demo_")) {
+      Storage.set(DEMO_STORAGE_KEY, result);
+    }
+    return result;
   } catch {
     return { selectedWindows: {} };
   }
 }
 
-function writePreferences(value: StoredWidgetPreferences): boolean {
+function writePreferences(
+  accountId: string,
+  value: StoredWidgetPreferences,
+): boolean {
   try {
-    return Storage.set(STORAGE_KEY, value);
+    return Storage.set(storageKey(accountId), value);
   } catch {
     return false;
   }
@@ -57,7 +115,7 @@ export function getEffectiveWidgetWindows(
 ): UsageWindowView[] {
   if (!allWindows || allWindows.length === 0) return [];
   const key = accountKey(provider, accountId);
-  const selectedIds = readPreferences().selectedWindows?.[key];
+  const selectedIds = readPreferences(accountId).selectedWindows?.[key];
 
   if (selectedIds && selectedIds.length > 0) {
     const selected = new Set(selectedIds);
@@ -102,19 +160,19 @@ export function toggleWidgetWindowSelection(
     if (currentIds.includes(windowId)) return true;
     if (currentIds.length >= 4) return false;
     const nextIds = [...currentIds, windowId];
-    const prefs = readPreferences();
+    const prefs = readPreferences(accountId);
     if (!prefs.selectedWindows) prefs.selectedWindows = {};
     prefs.selectedWindows[key] = nextIds;
-    return writePreferences(prefs);
+    return writePreferences(accountId, prefs);
   } else {
     // 关闭：下限最少保留 1 项
     if (!currentIds.includes(windowId)) return true;
     if (currentIds.length <= 1) return false;
     const nextIds = currentIds.filter((id) => id !== windowId);
-    const prefs = readPreferences();
+    const prefs = readPreferences(accountId);
     if (!prefs.selectedWindows) prefs.selectedWindows = {};
     prefs.selectedWindows[key] = nextIds;
-    return writePreferences(prefs);
+    return writePreferences(accountId, prefs);
   }
 }
 
@@ -124,8 +182,8 @@ export function clearAccountWidgetPreferences(
   accountId: string,
 ): boolean {
   const key = accountKey(provider, accountId);
-  const prefs = readPreferences();
+  const prefs = readPreferences(accountId);
   if (!prefs.selectedWindows || !(key in prefs.selectedWindows)) return true;
   delete prefs.selectedWindows[key];
-  return writePreferences(prefs);
+  return writePreferences(accountId, prefs);
 }

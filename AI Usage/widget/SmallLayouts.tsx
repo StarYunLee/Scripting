@@ -415,9 +415,27 @@ export function CompactDualSmallLayout(props: {
   first: SmallWindowItem;
   second: SmallWindowItem;
   fetchedText: string;
+  optionalMeta?: SmallOptionalMeta;
 }) {
   const contentWidth = Math.max(90, props.width - 24);
   const verticalOffset = Math.max(0, (displayHeight() - 158) / 2);
+  const optionalMeta = props.optionalMeta;
+  const hasOptional = optionalMeta != null;
+  const pos = hasOptional
+    ? {
+        badgeTop: 8,
+        firstTop: 32,
+        secondTop: 79,
+        optionalTop: 124.5,
+        fetchedTop: 140,
+      }
+    : {
+        badgeTop: 11,
+        firstTop: 38,
+        secondTop: 89,
+        optionalTop: 0,
+        fetchedTop: 136,
+      };
   return (
     <ZStack
       frame={{ maxWidth: "infinity", maxHeight: "infinity" }}
@@ -442,7 +460,7 @@ export function CompactDualSmallLayout(props: {
         padding={{
           leading: 12,
           trailing: 12,
-          top: 11 + verticalOffset,
+          top: pos.badgeTop + verticalOffset,
         }}
       >
         <PlanBadge
@@ -454,13 +472,45 @@ export function CompactDualSmallLayout(props: {
       <DualWindowRow
         window={props.first}
         width={contentWidth}
-        top={38 + verticalOffset}
+        top={pos.firstTop + verticalOffset}
       />
       <DualWindowRow
         window={props.second}
         width={contentWidth}
-        top={89 + verticalOffset}
+        top={pos.secondTop + verticalOffset}
       />
+      {hasOptional ? (
+        <HStack
+          frame={{
+            maxWidth: "infinity",
+            maxHeight: "infinity",
+            alignment: "topLeading",
+          }}
+          padding={{
+            leading: 12,
+            trailing: 12,
+            top: pos.optionalTop + verticalOffset,
+          }}
+        >
+          <Text
+            font={10}
+            fontWeight="bold"
+            foregroundStyle={C.secondary}
+            lineLimit={1}
+          >
+            {optionalMeta.label}
+          </Text>
+          <Spacer minLength={6} />
+          <Text
+            font={10}
+            fontWeight="medium"
+            foregroundStyle={C.primary}
+            lineLimit={1}
+          >
+            {optionalMeta.value || "到期未知"}
+          </Text>
+        </HStack>
+      ) : null}
       {/* 底部刷新时间两端对齐：标签与数值均为次要色 */}
       <HStack
         frame={{
@@ -471,7 +521,7 @@ export function CompactDualSmallLayout(props: {
         padding={{
           leading: 12,
           trailing: 12,
-          top: 136 + verticalOffset,
+          top: pos.fetchedTop + verticalOffset,
         }}
       >
         <Text

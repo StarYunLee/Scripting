@@ -14,7 +14,10 @@ type DemoAccount = {
     usedPercent: number | null;
     resetOffsetMs: number;
   }>;
-  resetCredits: { available: number; nearestOffsetMs: number } | null;
+  resetCredits: {
+    available: number;
+    expirationOffsetsMs: number[];
+  } | null;
 };
 
 const DEMO_ACCOUNTS: DemoAccount[] = [
@@ -39,7 +42,7 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
         resetOffsetMs: 3 * 86_400_000 + 6 * 3_600_000,
       },
     ],
-    resetCredits: { available: 1, nearestOffsetMs: 6 * 86_400_000 },
+    resetCredits: { available: 1, expirationOffsetsMs: [6 * 86_400_000] },
   },
   {
     id: "demo_codex_pro5x",
@@ -62,7 +65,10 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
         resetOffsetMs: 3 * 86_400_000 + 5 * 3_600_000,
       },
     ],
-    resetCredits: { available: 2, nearestOffsetMs: 6 * 86_400_000 },
+    resetCredits: {
+      available: 2,
+      expirationOffsetsMs: [6 * 86_400_000, 6 * 86_400_000 + 1 * 86_400_000],
+    },
   },
   {
     id: "demo_codex_pro20x",
@@ -85,7 +91,14 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
         resetOffsetMs: 4 * 86_400_000 + 9 * 3_600_000,
       },
     ],
-    resetCredits: { available: 3, nearestOffsetMs: 5 * 86_400_000 },
+    resetCredits: {
+      available: 3,
+      expirationOffsetsMs: [
+        5 * 86_400_000,
+        5 * 86_400_000 + 1 * 86_400_000,
+        5 * 86_400_000 + 2 * 86_400_000,
+      ],
+    },
   },
   {
     id: "demo_codex_team",
@@ -108,7 +121,10 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
         resetOffsetMs: 5 * 86_400_000 + 2 * 3_600_000,
       },
     ],
-    resetCredits: { available: 2, nearestOffsetMs: 9 * 86_400_000 },
+    resetCredits: {
+      available: 2,
+      expirationOffsetsMs: [9 * 86_400_000, 9 * 86_400_000 + 1 * 86_400_000],
+    },
   },
   {
     id: "demo_grok_supergrok",
@@ -124,7 +140,7 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
         resetOffsetMs: 2 * 86_400_000 + 4 * 3_600_000,
       },
     ],
-    resetCredits: { available: 1, nearestOffsetMs: 11 * 86_400_000 },
+    resetCredits: { available: 1, expirationOffsetsMs: [11 * 86_400_000] },
   },
   {
     id: "demo_grok_heavy",
@@ -140,7 +156,15 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
         resetOffsetMs: 5 * 86_400_000 + 10 * 3_600_000,
       },
     ],
-    resetCredits: { available: 4, nearestOffsetMs: 8 * 86_400_000 },
+    resetCredits: {
+      available: 4,
+      expirationOffsetsMs: [
+        8 * 86_400_000,
+        8 * 86_400_000 + 1 * 86_400_000,
+        8 * 86_400_000 + 2 * 86_400_000,
+        8 * 86_400_000 + 3 * 86_400_000,
+      ],
+    },
   },
   {
     id: "demo_claude_pro",
@@ -571,7 +595,10 @@ export function listDemoCards(): UsageCard[] {
     resetCredits: account.resetCredits
       ? {
           available: account.resetCredits.available,
-          nearestExpiration: futureIso(account.resetCredits.nearestOffsetMs),
+          nearestExpiration: futureIso(
+            account.resetCredits.expirationOffsetsMs[0],
+          ),
+          expirations: account.resetCredits.expirationOffsetsMs.map(futureIso),
         }
       : null,
     fetchedAt: new Date().toISOString(),

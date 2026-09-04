@@ -3,6 +3,9 @@ import { isDemoAccountId, listDemoAccounts } from "../services/demo";
 import { PROVIDER_IDS, providerMeta, type ProviderId } from "../models";
 
 export const WIDGET_DASHBOARD_PARAMETER = "dashboard";
+export const WIDGET_DEMO_DASHBOARD_PARAMETER = "dashboard:demo";
+
+export type WidgetDataSource = "live" | "demo";
 
 export type WidgetAccount = {
   provider: ProviderId;
@@ -28,19 +31,46 @@ function normalizeWidgetParameter(rawValue: unknown): string {
   }
 }
 
-export function resolveWidgetParameter(rawValue: unknown): {
-  mode: "dashboard" | "account";
-  account: WidgetAccount | null;
-  error: string | null;
-} {
-  if (
-    normalizeWidgetParameter(rawValue).toLowerCase() ===
-    WIDGET_DASHBOARD_PARAMETER
-  ) {
-    return { mode: "dashboard", account: null, error: null };
+export function resolveWidgetParameter(rawValue: unknown):
+  | {
+      mode: "dashboard";
+      dataSource: WidgetDataSource;
+      account: null;
+      error: null;
+    }
+  | {
+      mode: "account";
+      dataSource: WidgetDataSource;
+      account: WidgetAccount | null;
+      error: string | null;
+    } {
+  const normalized = normalizeWidgetParameter(rawValue).toLowerCase();
+  if (normalized === WIDGET_DASHBOARD_PARAMETER) {
+    return {
+      mode: "dashboard",
+      dataSource: "live",
+      account: null,
+      error: null,
+    };
+  }
+  if (normalized === WIDGET_DEMO_DASHBOARD_PARAMETER) {
+    return {
+      mode: "dashboard",
+      dataSource: "demo",
+      account: null,
+      error: null,
+    };
   }
   const resolved = resolveWidgetAccount(rawValue);
-  return { mode: "account", ...resolved };
+  return {
+    mode: "account",
+    dataSource: resolved.account
+      ? isDemoAccountId(resolved.account.profileId)
+        ? "demo"
+        : "live"
+      : "live",
+    ...resolved,
+  };
 }
 
 export function resolveWidgetAccount(rawValue: unknown): {

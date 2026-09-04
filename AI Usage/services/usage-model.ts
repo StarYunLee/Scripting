@@ -3,6 +3,7 @@ import type { UsageWindowView } from "../models";
 export type NormalizedResetCredits = {
   available: number;
   nearestExpiration: string | null;
+  expirations: string[];
 };
 
 export type NormalizedUsageSnapshot = {
@@ -56,6 +57,18 @@ export function sanitizeNormalizedUsageSnapshot(
     },
   );
   const rawCredits = snapshot.resetCredits;
+  const rawExpirations = Array.isArray(rawCredits?.expirations)
+    ? rawCredits.expirations
+        .filter(
+          (value): value is string =>
+            typeof value === "string" &&
+            Number.isFinite(new Date(value).getTime()),
+        )
+        .map((value) => new Date(value).toISOString())
+        .sort(
+          (left, right) => new Date(left).getTime() - new Date(right).getTime(),
+        )
+    : [];
   const resetCredits =
     rawCredits &&
     typeof rawCredits.available === "number" &&
@@ -66,6 +79,7 @@ export function sanitizeNormalizedUsageSnapshot(
       ? {
           available: Math.max(0, Math.floor(rawCredits.available)),
           nearestExpiration: rawCredits.nearestExpiration,
+          expirations: rawExpirations,
         }
       : null;
   return {
@@ -97,9 +111,13 @@ export function normalizeResetCredits(
   const future = parsed.filter((item) => item.ms > Date.now());
   const effective =
     parsed.length >= count ? Math.min(count, future.length) : count;
+  const knownExpirations = future
+    .slice(0, effective)
+    .map((item) => new Date(item.ms).toISOString());
   return {
     available: effective,
-    nearestExpiration: effective === 0 ? null : future[0]?.value || null,
+    nearestExpiration: effective === 0 ? null : knownExpirations[0] || null,
+    expirations: knownExpirations,
   };
 }
 

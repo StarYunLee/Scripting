@@ -13,6 +13,7 @@ import {
   formatRelativeFetchedAt,
   formatRelativeResetAt,
   formatResetDate,
+  formatResetExpirationCountdown,
 } from "../services/usage-format";
 import { providerMeta, type UsageCard } from "../models";
 import { usageTint } from "../services/usage-colors";
@@ -50,6 +51,38 @@ function footerText(card: UsageCard): {
     text: `${sourceLabel} · ${formatRelativeFetchedAt(card.fetchedAt)}`,
     color: "secondaryLabel",
   };
+}
+
+function resetCreditsDetailMessage(
+  resetCredits: NonNullable<UsageCard["resetCredits"]>,
+): string {
+  const grouped = new Map<string, number>();
+  for (const expiration of resetCredits.expirations) {
+    grouped.set(expiration, (grouped.get(expiration) || 0) + 1);
+  }
+  const rows = Array.from(grouped.entries()).map(
+    ([expiration, count], index) =>
+      `${index + 1}. ${formatResetDate(expiration)}${count > 1 ? ` × ${count}` : ""}\n   ${formatResetExpirationCountdown(expiration)}`,
+  );
+  const known = resetCredits.expirations.length;
+  const unknown = Math.max(0, resetCredits.available - known);
+  if (unknown > 0) {
+    rows.push(`另有 ${unknown} 次暂未提供到期时间`);
+  }
+  if (!rows.length) {
+    rows.push("服务暂未提供各次重置的到期时间。");
+  }
+  return `可用重置 ${resetCredits.available} 次\n\n${rows.join("\n\n")}`;
+}
+
+async function showResetCreditsDetail(
+  resetCredits: NonNullable<UsageCard["resetCredits"]>,
+): Promise<void> {
+  await Dialog.alert({
+    title: "重置次数详情",
+    message: resetCreditsDetailMessage(resetCredits),
+    buttonLabel: "知道了",
+  });
 }
 
 export function UsageCardView(props: {
@@ -122,12 +155,44 @@ export function UsageCardView(props: {
       </HStack>
 
       {props.card.resetCredits ? (
-        <Text font={13} foregroundStyle="secondaryLabel">
-          可用重置 {props.card.resetCredits.available} 次
-          {props.card.resetCredits.nearestExpiration
-            ? ` · 最近到期 ${formatResetDate(props.card.resetCredits.nearestExpiration)}`
-            : ""}
-        </Text>
+        <HStack frame={{ maxWidth: "infinity" }}>
+          <Button
+            buttonStyle="plain"
+            action={() => showResetCreditsDetail(props.card.resetCredits!)}
+          >
+            <HStack spacing={5} contentShape="rect">
+              <Image
+                systemName="arrow.counterclockwise.circle"
+                font={12}
+                foregroundStyle="secondaryLabel"
+              />
+              <Text font={13} foregroundStyle="secondaryLabel">
+                可用重置 {props.card.resetCredits.available} 次
+              </Text>
+              <Image
+                systemName="chevron.right"
+                font={9}
+                foregroundStyle="tertiaryLabel"
+              />
+            </HStack>
+          </Button>
+          <Spacer minLength={12} />
+          {props.card.resetCredits.nearestExpiration ? (
+            <Text
+              font={13}
+              foregroundStyle="secondaryLabel"
+              lineLimit={1}
+              monospacedDigit
+            >
+              最近到期{" "}
+              {formatResetDate(props.card.resetCredits.nearestExpiration)}
+            </Text>
+          ) : (
+            <Text font={13} foregroundStyle="secondaryLabel" lineLimit={1}>
+              到期时间未知
+            </Text>
+          )}
+        </HStack>
       ) : null}
 
       {props.card.windows.length === 0 ? (

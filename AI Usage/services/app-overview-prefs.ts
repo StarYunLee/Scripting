@@ -1,6 +1,11 @@
 import type { ProviderId, UsageCard, UsageWindowView } from "../models";
 
-const STORAGE_KEY = "ai_usage_app_overview_preferences_v1";
+const LIVE_STORAGE_KEY = "ai_usage_app_overview_preferences_v1";
+const DEMO_STORAGE_KEY = "ai_usage_demo_app_overview_preferences_v1";
+
+function storageKey(accountId: string): string {
+  return accountId.startsWith("demo_") ? DEMO_STORAGE_KEY : LIVE_STORAGE_KEY;
+}
 
 type StoredPreferences = {
   hiddenAccounts?: unknown;
@@ -16,6 +21,11 @@ function accountKey(provider: ProviderId, accountId: string): string {
   return `${provider}:${accountId}`;
 }
 
+function belongsToDemo(key: string): boolean {
+  const separator = key.indexOf(":");
+  return separator >= 0 && key.slice(separator + 1).startsWith("demo_");
+}
+
 function uniqueStrings(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
   return [
@@ -27,31 +37,88 @@ function uniqueStrings(value: unknown): string[] {
   ];
 }
 
-function readPreferences(): OverviewPreferences {
+function migrateLegacyOverviewPreferences(): void {
   try {
-    const stored = Storage.get<StoredPreferences>(STORAGE_KEY);
+    if (Storage.get(DEMO_STORAGE_KEY)) return;
+    const legacy = Storage.get<StoredPreferences>(LIVE_STORAGE_KEY);
+    if (!legacy || typeof legacy !== "object") return;
+    const hiddenAccounts = uniqueStrings(legacy.hiddenAccounts);
+    const rawHiddenWindows =
+      legacy.hiddenWindows && typeof legacy.hiddenWindows === "object"
+        ? (legacy.hiddenWindows as Record<string, unknown>)
+        : {};
+    const demo: OverviewPreferences = {
+      hiddenAccounts: hiddenAccounts.filter(belongsToDemo),
+      hiddenWindows: Object.fromEntries(
+        Object.entries(rawHiddenWindows)
+          .filter(([key]) => belongsToDemo(key))
+          .map(([key, value]) => [key, uniqueStrings(value)]),
+      ),
+    };
+    if (
+      !demo.hiddenAccounts.length &&
+      !Object.keys(demo.hiddenWindows).length
+    ) {
+      return;
+    }
+    const live: OverviewPreferences = {
+      hiddenAccounts: hiddenAccounts.filter((key) => !belongsToDemo(key)),
+      hiddenWindows: Object.fromEntries(
+        Object.entries(rawHiddenWindows)
+          .filter(([key]) => !belongsToDemo(key))
+          .map(([key, value]) => [key, uniqueStrings(value)]),
+      ),
+    };
+    if (!Storage.set(DEMO_STORAGE_KEY, demo)) return;
+    Storage.set(LIVE_STORAGE_KEY, live);
+  } catch {
+    /* 保留旧 Key，读取时仍按账号类型过滤。 */
+  }
+}
+
+function readPreferences(accountId: string): OverviewPreferences {
+  try {
+    migrateLegacyOverviewPreferences();
+    const key = storageKey(accountId);
+    const direct = Storage.get<StoredPreferences>(key);
+    const stored =
+      direct ||
+      (accountId.startsWith("demo_")
+        ? Storage.get<StoredPreferences>(LIVE_STORAGE_KEY)
+        : null);
     if (!stored || typeof stored !== "object") {
       return { hiddenAccounts: [], hiddenWindows: {} };
     }
+    const demoScope = accountId.startsWith("demo_");
     const hiddenWindows: Record<string, string[]> = {};
     if (stored.hiddenWindows && typeof stored.hiddenWindows === "object") {
       for (const [key, value] of Object.entries(stored.hiddenWindows)) {
+        if (belongsToDemo(key) !== demoScope) continue;
         const ids = uniqueStrings(value);
         if (ids.length > 0) hiddenWindows[key] = ids;
       }
     }
-    return {
-      hiddenAccounts: uniqueStrings(stored.hiddenAccounts),
+    const result = {
+      hiddenAccounts: uniqueStrings(stored.hiddenAccounts).filter(
+        (key) => belongsToDemo(key) === demoScope,
+      ),
       hiddenWindows,
     };
+    if (!direct && accountId.startsWith("demo_")) {
+      Storage.set(DEMO_STORAGE_KEY, result);
+    }
+    return result;
   } catch {
     return { hiddenAccounts: [], hiddenWindows: {} };
   }
 }
 
-function writePreferences(value: OverviewPreferences): boolean {
+function writePreferences(
+  accountId: string,
+  value: OverviewPreferences,
+): boolean {
   try {
-    return Storage.set(STORAGE_KEY, value);
+    return Storage.set(storageKey(accountId), value);
   } catch {
     return false;
   }
@@ -61,7 +128,7 @@ export function isAccountShownInOverview(
   provider: ProviderId,
   accountId: string,
 ): boolean {
-  return !readPreferences().hiddenAccounts.includes(
+  return !readPreferences(accountId).hiddenAccounts.includes(
     accountKey(provider, accountId),
   );
 }
@@ -71,12 +138,12 @@ export function setAccountShownInOverview(
   accountId: string,
   shown: boolean,
 ): boolean {
-  const preferences = readPreferences();
+  const preferences = readPreferences(accountId);
   const key = accountKey(provider, accountId);
   preferences.hiddenAccounts = shown
     ? preferences.hiddenAccounts.filter((item) => item !== key)
     : uniqueStrings([...preferences.hiddenAccounts, key]);
-  return writePreferences(preferences);
+  return writePreferences(accountId, preferences);
 }
 
 export function visibleOverviewWindows(
@@ -85,7 +152,8 @@ export function visibleOverviewWindows(
   windows: UsageWindowView[],
 ): UsageWindowView[] {
   const hidden = new Set(
-    readPreferences().hiddenWindows[accountKey(provider, accountId)] || [],
+    readPreferences(accountId).hiddenWindows[accountKey(provider, accountId)] ||
+      [],
   );
   return windows.filter((window) => !hidden.has(window.id));
 }
@@ -96,7 +164,7 @@ export function isWindowShownInOverview(
   windowId: string,
 ): boolean {
   const hidden =
-    readPreferences().hiddenWindows[accountKey(provider, accountId)];
+    readPreferences(accountId).hiddenWindows[accountKey(provider, accountId)];
   return !hidden?.includes(windowId);
 }
 
@@ -108,7 +176,7 @@ export function setWindowShownInOverview(
   shown: boolean,
 ): boolean {
   const key = accountKey(provider, accountId);
-  const preferences = readPreferences();
+  const preferences = readPreferences(accountId);
   const hidden = new Set(preferences.hiddenWindows[key] || []);
   if (shown) {
     hidden.delete(windowId);
@@ -121,7 +189,7 @@ export function setWindowShownInOverview(
   }
   if (hidden.size > 0) preferences.hiddenWindows[key] = [...hidden];
   else delete preferences.hiddenWindows[key];
-  return writePreferences(preferences);
+  return writePreferences(accountId, preferences);
 }
 
 export function applyOverviewPreferences(cards: UsageCard[]): UsageCard[] {
@@ -142,10 +210,10 @@ export function clearAccountOverviewPreferences(
   accountId: string,
 ): boolean {
   const key = accountKey(provider, accountId);
-  const preferences = readPreferences();
+  const preferences = readPreferences(accountId);
   preferences.hiddenAccounts = preferences.hiddenAccounts.filter(
     (item) => item !== key,
   );
   delete preferences.hiddenWindows[key];
-  return writePreferences(preferences);
+  return writePreferences(accountId, preferences);
 }

@@ -31,12 +31,13 @@ import { requestWidgetReloadAfterStorage } from "../services/widgets";
 export function DashboardWidgetSettingsPage(props: {
   cards: UsageCard[];
   backgroundTheme: BackgroundThemeId;
+  dataSource: "live" | "demo";
 }) {
   const [tick, setTick] = useState(0);
   const [previewFamily, setPreviewFamily] = useState<
     "choose" | "systemSmall" | "systemMedium" | "systemLarge"
   >("choose");
-  const preferences = getDashboardWidgetPreferences();
+  const preferences = getDashboardWidgetPreferences(props.dataSource);
 
   function changed() {
     setTick((value) => value + 1);
@@ -58,8 +59,11 @@ export function DashboardWidgetSettingsPage(props: {
       await Widget.preview({
         family,
         parameters: {
-          options: { dashboard: JSON.stringify("dashboard") },
-          default: "dashboard",
+          options: {
+            dashboard: JSON.stringify("dashboard"),
+            "dashboard:demo": JSON.stringify("dashboard:demo"),
+          },
+          default: props.dataSource === "demo" ? "dashboard:demo" : "dashboard",
         },
       });
     } catch (error) {
@@ -179,6 +183,7 @@ export function DashboardWidgetSettingsPage(props: {
                       const result = setDashboardWidgetAccountVisible(
                         card.key,
                         value,
+                        props.dataSource,
                       );
                       if (!result.ok) {
                         void saveFailure();
@@ -209,6 +214,7 @@ export function DashboardWidgetSettingsPage(props: {
                               ? []
                               : [nextSecondary]),
                           ],
+                          props.dataSource,
                         );
                         if (!result.ok) {
                           void saveFailure();
@@ -235,6 +241,7 @@ export function DashboardWidgetSettingsPage(props: {
                         const result = setDashboardWidgetAccountWindows(
                           card.key,
                           [primary, ...(value === "none" ? [] : [value])],
+                          props.dataSource,
                         );
                         if (!result.ok) {
                           void saveFailure();
