@@ -10,6 +10,21 @@ import {
 } from "scripting";
 
 const CARD_RADIUS = 20;
+// 与上传/设置页首个 List Section Header 后的卡片顶部基线对齐。
+const EMPTY_STATE_TOP_INSET = 53;
+
+export function GlassEmptyStateContainer(props: {
+  children: VStackProps["children"];
+}) {
+  return (
+    <VStack
+      padding={{ top: EMPTY_STATE_TOP_INSET }}
+      frame={{ maxWidth: "infinity" }}
+    >
+      {props.children}
+    </VStack>
+  );
+}
 
 function GlassRowBackground() {
   return (

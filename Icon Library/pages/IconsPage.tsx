@@ -13,7 +13,10 @@ import {
   useState,
 } from "scripting";
 import { IconGlassTile } from "../components/IconGlassTile";
-import { GlassEmptyStateCard } from "../components/Glass";
+import {
+  GlassEmptyStateCard,
+  GlassEmptyStateContainer,
+} from "../components/Glass";
 import { PageBackground } from "../components/PageBackground";
 import { countPendingIcons } from "../services/catalog";
 import { formatError } from "../services/errors";
@@ -272,21 +275,25 @@ export function IconsPage(props: {
           ) : null}
           {icons.length === 0 ? (
             !hasRepository ? (
-              <GlassEmptyStateCard
-                systemImage="square.grid.2x2"
-                title="还没有图标库"
-                message="添加一个公开 GitHub 仓库并选择图标库类型，即可开始管理图标。"
-                actionTitle="去设置"
-                action={onOpenSettings}
-              />
+              <GlassEmptyStateContainer>
+                <GlassEmptyStateCard
+                  systemImage="square.grid.2x2"
+                  title="还没有图标库"
+                  message="添加一个公开 GitHub 仓库并选择图标库类型，即可开始管理图标。"
+                  actionTitle="去设置"
+                  action={onOpenSettings}
+                />
+              </GlassEmptyStateContainer>
             ) : !configured ? (
-              <GlassEmptyStateCard
-                systemImage="square.grid.2x2"
-                title="还未配置图标库"
-                message="仓库已保存，请在设置中选择创建图标库或连接已有图标库。"
-                actionTitle="去设置"
-                action={onOpenSettings}
-              />
+              <GlassEmptyStateContainer>
+                <GlassEmptyStateCard
+                  systemImage="square.grid.2x2"
+                  title="还未配置图标库"
+                  message="仓库已保存，请在设置中选择创建图标库或连接已有图标库。"
+                  actionTitle="去设置"
+                  action={onOpenSettings}
+                />
+              </GlassEmptyStateContainer>
             ) : query.trim() ? (
               <Text
                 foregroundStyle="secondaryLabel"
@@ -296,29 +303,35 @@ export function IconsPage(props: {
                 没有匹配的图标
               </Text>
             ) : error ? (
-              <GlassEmptyStateCard
-                systemImage="exclamationmark.triangle"
-                title="图标读取失败"
-                message={error}
-                actionTitle="重新扫描"
-                action={handleRefresh}
-              />
+              <GlassEmptyStateContainer>
+                <GlassEmptyStateCard
+                  systemImage="exclamationmark.triangle"
+                  title="图标读取失败"
+                  message={error}
+                  actionTitle="重新扫描"
+                  action={handleRefresh}
+                />
+              </GlassEmptyStateContainer>
             ) : catalog ? (
-              <GlassEmptyStateCard
-                systemImage="square.grid.2x2"
-                title="图标库还是空的"
-                message="从相册、文件、Lobe Icons 或 App Store 添加图标。"
-                actionTitle="去上传图标"
-                action={onOpenUpload}
-              />
+              <GlassEmptyStateContainer>
+                <GlassEmptyStateCard
+                  systemImage="square.grid.2x2"
+                  title="图标库还是空的"
+                  message="从相册、文件、Lobe Icons 或 App Store 添加图标。"
+                  actionTitle="去上传图标"
+                  action={onOpenUpload}
+                />
+              </GlassEmptyStateContainer>
             ) : (
-              <GlassEmptyStateCard
-                systemImage="square.grid.2x2"
-                title="正在读取图标"
-                message="正在从公开仓库读取图标目录。"
-                actionTitle="重新扫描"
-                action={handleRefresh}
-              />
+              <GlassEmptyStateContainer>
+                <GlassEmptyStateCard
+                  systemImage="square.grid.2x2"
+                  title="正在读取图标"
+                  message="正在从公开仓库读取图标目录。"
+                  actionTitle="重新扫描"
+                  action={handleRefresh}
+                />
+              </GlassEmptyStateContainer>
             )
           ) : (
             <LazyVGrid

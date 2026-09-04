@@ -16,6 +16,7 @@ import {
 } from "scripting";
 import {
   GlassEmptyStateCard,
+  GlassEmptyStateContainer,
 } from "../components/Glass";
 import { IconGlassTile } from "../components/IconGlassTile";
 import { PageBackground } from "../components/PageBackground";
@@ -309,15 +310,17 @@ export function GalleryPage() {
               正在载入订阅…
             </Text>
           ) : !current ? (
-            <GlassEmptyStateCard
-              systemImage="rectangle.stack"
-              title="还没有订阅"
-              message="添加公开图标库 JSON 后，即可在这里只读浏览图标。"
-              actionTitle="添加订阅"
-              action={() => {
-                void addLibrary();
-              }}
-            />
+            <GlassEmptyStateContainer>
+              <GlassEmptyStateCard
+                systemImage="rectangle.stack"
+                title="还没有订阅"
+                message="添加公开图标库 JSON 后，即可在这里只读浏览图标。"
+                actionTitle="添加订阅"
+                action={() => {
+                  void addLibrary();
+                }}
+              />
+            </GlassEmptyStateContainer>
           ) : icons.length === 0 ? (
             query.trim() ? (
               <Text
@@ -328,29 +331,35 @@ export function GalleryPage() {
                 没有匹配的图标
               </Text>
             ) : error ? (
-              <GlassEmptyStateCard
-                systemImage="exclamationmark.triangle"
-                title="订阅读取失败"
-                message={error}
-                actionTitle="重新扫描"
-                action={handleRefresh}
-              />
+              <GlassEmptyStateContainer>
+                <GlassEmptyStateCard
+                  systemImage="exclamationmark.triangle"
+                  title="订阅读取失败"
+                  message={error}
+                  actionTitle="重新扫描"
+                  action={handleRefresh}
+                />
+              </GlassEmptyStateContainer>
             ) : catalog ? (
-              <GlassEmptyStateCard
-                systemImage="rectangle.stack"
-                title="这个订阅还没有图标"
-                message="可以下拉刷新，或切换其他公开图标库。"
-                actionTitle="重新扫描"
-                action={handleRefresh}
-              />
+              <GlassEmptyStateContainer>
+                <GlassEmptyStateCard
+                  systemImage="rectangle.stack"
+                  title="这个订阅还没有图标"
+                  message="可以下拉刷新，或切换其他公开图标库。"
+                  actionTitle="重新扫描"
+                  action={handleRefresh}
+                />
+              </GlassEmptyStateContainer>
             ) : (
-              <GlassEmptyStateCard
-                systemImage="rectangle.stack"
-                title="正在读取订阅"
-                message="正在从公开 JSON 读取图标目录。"
-                actionTitle="重新扫描"
-                action={handleRefresh}
-              />
+              <GlassEmptyStateContainer>
+                <GlassEmptyStateCard
+                  systemImage="rectangle.stack"
+                  title="正在读取订阅"
+                  message="正在从公开 JSON 读取图标目录。"
+                  actionTitle="重新扫描"
+                  action={handleRefresh}
+                />
+              </GlassEmptyStateContainer>
             )
           ) : (
             <LazyVGrid
