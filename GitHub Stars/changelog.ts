@@ -6,6 +6,16 @@ export type ChangelogEntry = {
 
 export const CHANGELOG = [
   {
+    version: "1.1.0",
+    date: "2026-09-05",
+    changes: [
+      "新增 Fork 上游状态检查，支持重新检查、同步上游和查看跨 Fork 差异，冲突时不会强制覆盖。",
+      "重构 GitHub 认证与连接设置，保留设置页 Profile 卡片，配置或更换访问令牌改为按需展开，并在验证成功后保存。",
+      "将私有仓库范围与 Classic PAT 权限说明集中到账户与权限页面；未配置访问令牌时提供统一引导，配置完成后返回设置页显示 Profile。",
+      "Stars 与仓库页搜索栏常驻显示，Stars 页将筛选与排序统一收纳到一个菜单。",
+    ],
+  },
+  {
     version: "1.0.1",
     date: "2026-09-03",
     changes: [

@@ -6,13 +6,13 @@
   "permissions": null,
   "runInApp": true,
   "contributors": [],
-  "version": "1.0.1",
+  "version": "1.1.0",
   "intentInputTypes": [],
   "localizedNames": {
     "zh": "GitHub Stars",
     "en": "GitHub Stars"
   },
-  "description": "Browse and manage GitHub Stars, custom lists, and owned public repositories, with contributions and language insights.",
+  "description": "Browse and manage GitHub Stars, custom lists, and owned repositories, with contributions and language insights.",
   "remoteResource": {
     "url": "https://raw.githubusercontent.com/StarYunLee/Scripting/main/GitHub-Stars.scripting",
     "autoUpdateInterval": 86400
@@ -23,8 +23,8 @@
     "homepage": "https://github.com/StarYunLee"
   },
   "localizedDescriptions": {
-    "zh": "浏览与管理 GitHub Stars、自定义列表和本人公开仓库，支持仓库资料维护、多年度贡献热力图与常用语言分析。",
-    "en": "Browse and manage GitHub Stars, custom lists, and owned public repositories, including repository metadata, contributions, and language insights."
+    "zh": "浏览与管理 GitHub Stars、自定义列表和本人仓库，支持仓库资料维护、多年度贡献热力图与常用语言分析。",
+    "en": "Browse and manage GitHub Stars, custom lists, and owned repositories, including repository metadata, contributions, and language insights."
   },
   "iconImage": "https://raw.githubusercontent.com/StarYunLee/Profiles/main/icon/github.png"
 }

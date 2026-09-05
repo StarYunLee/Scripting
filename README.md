@@ -62,7 +62,7 @@ https://raw.githubusercontent.com/StarYunLee/Scripting/main/AI-Usage.scripting
 
 ### GitHub Stars
 
-浏览已加星仓库，支持搜索、按语言或列表筛选、多种排序，以及粘贴链接加星、长按取消 Star。可维护自定义列表与仓库归属；也可浏览本人公开仓库，编辑描述、Homepage、Topics 与 Issues，并将已设置为 GitHub Pinned 的仓库置顶显示。资料卡提供贡献热力图与常用语言。
+浏览已加星仓库，支持常驻搜索、按语言或列表筛选、多种排序，以及粘贴链接加星、长按取消 Star。可维护自定义列表与仓库归属；也可浏览本人仓库，编辑描述、Homepage、Topics 与 Issues；Fork 支持上游状态检查、同步和差异查看。设置页保留 GitHub Profile 卡片，并集中管理账户权限、私有仓库范围和访问令牌。
 
 <table>
   <tr>
