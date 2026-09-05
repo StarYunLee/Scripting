@@ -68,6 +68,9 @@ export function GlassSectionHeader(props: { title: string; detail?: string }) {
 export function GlassActionRow(props: {
   title: string;
   action: () => void | Promise<void>;
+  systemImage?: string;
+  centered?: boolean;
+  natural?: boolean;
   destructive?: boolean;
   disabled?: boolean;
 }) {
@@ -80,10 +83,35 @@ export function GlassActionRow(props: {
       disabled={props.disabled}
     >
       <HStack
-        padding={{ vertical: true }}
-        frame={{ minHeight: 44, maxWidth: "infinity" }}
+        spacing={props.systemImage ? 8 : 0}
+        padding={props.natural ? { vertical: 12 } : { vertical: true }}
+        frame={
+          props.natural
+            ? {
+                maxWidth: "infinity",
+                alignment: props.centered ? "center" : "leading",
+              }
+            : {
+                minHeight: 44,
+                maxWidth: "infinity",
+                alignment: props.centered ? "center" : "leading",
+              }
+        }
         contentShape="rect"
       >
+        {props.systemImage ? (
+          <Image
+            systemName={props.systemImage}
+            foregroundStyle={
+              props.destructive
+                ? "systemRed"
+                : props.disabled
+                  ? "secondaryLabel"
+                  : "accentColor"
+            }
+            frame={{ width: 20, height: 20 }}
+          />
+        ) : null}
         <Text
           foregroundStyle={
             props.destructive
@@ -95,7 +123,7 @@ export function GlassActionRow(props: {
         >
           {props.title}
         </Text>
-        <Spacer />
+        {props.centered ? null : <Spacer />}
       </HStack>
     </Button>
   );
@@ -105,6 +133,7 @@ export function GlassNavRow(props: {
   title: string;
   detail?: string;
   detailFont?: "system" | "subheadline";
+  systemImage?: string;
   action: () => void;
   onMenu?: () => void;
   showDivider?: boolean;
@@ -143,11 +172,18 @@ export function GlassNavRow(props: {
             </VStack>
           ) : (
             <HStack
-              spacing={10}
+              spacing={props.systemImage ? 8 : 10}
               padding={{ vertical: true }}
               frame={{ minHeight: 44, maxWidth: "infinity" }}
               contentShape="rect"
             >
+              {props.systemImage ? (
+                <Image
+                  systemName={props.systemImage}
+                  foregroundStyle="accentColor"
+                  frame={{ width: 20, height: 20 }}
+                />
+              ) : null}
               <Text
                 lineLimit={2}
                 frame={{ maxWidth: "infinity", alignment: "leading" }}
@@ -198,12 +234,73 @@ export function GlassNavRow(props: {
   );
 }
 
-export function GlassLabeledRow(props: { title: string; value: string }) {
+export function GlassCredentialRow(props: {
+  title: string;
+  detail?: string;
+  actionTitle: string;
+  action: () => void | Promise<void>;
+  iconActive?: boolean;
+  disabled?: boolean;
+}) {
   return (
     <HStack
+      spacing={10}
+      padding={{ vertical: 12 }}
+      frame={{ maxWidth: "infinity" }}
+      contentShape="rect"
+    >
+      <Image
+        systemName="key.fill"
+        foregroundStyle={
+          props.iconActive === false ? "secondaryLabel" : "accentColor"
+        }
+        frame={{ width: 20, height: 20 }}
+      />
+      <VStack
+        alignment="leading"
+        spacing={3}
+        frame={{ maxWidth: "infinity", alignment: "leading" }}
+      >
+        <Text lineLimit={1}>{props.title}</Text>
+        {props.detail ? (
+          <Text
+            font="subheadline"
+            foregroundStyle="secondaryLabel"
+            lineLimit={1}
+          >
+            {props.detail}
+          </Text>
+        ) : null}
+      </VStack>
+      <Button
+        title={props.actionTitle}
+        buttonStyle="plain"
+        foregroundStyle={props.disabled ? "secondaryLabel" : "accentColor"}
+        disabled={props.disabled}
+        action={props.action}
+      />
+    </HStack>
+  );
+}
+
+export function GlassLabeledRow(props: {
+  title: string;
+  value: string;
+  systemImage?: string;
+}) {
+  return (
+    <HStack
+      spacing={props.systemImage ? 8 : 0}
       padding={{ vertical: true }}
       frame={{ minHeight: 44, maxWidth: "infinity" }}
     >
+      {props.systemImage ? (
+        <Image
+          systemName={props.systemImage}
+          foregroundStyle="accentColor"
+          frame={{ width: 20, height: 20 }}
+        />
+      ) : null}
       <Text>{props.title}</Text>
       <Spacer />
       <Text foregroundStyle="secondaryLabel" multilineTextAlignment="trailing">

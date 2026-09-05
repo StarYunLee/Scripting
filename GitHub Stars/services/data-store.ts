@@ -69,11 +69,7 @@ import {
 
 type Listener = (state: AppState) => void;
 type StoreScope =
-  | "stars"
-  | "lists"
-  | "repositories"
-  | "settings"
-  | `detail:${string}`;
+  "stars" | "lists" | "repositories" | "settings" | `detail:${string}`;
 
 type RefreshResource = "viewer" | "stars" | "lists" | "ownedRepositories";
 
@@ -1105,7 +1101,7 @@ export class GitHubDataStore {
     }
   }
 
-  async setIncludePrivateRepositories(enabled: boolean): Promise<void> {
+  setIncludePrivateRepositoriesPreference(enabled: boolean): void {
     saveRepositoryPreferences({
       version: 1,
       includePrivateRepositories: enabled,
@@ -1144,22 +1140,15 @@ export class GitHubDataStore {
       "repositories",
       "settings",
     ]);
+  }
+
+  async setIncludePrivateRepositories(enabled: boolean): Promise<void> {
+    this.setIncludePrivateRepositoriesPreference(enabled);
+    if (!enabled) return;
     try {
       await this.refreshOwnedRepositories();
     } catch (error) {
-      saveRepositoryPreferences({
-        version: 1,
-        includePrivateRepositories: false,
-      });
-      this.bumpRevision("ownedRepositories");
-      this.update(
-        {
-          includePrivateRepositories: false,
-          ownedRepositoriesState: "loaded",
-          ownedRepositoriesError: null,
-        },
-        ["repositories", "settings"],
-      );
+      this.setIncludePrivateRepositoriesPreference(false);
       throw error;
     }
   }

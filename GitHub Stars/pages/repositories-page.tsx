@@ -21,15 +21,11 @@ import {
 } from "../ui/glass";
 import { glassListPageProps } from "../ui/glass-list-page";
 import { OwnedRepositoryCard } from "../ui/owned-repository-row";
+import { TokenRequiredPage } from "./token-required-page";
 import { useRootToolbar } from "./root-toolbar";
 
 type RepositoryFilter =
-  | "all"
-  | "public"
-  | "private"
-  | "source"
-  | "fork"
-  | "archived";
+  "all" | "public" | "private" | "source" | "fork" | "archived";
 type RepositorySort = "pushed" | "stars" | "name";
 
 const FILTERS: readonly { key: RepositoryFilter; label: string }[] = [
@@ -108,7 +104,10 @@ function errorMessage(error: unknown): string {
     : String(error);
 }
 
-export function RepositoriesPage(props: { store: GitHubDataStore }) {
+export function RepositoriesPage(props: {
+  store: GitHubDataStore;
+  onOpenSettings: () => void;
+}) {
   const { store } = props;
   const [state, setState] = useState<AppState>(() => store.getState());
   const [query, setQuery] = useState("");
@@ -118,6 +117,7 @@ export function RepositoriesPage(props: { store: GitHubDataStore }) {
 
   useEffect(() => {
     const unsubscribe = store.subscribe("repositories", setState);
+    if (!state.tokenConfigured) return unsubscribe;
     void (async () => {
       try {
         await Promise.all([
@@ -130,7 +130,7 @@ export function RepositoriesPage(props: { store: GitHubDataStore }) {
       }
     })();
     return unsubscribe;
-  }, []);
+  }, [state.tokenConfigured]);
 
   useEffect(() => {
     if (!state.includePrivateRepositories && filter === "private") {
@@ -157,42 +157,47 @@ export function RepositoriesPage(props: { store: GitHubDataStore }) {
   );
   const filterActive = filter !== "all";
   const sortActive = sort !== "pushed";
-  const toolbar = useRootToolbar([
-    <Menu
-      title="筛选"
-      systemImage={
-        filterActive
-          ? "line.3.horizontal.decrease.circle.fill"
-          : "line.3.horizontal.decrease.circle"
-      }
-    >
-      {FILTERS.filter(
-        (item) => state.includePrivateRepositories || item.key !== "private",
-      ).map((item) => (
-        <Button
-          key={item.key}
-          title={item.label}
-          action={() => setFilter(item.key)}
-        />
-      ))}
-    </Menu>,
-    <Menu
-      title="排序"
-      systemImage={
-        sortActive
-          ? "arrow.up.arrow.down.circle.fill"
-          : "arrow.up.arrow.down.circle"
-      }
-    >
-      {SORTS.map((item) => (
-        <Button
-          key={item.key}
-          title={item.label}
-          action={() => setSort(item.key)}
-        />
-      ))}
-    </Menu>,
-  ]);
+  const toolbar = useRootToolbar(
+    state.tokenConfigured
+      ? [
+          <Menu
+            title="筛选"
+            systemImage={
+              filterActive
+                ? "line.3.horizontal.decrease.circle.fill"
+                : "line.3.horizontal.decrease.circle"
+            }
+          >
+            {FILTERS.filter(
+              (item) =>
+                state.includePrivateRepositories || item.key !== "private",
+            ).map((item) => (
+              <Button
+                key={item.key}
+                title={item.label}
+                action={() => setFilter(item.key)}
+              />
+            ))}
+          </Menu>,
+          <Menu
+            title="排序"
+            systemImage={
+              sortActive
+                ? "arrow.up.arrow.down.circle.fill"
+                : "arrow.up.arrow.down.circle"
+            }
+          >
+            {SORTS.map((item) => (
+              <Button
+                key={item.key}
+                title={item.label}
+                action={() => setSort(item.key)}
+              />
+            ))}
+          </Menu>,
+        ]
+      : undefined,
+  );
 
   async function editRepository(repository: OwnedRepository) {
     if (busyRepositoryId) return;
@@ -461,6 +466,15 @@ export function RepositoriesPage(props: { store: GitHubDataStore }) {
     }
   }
 
+  if (!state.tokenConfigured) {
+    return (
+      <TokenRequiredPage
+        navigationTitle="仓库"
+        onOpenSettings={props.onOpenSettings}
+      />
+    );
+  }
+
   const error = displayError(state.ownedRepositoriesError);
   const emptyBecauseFilter =
     state.ownedRepositoriesState !== "loading" &&
@@ -475,6 +489,7 @@ export function RepositoriesPage(props: { store: GitHubDataStore }) {
         searchable={{
           value: query,
           onChanged: setQuery,
+          placement: "navigationBarDrawerAlwaysDisplay",
           prompt: "搜索我的仓库",
         }}
         refreshable={refresh}

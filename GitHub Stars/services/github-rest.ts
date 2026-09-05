@@ -74,8 +74,9 @@ export type RestUser = {
 
 function headers(
   accept = "application/vnd.github+json",
+  tokenOverride?: string,
 ): Record<string, string> {
-  const token = readToken();
+  const token = tokenOverride ?? readToken();
   if (!token) throw createGitHubError("missing_token", "未配置 Token");
   return {
     Accept: accept,
@@ -93,12 +94,16 @@ type RequestResult = {
 async function requestOnce(
   path: string,
   init: RequestInit = {},
+  tokenOverride?: string,
 ): Promise<RequestResult> {
   let response: Response;
   try {
     response = await fetch(`${API_BASE}${path}`, {
       ...init,
-      headers: { ...headers(), ...(init.headers ?? {}) },
+      headers: {
+        ...headers("application/vnd.github+json", tokenOverride),
+        ...(init.headers ?? {}),
+      },
       timeout: 30,
       debugLabel: `github-rest:${path.split("?")[0]}`,
     });
@@ -165,10 +170,11 @@ function isReadMethod(init: RequestInit): boolean {
 async function request(
   path: string,
   init: RequestInit = {},
+  tokenOverride?: string,
 ): Promise<RequestResult> {
   for (let attempt = 0; ; attempt += 1) {
     try {
-      return await requestOnce(path, init);
+      return await requestOnce(path, init, tokenOverride);
     } catch (error) {
       const delay = isReadMethod(init) ? retryDelayMs(error, attempt) : null;
       if (delay === null) throw error;
@@ -180,8 +186,13 @@ async function request(
 async function requestJsonWithScopes<T>(
   path: string,
   init: RequestInit = {},
+  tokenOverride?: string,
 ): Promise<{ data: T; oauthScopes: string | null }> {
-  const { status, body, oauthScopes } = await request(path, init);
+  const { status, body, oauthScopes } = await request(
+    path,
+    init,
+    tokenOverride,
+  );
   if (body === null) {
     throw createGitHubError("invalid_response", "响应为空", status);
   }
@@ -191,8 +202,9 @@ async function requestJsonWithScopes<T>(
 async function requestJson<T>(
   path: string,
   init: RequestInit = {},
+  tokenOverride?: string,
 ): Promise<T> {
-  const { status, body } = await request(path, init);
+  const { status, body } = await request(path, init, tokenOverride);
   if (body === null)
     throw createGitHubError("invalid_response", "响应为空", status);
   return body as T;
@@ -223,6 +235,72 @@ export async function fetchStarredRepositories(): Promise<
 
 export async function fetchViewer(): Promise<RestUser> {
   return requestJson<RestUser>("/user");
+}
+
+export type TokenValidationResult = {
+  oauthScopes: string[];
+};
+
+function parseOAuthScopes(value: string | null): string[] {
+  return (value ?? "")
+    .split(",")
+    .map((scope) => scope.trim())
+    .filter(Boolean);
+}
+
+export async function validateToken(
+  token: string,
+  includePrivateRepositories: boolean,
+): Promise<TokenValidationResult> {
+  const normalized = token.trim();
+  if (!normalized) throw createGitHubError("missing_token", "未配置 Token");
+
+  const authResult = await requestJsonWithScopes<RestUser>(
+    "/user",
+    {},
+    normalized,
+  );
+  let oauthScopes = parseOAuthScopes(authResult.oauthScopes);
+  if (oauthScopes.length === 0) {
+    throw createGitHubError(
+      "forbidden",
+      "请使用 Personal access token (classic)，并授予 user 与 public_repo 权限。",
+      403,
+    );
+  }
+  const hasUserScope =
+    oauthScopes.includes("user") || oauthScopes.includes("read:user");
+  const hasPublicRepositoryScope =
+    oauthScopes.includes("public_repo") || oauthScopes.includes("repo");
+  if (!hasUserScope) {
+    throw createGitHubError("forbidden", "Token 缺少 user 权限。", 403);
+  }
+  if (!hasPublicRepositoryScope) {
+    throw createGitHubError("forbidden", "Token 缺少 public_repo 权限。", 403);
+  }
+
+  if (includePrivateRepositories) {
+    const repositoryResult = await requestJsonWithScopes<
+      RestStarredRepository[]
+    >(
+      "/user/repos?affiliation=owner&visibility=all&sort=pushed&direction=desc&per_page=1&page=1",
+      {},
+      normalized,
+    );
+    if (!Array.isArray(repositoryResult.data)) {
+      throw createGitHubError("invalid_response", "仓库响应不是数组");
+    }
+    oauthScopes = parseOAuthScopes(repositoryResult.oauthScopes);
+    if (!oauthScopes.includes("repo")) {
+      throw createGitHubError(
+        "forbidden",
+        "显示私有仓库需要 Personal access token (classic) 的 repo 权限。",
+        403,
+      );
+    }
+  }
+
+  return { oauthScopes };
 }
 
 export function parseRepositoryRef(input: string): string | null {

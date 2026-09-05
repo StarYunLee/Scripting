@@ -23,6 +23,7 @@ import {
 import { glassListPageProps } from "../ui/glass-list-page";
 import { RepositoryCard } from "../ui/repository-row";
 import { RepositoryListsSheet } from "./repository-lists-sheet";
+import { TokenRequiredPage } from "./token-required-page";
 import { useRootToolbar } from "./root-toolbar";
 
 type SortKey = "starred" | "pushed" | "stars" | "name";
@@ -62,7 +63,9 @@ function membershipIds(
   memberships: AppState["memberships"],
   repositoryId: string,
 ): readonly string[] {
-  return memberships?.repositories[repositoryId]?.map((item) => item.listId) ?? [];
+  return (
+    memberships?.repositories[repositoryId]?.map((item) => item.listId) ?? []
+  );
 }
 
 function filterAndSortStars(
@@ -109,7 +112,10 @@ function filterAndSortStars(
   return sorted;
 }
 
-export function AllStarsPage(props: { store: GitHubDataStore }) {
+export function AllStarsPage(props: {
+  store: GitHubDataStore;
+  onOpenSettings: () => void;
+}) {
   const { store } = props;
   const [state, setState] = useState<AppState>(() => store.getState());
   const [query, setQuery] = useState("");
@@ -119,10 +125,7 @@ export function AllStarsPage(props: { store: GitHubDataStore }) {
   const [managedRepository, setManagedRepository] =
     useState<GitHubRepository | null>(null);
   useEffect(() => store.subscribe("stars", setState), []);
-  const languages = useMemo(
-    () => collectLanguages(state.stars),
-    [state.stars],
-  );
+  const languages = useMemo(() => collectLanguages(state.stars), [state.stars]);
   const stars = useMemo(
     () =>
       filterAndSortStars(
@@ -143,98 +146,111 @@ export function AllStarsPage(props: { store: GitHubDataStore }) {
   const sortActive = sortKey !== "starred";
   const visibleLanguages = languages.slice(0, 20);
   const visibleLists = state.lists.slice(0, 20);
-  const rootToolbar = useRootToolbar([
-    <Menu
-      title="筛选"
-      systemImage={
-        filterActive
-          ? "line.3.horizontal.decrease.circle.fill"
-          : "line.3.horizontal.decrease.circle"
-      }
-    >
-      <Button
-        title="清除筛选"
-        action={() => {
-          setLanguage(null);
-          setListId(null);
-        }}
-      />
-      <Menu title="语言">
-        <Button
-          title="全部语言"
-          action={() => {
-            setLanguage(null);
-          }}
-        />
-        {visibleLanguages.map((name) => (
+  const rootToolbar = useRootToolbar(
+    state.tokenConfigured
+      ? [
+          <Menu
+            title="筛选与排序"
+            systemImage={
+              filterActive || sortActive
+                ? "line.3.horizontal.decrease.circle.fill"
+                : "line.3.horizontal.decrease.circle"
+            }
+          >
+            <Menu
+              title="筛选"
+              systemImage={
+                filterActive
+                  ? "line.3.horizontal.decrease.circle.fill"
+                  : "line.3.horizontal.decrease.circle"
+              }
+            >
+              <Button
+                title="清除筛选"
+                action={() => {
+                  setLanguage(null);
+                  setListId(null);
+                }}
+              />
+              <Menu title="语言">
+                <Button
+                  title="全部语言"
+                  action={() => {
+                    setLanguage(null);
+                  }}
+                />
+                {visibleLanguages.map((name) => (
+                  <Button
+                    key={name}
+                    title={name}
+                    action={() => {
+                      setLanguage(name);
+                    }}
+                  />
+                ))}
+                {hasUnknownLanguage ? (
+                  <Button
+                    title="未标注语言"
+                    action={() => {
+                      setLanguage("");
+                    }}
+                  />
+                ) : null}
+              </Menu>
+              <Menu title="列表">
+                <Button
+                  title="全部列表"
+                  action={() => {
+                    setListId(null);
+                  }}
+                />
+                <Button
+                  title="未分组"
+                  action={() => {
+                    void selectUngrouped();
+                  }}
+                />
+                {visibleLists.map((list) => (
+                  <Button
+                    key={list.id}
+                    title={list.name}
+                    action={() => {
+                      void selectList(list.id);
+                    }}
+                  />
+                ))}
+              </Menu>
+            </Menu>
+            <Menu
+              title="排序"
+              systemImage={
+                sortActive
+                  ? "arrow.up.arrow.down.circle.fill"
+                  : "arrow.up.arrow.down.circle"
+              }
+            >
+              {SORT_OPTIONS.map((item) => (
+                <Button
+                  key={item.key}
+                  title={item.label}
+                  action={() => {
+                    setSortKey(item.key);
+                  }}
+                />
+              ))}
+            </Menu>
+          </Menu>,
           <Button
-            key={name}
-            title={name}
+            title="添加"
+            systemImage="plus"
+            labelStyle="iconOnly"
             action={() => {
-              setLanguage(name);
+              void addStarredRepository();
             }}
-          />
-        ))}
-        {hasUnknownLanguage ? (
-          <Button
-            title="未标注语言"
-            action={() => {
-              setLanguage("");
-            }}
-          />
-        ) : null}
-      </Menu>
-      <Menu title="列表">
-        <Button
-          title="全部列表"
-          action={() => {
-            setListId(null);
-          }}
-        />
-        <Button
-          title="未分组"
-          action={() => {
-            void selectUngrouped();
-          }}
-        />
-        {visibleLists.map((list) => (
-          <Button
-            key={list.id}
-            title={list.name}
-            action={() => {
-              void selectList(list.id);
-            }}
-          />
-        ))}
-      </Menu>
-    </Menu>,
-    <Menu
-      title="排序"
-      systemImage={
-        sortActive
-          ? "arrow.up.arrow.down.circle.fill"
-          : "arrow.up.arrow.down.circle"
-      }
-    >
-      {SORT_OPTIONS.map((item) => (
-        <Button
-          key={item.key}
-          title={item.label}
-          action={() => {
-            setSortKey(item.key);
-          }}
-        />
-      ))}
-    </Menu>,
-    <Button
-      title="添加"
-      systemImage="plus"
-      labelStyle="iconOnly"
-      action={() => {
-        void addStarredRepository();
-      }}
-    />,
-  ]);
+          />,
+        ]
+      : undefined,
+  );
   async function openListManager(repository: GitHubRepository) {
     if (!store.getState().memberships) {
       try {
@@ -332,9 +348,7 @@ export function AllStarsPage(props: { store: GitHubDataStore }) {
         message:
           displayError(githubError) ??
           (githubError?.message ||
-            (typeof error === "object" &&
-            error !== null &&
-            "message" in error
+            (typeof error === "object" && error !== null && "message" in error
               ? String(error.message)
               : String(error))),
       });
@@ -364,9 +378,7 @@ export function AllStarsPage(props: { store: GitHubDataStore }) {
         message:
           displayError(githubError) ??
           (githubError?.message ||
-            (typeof error === "object" &&
-            error !== null &&
-            "message" in error
+            (typeof error === "object" && error !== null && "message" in error
               ? String(error.message)
               : String(error))),
       });
@@ -375,6 +387,14 @@ export function AllStarsPage(props: { store: GitHubDataStore }) {
 
   async function refresh() {
     await store.refreshStarsAndMemberships();
+  }
+  if (!state.tokenConfigured) {
+    return (
+      <TokenRequiredPage
+        navigationTitle="Stars"
+        onOpenSettings={props.onOpenSettings}
+      />
+    );
   }
   const error = displayError(state.starsError);
   const emptyBecauseFilter =
@@ -387,7 +407,12 @@ export function AllStarsPage(props: { store: GitHubDataStore }) {
         navigationTitle="Stars"
         {...glassListPageProps()}
         listRowSpacing={0}
-        searchable={{ value: query, onChanged: setQuery, prompt: "搜索仓库" }}
+        searchable={{
+          value: query,
+          onChanged: setQuery,
+          placement: "navigationBarDrawerAlwaysDisplay",
+          prompt: "搜索仓库",
+        }}
         refreshable={refresh}
         toolbar={rootToolbar}
         sheet={

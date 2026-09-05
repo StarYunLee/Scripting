@@ -33,7 +33,7 @@ export function tokenMask(value: string | null): string {
   const prefixes = ["github_pat_", "ghp_", "gho_", "ghu_", "ghs_", "ghr_"];
   const prefix = prefixes.find((item) => value.startsWith(item)) ?? "";
   const rest = value.slice(prefix.length);
-  if (rest.length <= 8) return `${prefix}${rest.slice(0, 2)}…`;
+  if (rest.length <= 8) return `${prefix}••••`;
   return `${prefix}${rest.slice(0, 4)}…${rest.slice(-4)}`;
 }
 

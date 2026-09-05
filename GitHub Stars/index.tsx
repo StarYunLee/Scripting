@@ -4,7 +4,7 @@ import {
   Tab,
   TabView,
   useEffect,
-  useState,
+  useObservable,
 } from "scripting";
 import { AllStarsPage } from "./pages/all-stars-page";
 import { ListsPage } from "./pages/lists-page";
@@ -14,8 +14,16 @@ import { GitHubDataStore } from "./services/data-store";
 
 const store = new GitHubDataStore();
 
+type RootTab = "stars" | "lists" | "repositories" | "settings";
+
 function App() {
-  const [tabIndex, setTabIndex] = useState(0);
+  const selection = useObservable<string>(() =>
+    store.getState().tokenConfigured ? "stars" : "settings",
+  );
+
+  function setRootTab(tab: RootTab) {
+    selection.setValue(tab);
+  }
 
   useEffect(() => {
     // 启动时优先使用本地缓存瞬间呈现；仅在无缓存或后台静默同步
@@ -23,15 +31,24 @@ function App() {
   }, []);
 
   return (
-    <TabView tabIndex={tabIndex} onTabIndexChanged={setTabIndex}>
+    <TabView selection={selection}>
       <Tab title="Stars" systemImage="star.fill" value="stars">
-        <AllStarsPage store={store} />
+        <AllStarsPage
+          store={store}
+          onOpenSettings={() => setRootTab("settings")}
+        />
       </Tab>
       <Tab title="列表" systemImage="folder.fill" value="lists">
-        <ListsPage store={store} />
+        <ListsPage
+          store={store}
+          onOpenSettings={() => setRootTab("settings")}
+        />
       </Tab>
       <Tab title="仓库" systemImage="shippingbox.fill" value="repositories">
-        <RepositoriesPage store={store} />
+        <RepositoriesPage
+          store={store}
+          onOpenSettings={() => setRootTab("settings")}
+        />
       </Tab>
       <Tab title="设置" systemImage="gearshape.fill" value="settings">
         <SettingsPage store={store} />

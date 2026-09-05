@@ -21,22 +21,28 @@ import {
 import { glassListPageProps } from "../ui/glass-list-page";
 import { useRootToolbar } from "./root-toolbar";
 import { ListDetailPage } from "./list-detail-page";
+import { TokenRequiredPage } from "./token-required-page";
 
-export function ListsPage(props: { store: GitHubDataStore }) {
+export function ListsPage(props: {
+  store: GitHubDataStore;
+  onOpenSettings: () => void;
+}) {
   const { store } = props;
   const [state, setState] = useState<AppState>(() => store.getState());
   const [openedList, setOpenedList] = useState<GitHubListSummary | null>(null);
   const [busyListId, setBusyListId] = useState<string | null>(null);
   const rootToolbar = useRootToolbar(
-    <Button
-      title="新建列表"
-      systemImage="plus"
-      labelStyle="iconOnly"
-      disabled={busyListId != null}
-      action={() => {
-        void createList();
-      }}
-    />,
+    state.tokenConfigured ? (
+      <Button
+        title="新建列表"
+        systemImage="plus"
+        labelStyle="iconOnly"
+        disabled={busyListId != null}
+        action={() => {
+          void createList();
+        }}
+      />
+    ) : undefined,
   );
   useEffect(() => store.subscribe("lists", setState), []);
   async function createList() {
@@ -114,6 +120,14 @@ export function ListsPage(props: { store: GitHubDataStore }) {
 
   async function refresh() {
     await store.refreshListsAndMemberships();
+  }
+  if (!state.tokenConfigured) {
+    return (
+      <TokenRequiredPage
+        navigationTitle="列表"
+        onOpenSettings={props.onOpenSettings}
+      />
+    );
   }
   const error = displayError(state.listsError);
   return (

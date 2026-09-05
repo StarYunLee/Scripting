@@ -5,8 +5,6 @@ import {
   NavigationStack,
   Section,
   Text,
-  TextField,
-  Toggle,
   VStack,
   useEffect,
   useState,
@@ -16,13 +14,14 @@ import { ChangelogPage } from "./changelog-page";
 import { ContributionGraph } from "../ui/contribution-graph";
 import { TopLanguagesBar } from "../ui/top-languages-bar";
 import {
-  hasToken,
   removeToken,
   saveToken,
   storedTokenMask,
+  tokenMask,
 } from "../auth/token";
 import type { AppState } from "../types";
 import type { GitHubDataStore } from "../services/data-store";
+import type { TokenValidationResult } from "../services/github-rest";
 import { displayError } from "../services/errors";
 import { EmptyState } from "../ui/common";
 import {
@@ -35,74 +34,73 @@ import {
   glassRowBackground,
 } from "../ui/glass";
 import { glassListPageProps } from "../ui/glass-list-page";
+import { GitHubConnectionPage } from "./github-connection-page";
 import { useRootToolbar } from "./root-toolbar";
+
+function permissionSummary(
+  scopes: readonly string[] | null,
+  includePrivateRepositories: boolean,
+): string {
+  return includePrivateRepositories || scopes?.includes("repo")
+    ? "user · repo"
+    : "user · public_repo";
+}
 
 export function SettingsPage(props: { store: GitHubDataStore }) {
   const { store } = props;
   const [state, setState] = useState<AppState>(() => store.getState());
   const [busy, setBusy] = useState(false);
-  const [tokenDraft, setTokenDraft] = useState("");
-  const [savedTokenMask, setSavedTokenMask] = useState(() => storedTokenMask());
-  const [showChangelog, setShowChangelog] = useState(false);
+  const [privateRepositoriesEnabled, setPrivateRepositoriesEnabled] = useState(
+    () => state.includePrivateRepositories,
+  );
+  const [maskedToken, setMaskedToken] = useState("");
+  const [destination, setDestination] = useState<
+    "connection" | "changelog" | null
+  >(null);
+  const [tokenScopes, setTokenScopes] = useState<string[] | null>(null);
   const rootToolbar = useRootToolbar();
   useEffect(() => store.subscribe("settings", setState), []);
-  async function configureToken() {
-    const raw = tokenDraft.trim();
-    if (!raw) {
-      await Dialog.alert({
-        title: "请先粘贴令牌",
-        message: hasToken()
-          ? "输入框只用于更换令牌。当前令牌仍保存在 Keychain。"
-          : "请先粘贴 Classic PAT，再校验并保存。",
-      });
-      return;
-    }
-    const confirmed = await Dialog.confirm({
-      title: hasToken() ? "更换个人访问令牌" : "保存个人访问令牌",
-      message: state.includePrivateRepositories
-        ? "需要 Personal access token (classic) 的 user 与 repo 权限。repo 用于私有仓库访问，也覆盖公开仓库管理和 Star 写入。令牌只保存在本机 Keychain。"
-        : "需要 Personal access token (classic) 的 user 与 public_repo 权限。public_repo 用于公开仓库管理和 Star 写入，令牌只保存在本机 Keychain。",
-      cancelLabel: "取消",
-      confirmLabel: "保存并验证",
-    });
-    if (!confirmed) return;
-    setBusy(true);
-    try {
-      saveToken(raw);
-      setSavedTokenMask(storedTokenMask());
-      setTokenDraft("");
-      store.refreshTokenState(true);
-      await store.refreshAll(true);
-      if (state.includePrivateRepositories) {
-        await store.refreshOwnedRepositories();
+  useEffect(() => {
+    setPrivateRepositoriesEnabled(state.includePrivateRepositories);
+  }, [state.includePrivateRepositories]);
+  useEffect(() => {
+    setMaskedToken(storedTokenMask());
+  }, []);
+  async function handleTokenVerified(
+    token: string,
+    result: TokenValidationResult,
+  ): Promise<void> {
+    saveToken(token);
+    setMaskedToken(tokenMask(token));
+    setTokenScopes(result.oauthScopes);
+    store.refreshTokenState(true);
+    void (async () => {
+      try {
+        await store.refreshAll(true);
+        if (store.getState().includePrivateRepositories) {
+          await store.refreshOwnedRepositories();
+        }
+      } catch {
+        // 认证已成功；数据刷新错误由设置页和对应数据页自行展示。
       }
-      await Dialog.alert({
-        title: "令牌有效并已保存",
-        message: state.includePrivateRepositories
-          ? "之后将使用这份 Classic PAT 管理 Stars、Lists，以及本人公开和私有仓库。"
-          : "之后将使用这份 Classic PAT 管理 Stars、Lists 和本人公开仓库。",
-      });
-    } catch (error) {
-      await Dialog.alert({
-        title: "令牌无效或权限不足",
-        message:
-          displayError(store.getState().viewerError) ??
-          displayError(store.getState().starsError) ??
-          displayError(store.getState().listsError) ??
-          (typeof error === "object" && error !== null && "message" in error
-            ? String(error.message)
-            : String(error)),
-      });
-    } finally {
-      setBusy(false);
-    }
+    })();
   }
   async function togglePrivateRepositories(enabled: boolean) {
+    const previous = state.includePrivateRepositories;
+    // Toggle 会先乐观切换原生控件；确认取消时必须显式回写旧值。
+    setPrivateRepositoriesEnabled(enabled);
+    if (!state.tokenConfigured) {
+      store.setIncludePrivateRepositoriesPreference(enabled);
+      return;
+    }
     if (!enabled) {
       setBusy(true);
       try {
         await store.setIncludePrivateRepositories(false);
       } finally {
+        setPrivateRepositoriesEnabled(
+          store.getState().includePrivateRepositories,
+        );
         setBusy(false);
       }
       return;
@@ -110,15 +108,21 @@ export function SettingsPage(props: { store: GitHubDataStore }) {
     const confirmed = await Dialog.confirm({
       title: "显示私有仓库",
       message:
-        "此功能需要 Personal access token (classic) 的 repo 权限。repo 是高权限授权；应用只读取和缓存本机仓库元数据，不读取源码、Issues、Actions 或 Secrets。请先确认当前令牌已勾选 repo。",
+        "需要 Classic PAT 的 repo 权限。应用仅读取私有仓库元数据，不读取源码、Issues、Actions 或 Secrets。",
       cancelLabel: "取消",
       confirmLabel: "确认开启",
     });
-    if (!confirmed) return;
+    if (!confirmed) {
+      setPrivateRepositoriesEnabled(previous);
+      return;
+    }
     setBusy(true);
     try {
       await store.setIncludePrivateRepositories(true);
     } catch (error) {
+      setPrivateRepositoriesEnabled(
+        store.getState().includePrivateRepositories,
+      );
       await Dialog.alert({
         title: "无法加载私有仓库",
         message:
@@ -128,22 +132,27 @@ export function SettingsPage(props: { store: GitHubDataStore }) {
             : ""),
       });
     } finally {
+      setPrivateRepositoriesEnabled(
+        store.getState().includePrivateRepositories,
+      );
       setBusy(false);
     }
   }
 
-  async function clearToken() {
+  async function disconnectGithub() {
     const confirmed = await Dialog.confirm({
-      title: "移除 Token",
-      message: "移除后将无法刷新 GitHub 数据。",
+      title: "断开 GitHub",
+      message:
+        "已保存的访问令牌将从本机删除。\n之后需要重新连接才能访问 GitHub 数据。",
       cancelLabel: "取消",
-      confirmLabel: "移除",
+      confirmLabel: "断开连接",
     });
     if (!confirmed) return;
     removeToken();
-    setSavedTokenMask("");
-    setTokenDraft("");
-    store.refreshTokenState();
+    setMaskedToken("");
+    setTokenScopes(null);
+    setDestination(null);
+    store.refreshTokenState(true);
     store.clearLocalData();
   }
   const user = state.viewer;
@@ -152,283 +161,268 @@ export function SettingsPage(props: { store: GitHubDataStore }) {
       <List
         navigationTitle="设置"
         {...glassListPageProps()}
+        safeAreaPadding={{ bottom: 84 }}
         toolbar={rootToolbar}
         navigationDestination={{
-          isPresented: showChangelog,
+          isPresented: destination != null,
           onChanged: (value: boolean) => {
-            if (!value) setShowChangelog(false);
+            if (!value) setDestination(null);
           },
-          content: showChangelog ? <ChangelogPage /> : <Text>版本信息</Text>,
+          content:
+            destination === "connection" ? (
+              <GitHubConnectionPage
+                connected={state.tokenConfigured}
+                permissionSummary={permissionSummary(
+                  tokenScopes,
+                  state.includePrivateRepositories,
+                )}
+                credentialTitle={
+                  maskedToken ||
+                  (state.tokenConfigured ? "已配置访问令牌" : "未配置访问令牌")
+                }
+                credentialDetail={
+                  state.tokenConfigured ? "已验证 · 本机 Keychain" : undefined
+                }
+                credentialActionTitle={state.tokenConfigured ? "更换" : "配置"}
+                credentialIconActive={state.tokenConfigured}
+                privateRepositoriesEnabled={privateRepositoriesEnabled}
+                busy={busy}
+                onTogglePrivateRepositories={(enabled: boolean) => {
+                  void togglePrivateRepositories(enabled);
+                }}
+                onTokenVerified={handleTokenVerified}
+                onDisconnect={disconnectGithub}
+              />
+            ) : destination === "changelog" ? (
+              <ChangelogPage />
+            ) : (
+              <Text>选择页面</Text>
+            ),
         }}
       >
         <Section
-          header={<GlassSectionHeader title="账户" />}
+          header={<GlassSectionHeader title="GitHub" />}
           listRowBackground={glassRowBackground}
         >
           <GlassGroup>
-            {user ? (
-              <VStack
-                alignment="center"
-                spacing={14}
-                padding={{ vertical: true }}
-                frame={{ maxWidth: "infinity", alignment: "center" }}
-              >
-                {user.avatarUrl ? (
-                  <Image
-                    imageUrl={user.avatarUrl}
-                    resizable
-                    aspectRatio={{ value: 1, contentMode: "fill" }}
-                    frame={{ width: 68, height: 68 }}
-                    clipShape="circle"
-                  />
+            {state.tokenConfigured ? (
+              <>
+                {user ? (
+                  <VStack
+                    alignment="center"
+                    spacing={14}
+                    padding={{ vertical: true }}
+                    frame={{ maxWidth: "infinity", alignment: "center" }}
+                  >
+                    {user.avatarUrl ? (
+                      <Image
+                        imageUrl={user.avatarUrl}
+                        resizable
+                        aspectRatio={{ value: 1, contentMode: "fill" }}
+                        frame={{ width: 68, height: 68 }}
+                        clipShape="circle"
+                      />
+                    ) : (
+                      <Image
+                        systemName="person.crop.circle"
+                        frame={{ width: 68, height: 68 }}
+                      />
+                    )}
+                    <HStack spacing={8} alignment="center">
+                      <Text font="headline">{user.name || user.login}</Text>
+                      <Text foregroundStyle="secondaryLabel">{`@${user.login}`}</Text>
+                    </HStack>
+                    {user.bio ? (
+                      <Text
+                        foregroundStyle="secondaryLabel"
+                        lineLimit={2}
+                        frame={{ maxWidth: "infinity", alignment: "center" }}
+                        multilineTextAlignment="center"
+                      >
+                        {user.bio}
+                      </Text>
+                    ) : null}
+                    {user.location || user.company || user.websiteUrl ? (
+                      <HStack
+                        spacing={12}
+                        alignment="center"
+                        frame={{ maxWidth: "infinity", alignment: "center" }}
+                      >
+                        {user.location ? (
+                          <HStack spacing={3} alignment="center">
+                            <Image
+                              systemName="mappin.and.ellipse"
+                              font="caption2"
+                              foregroundStyle="secondaryLabel"
+                            />
+                            <Text
+                              font="caption2"
+                              foregroundStyle="secondaryLabel"
+                            >
+                              {user.location}
+                            </Text>
+                          </HStack>
+                        ) : null}
+                        {user.company ? (
+                          <HStack spacing={3} alignment="center">
+                            <Image
+                              systemName="building.2"
+                              font="caption2"
+                              foregroundStyle="secondaryLabel"
+                            />
+                            <Text
+                              font="caption2"
+                              foregroundStyle="secondaryLabel"
+                            >
+                              {user.company}
+                            </Text>
+                          </HStack>
+                        ) : null}
+                        {user.websiteUrl ? (
+                          <HStack spacing={3} alignment="center">
+                            <Image
+                              systemName="link"
+                              font="caption2"
+                              foregroundStyle="secondaryLabel"
+                            />
+                            <Text
+                              font="caption2"
+                              foregroundStyle="secondaryLabel"
+                              lineLimit={1}
+                            >
+                              {user.websiteUrl.replace(/^https?:\/\//, "")}
+                            </Text>
+                          </HStack>
+                        ) : null}
+                      </HStack>
+                    ) : null}
+                    <GlassDivider />
+                    {/* 4 列资产与社交统计：纯英文统一风格 */}
+                    <HStack spacing={0} frame={{ maxWidth: "infinity" }}>
+                      <VStack
+                        spacing={1}
+                        frame={{ maxWidth: "infinity", alignment: "center" }}
+                      >
+                        <Text font="title3">
+                          {user.starredRepositoriesCount ?? state.stars.length}
+                        </Text>
+                        <Text font="caption" foregroundStyle="secondaryLabel">
+                          Stars
+                        </Text>
+                      </VStack>
+                      <VStack
+                        spacing={1}
+                        frame={{ maxWidth: "infinity", alignment: "center" }}
+                      >
+                        <Text font="title3">
+                          {user.listsCount ?? state.lists.length}
+                        </Text>
+                        <Text font="caption" foregroundStyle="secondaryLabel">
+                          Lists
+                        </Text>
+                      </VStack>
+                      <VStack
+                        spacing={1}
+                        frame={{ maxWidth: "infinity", alignment: "center" }}
+                      >
+                        <Text font="title3">{user.followersCount ?? 0}</Text>
+                        <Text font="caption" foregroundStyle="secondaryLabel">
+                          Followers
+                        </Text>
+                      </VStack>
+                      <VStack
+                        spacing={1}
+                        frame={{ maxWidth: "infinity", alignment: "center" }}
+                      >
+                        <Text font="title3">{user.followingCount ?? 0}</Text>
+                        <Text font="caption" foregroundStyle="secondaryLabel">
+                          Following
+                        </Text>
+                      </VStack>
+                    </HStack>
+                    {user.contributionsByYear ||
+                    user.contributionYears?.length ? (
+                      <>
+                        <GlassDivider />
+                        <ContributionGraph user={user} store={store} />
+                      </>
+                    ) : null}
+                    {user.topLanguages && user.topLanguages.length > 0 ? (
+                      <>
+                        <GlassDivider />
+                        <TopLanguagesBar languages={user.topLanguages} />
+                      </>
+                    ) : null}
+                  </VStack>
                 ) : (
-                  <Image
-                    systemName="person.crop.circle"
-                    frame={{ width: 68, height: 68 }}
+                  <EmptyState
+                    title={
+                      state.viewerState === "loading"
+                        ? "正在加载 GitHub"
+                        : "无法加载 GitHub 账户"
+                    }
+                    detail={displayError(state.viewerError) ?? "请稍后刷新数据"}
                   />
                 )}
-                <HStack spacing={8} alignment="center">
-                  <Text font="headline">{user.name || user.login}</Text>
-                  <Text foregroundStyle="secondaryLabel">{`@${user.login}`}</Text>
-                </HStack>
-                {user.bio ? (
-                  <Text
-                    foregroundStyle="secondaryLabel"
-                    lineLimit={2}
-                    frame={{ maxWidth: "infinity", alignment: "center" }}
-                    multilineTextAlignment="center"
-                  >
-                    {user.bio}
-                  </Text>
-                ) : null}
-                {user.location || user.company || user.websiteUrl ? (
-                  <HStack
-                    spacing={12}
-                    alignment="center"
-                    frame={{ maxWidth: "infinity", alignment: "center" }}
-                  >
-                    {user.location ? (
-                      <HStack spacing={3} alignment="center">
-                        <Image
-                          systemName="mappin.and.ellipse"
-                          font="caption2"
-                          foregroundStyle="secondaryLabel"
-                        />
-                        <Text font="caption2" foregroundStyle="secondaryLabel">
-                          {user.location}
-                        </Text>
-                      </HStack>
-                    ) : null}
-                    {user.company ? (
-                      <HStack spacing={3} alignment="center">
-                        <Image
-                          systemName="building.2"
-                          font="caption2"
-                          foregroundStyle="secondaryLabel"
-                        />
-                        <Text font="caption2" foregroundStyle="secondaryLabel">
-                          {user.company}
-                        </Text>
-                      </HStack>
-                    ) : null}
-                    {user.websiteUrl ? (
-                      <HStack spacing={3} alignment="center">
-                        <Image
-                          systemName="link"
-                          font="caption2"
-                          foregroundStyle="secondaryLabel"
-                        />
-                        <Text
-                          font="caption2"
-                          foregroundStyle="secondaryLabel"
-                          lineLimit={1}
-                        >
-                          {user.websiteUrl.replace(/^https?:\/\//, "")}
-                        </Text>
-                      </HStack>
-                    ) : null}
-                  </HStack>
-                ) : null}
                 <GlassDivider />
-                {/* 4 列资产与社交统计：纯英文统一风格 */}
-                <HStack spacing={0} frame={{ maxWidth: "infinity" }}>
-                  <VStack
-                    spacing={1}
-                    frame={{ maxWidth: "infinity", alignment: "center" }}
-                  >
-                    <Text font="title3">
-                      {user.starredRepositoriesCount ?? state.stars.length}
-                    </Text>
-                    <Text font="caption" foregroundStyle="secondaryLabel">
-                      Stars
-                    </Text>
-                  </VStack>
-                  <VStack
-                    spacing={1}
-                    frame={{ maxWidth: "infinity", alignment: "center" }}
-                  >
-                    <Text font="title3">
-                      {user.listsCount ?? state.lists.length}
-                    </Text>
-                    <Text font="caption" foregroundStyle="secondaryLabel">
-                      Lists
-                    </Text>
-                  </VStack>
-                  <VStack
-                    spacing={1}
-                    frame={{ maxWidth: "infinity", alignment: "center" }}
-                  >
-                    <Text font="title3">{user.followersCount ?? 0}</Text>
-                    <Text font="caption" foregroundStyle="secondaryLabel">
-                      Followers
-                    </Text>
-                  </VStack>
-                  <VStack
-                    spacing={1}
-                    frame={{ maxWidth: "infinity", alignment: "center" }}
-                  >
-                    <Text font="title3">{user.followingCount ?? 0}</Text>
-                    <Text font="caption" foregroundStyle="secondaryLabel">
-                      Following
-                    </Text>
-                  </VStack>
-                </HStack>
-                {user.contributionsByYear || user.contributionYears?.length ? (
-                  <>
-                    <GlassDivider />
-                    <ContributionGraph user={user} store={store} />
-                  </>
-                ) : null}
-                {user.topLanguages && user.topLanguages.length > 0 ? (
-                  <>
-                    <GlassDivider />
-                    <TopLanguagesBar languages={user.topLanguages} />
-                  </>
-                ) : null}
-              </VStack>
+                <GlassNavRow
+                  title="账户与权限"
+                  action={() => setDestination("connection")}
+                />
+              </>
             ) : (
-              <EmptyState
-                title="未连接 GitHub"
-                detail="配置 Token 后加载账户信息"
-              />
+              <>
+                <VStack
+                  alignment="center"
+                  spacing={14}
+                  padding={{ vertical: true }}
+                  frame={{ maxWidth: "infinity", alignment: "center" }}
+                >
+                  <Image
+                    systemName="person.crop.circle"
+                    font={68}
+                    frame={{ width: 68, height: 68 }}
+                  />
+                  <Text font="headline">未配置访问令牌</Text>
+                  <Text foregroundStyle="secondaryLabel">
+                    需要配置 GitHub 访问令牌
+                  </Text>
+                </VStack>
+                <GlassDivider />
+                <GlassNavRow
+                  title="账户与权限"
+                  action={() => setDestination("connection")}
+                />
+              </>
             )}
           </GlassGroup>
         </Section>
-        <Section
-          header={<GlassSectionHeader title="仓库" />}
-          listRowBackground={glassRowBackground}
-        >
-          <GlassGroup>
-            <Toggle
-              value={state.includePrivateRepositories}
-              title="显示私有仓库"
-              systemImage="lock.fill"
-              disabled={busy}
-              onChanged={(enabled: boolean) => {
-                void togglePrivateRepositories(enabled);
-              }}
-              padding={{ vertical: true }}
-              frame={{ minHeight: 44, maxWidth: "infinity" }}
-            />
-            <GlassDivider />
-            <Text
-              font={12}
-              foregroundStyle="tertiaryLabel"
-              padding={{ vertical: true }}
-              frame={{ maxWidth: "infinity" }}
-            >
-              默认只加载公开仓库。开启需要 Classic PAT 的 repo 权限；私有仓库
-              仅缓存名称、描述、Topics、语言、默认分支与状态等元数据。关闭后会
-              立即从内存和本机缓存移除私有仓库元数据。
-            </Text>
-          </GlassGroup>
-        </Section>
-        <Section
-          header={<GlassSectionHeader title="Token 管理" />}
-          listRowBackground={glassRowBackground}
-        >
-          <GlassGroup>
-            <GlassLabeledRow
-              title="当前令牌"
-              value={savedTokenMask || "未保存"}
-            />
-            <GlassDivider />
-            <TextField
-              title="新令牌"
-              prompt="粘贴 Classic PAT"
-              value={tokenDraft}
-              onChanged={setTokenDraft}
-              padding={{ vertical: true }}
-              frame={{ minHeight: 44, maxWidth: "infinity" }}
-            />
-            <GlassDivider />
-            <GlassActionRow
-              title={busy ? "验证中…" : "校验并保存"}
-              disabled={busy}
-              action={() => {
-                void configureToken();
-              }}
-            />
-            {hasToken() ? (
-              <>
-                <GlassDivider />
-                <GlassActionRow
-                  title="清除已保存的令牌"
-                  destructive
-                  action={() => {
-                    void clearToken();
-                  }}
-                />
-              </>
-            ) : null}
-            <GlassDivider />
-            <Text
-              font={12}
-              foregroundStyle="tertiaryLabel"
-              padding={{ vertical: true }}
-              frame={{ maxWidth: "infinity" }}
-            >
-              在 GitHub 创建 Personal access token (classic)，勾选 user 与
-              public_repo，用于公开仓库管理和 Star 写入。若开启显示私有仓库，
-              请改用带 repo 权限的 Classic PAT；repo 也覆盖公开仓库权限。
-              令牌保存在本机 Keychain，不会写入仓库、缓存或应用源码。
-            </Text>
-            {state.viewerError ? (
-              <>
-                <GlassDivider />
-                <Text
-                  padding={{ vertical: true }}
-                  frame={{ minHeight: 44, maxWidth: "infinity" }}
-                  foregroundStyle="systemRed"
-                >
-                  {displayError(state.viewerError)}
-                </Text>
-              </>
-            ) : null}
-          </GlassGroup>
-        </Section>
-        <Section
-          header={<GlassSectionHeader title="数据" />}
-          listRowBackground={glassRowBackground}
-        >
-          <GlassGroup>
-            <GlassActionRow
-              title="刷新全部数据"
-              action={() => {
-                void store.refreshAll(true);
-              }}
-            />
-            {state.lastSyncedAt ? (
-              <>
-                <GlassDivider />
-                <GlassLabeledRow
-                  title="上次同步"
-                  value={new Date(state.lastSyncedAt).toLocaleString()}
-                />
-              </>
-            ) : null}
-          </GlassGroup>
-        </Section>
+
+        {state.tokenConfigured ? (
+          <Section
+            header={<GlassSectionHeader title="数据" />}
+            listRowBackground={glassRowBackground}
+          >
+            <GlassGroup>
+              <GlassActionRow
+                title="刷新全部数据"
+                systemImage="arrow.clockwise"
+                action={() => {
+                  void store.refreshAll(true);
+                }}
+              />
+              {state.lastSyncedAt ? (
+                <>
+                  <GlassDivider />
+                  <GlassLabeledRow
+                    title="上次同步"
+                    value={new Date(state.lastSyncedAt).toLocaleString()}
+                  />
+                </>
+              ) : null}
+            </GlassGroup>
+          </Section>
+        ) : null}
         <Section
           header={<GlassSectionHeader title="版本" />}
           listRowBackground={glassRowBackground}
@@ -438,7 +432,8 @@ export function SettingsPage(props: { store: GitHubDataStore }) {
               title="版本信息"
               detail={`v${CURRENT_VERSION}`}
               detailFont="system"
-              action={() => setShowChangelog(true)}
+              systemImage="info.circle.fill"
+              action={() => setDestination("changelog")}
             />
           </GlassGroup>
         </Section>
