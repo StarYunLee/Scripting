@@ -1,5 +1,9 @@
 import { fetch, Headers, type RequestInit } from "scripting";
-import { formatError, MissingProfilePatError } from "./errors";
+import {
+  formatError,
+  GithubRateLimitError,
+  MissingProfilePatError,
+} from "./errors";
 import type {
   GithubAvailabilityState,
   IconLibrarySettings,
@@ -10,6 +14,9 @@ import type {
 const PROFILE_TOKEN_PREFIX = "icon_library_github_token_profile_";
 const PUBLIC_REPO_CACHE_TTL_MS = 5 * 60 * 1000;
 const verifiedPublicRepos = new Map<string, number>();
+
+type GithubRequestChannel = "anonymous" | "authenticated";
+const rateLimitCooldownUntil = new Map<GithubRequestChannel, number>();
 
 type RepoFileMeta = {
   path: string;
@@ -129,11 +136,19 @@ export async function validatePublicRepository(
   if (value) {
     headers.Authorization = `Bearer ${value}`;
   }
+  assertRateLimitCooldown(requestChannel(value || null));
   const response = await fetch(
     `https://api.github.com/repos/${settings.owner}/${settings.repo}`,
     { headers },
   );
   const json = ((await response.json()) as RepositoryResponse) ?? {};
+  if (isRateLimitResponse(response.status, json.message, response.headers)) {
+    const resetAt = rememberRateLimit(
+      requestChannel(value || null),
+      response.headers,
+    );
+    throw new GithubRateLimitError(resetAt);
+  }
   if (response.status === 404) {
     throw new Error(
       "找不到公开仓库。请确认地址正确且仓库已设为 Public；当前版本不支持私有仓库。",
@@ -161,7 +176,10 @@ async function ensurePublicRepository(context: RepoContext): Promise<void> {
   if (Date.now() - verifiedAt < PUBLIC_REPO_CACHE_TTL_MS) {
     return;
   }
-  await validatePublicRepository(context.settings);
+  await validatePublicRepository(
+    context.settings,
+    contextToken(context) ?? undefined,
+  );
   verifiedPublicRepos.set(key, Date.now());
 }
 
@@ -186,18 +204,79 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function requestChannel(token: string | null): GithubRequestChannel {
+  return token ? "authenticated" : "anonymous";
+}
+
+function rateLimitResetAt(headers: Headers): number {
+  const retryAfter = Number(headers.get("Retry-After") ?? "");
+  if (Number.isFinite(retryAfter) && retryAfter >= 0) {
+    return Date.now() + retryAfter * 1000;
+  }
+
+  const resetSeconds = Number(headers.get("X-RateLimit-Reset") ?? "");
+  if (Number.isFinite(resetSeconds) && resetSeconds > 0) {
+    const resetAt = resetSeconds * 1000;
+    if (resetAt > Date.now()) {
+      return resetAt;
+    }
+  }
+
+  // GitHub may omit reset headers on secondary limits. Avoid a retry storm.
+  return Date.now() + 60 * 1000;
+}
+
+function rememberRateLimit(
+  channel: GithubRequestChannel,
+  headers: Headers,
+): number {
+  const resetAt = rateLimitResetAt(headers);
+  const cooldownUntil = Math.max(
+    resetAt,
+    rateLimitCooldownUntil.get(channel) ?? 0,
+  );
+  rateLimitCooldownUntil.set(channel, cooldownUntil);
+  return cooldownUntil;
+}
+
+function assertRateLimitCooldown(channel: GithubRequestChannel): void {
+  const cooldownUntil = rateLimitCooldownUntil.get(channel) ?? 0;
+  if (cooldownUntil <= Date.now()) {
+    rateLimitCooldownUntil.delete(channel);
+    return;
+  }
+  throw new GithubRateLimitError(cooldownUntil);
+}
+
+function isRateLimitResponse(
+  status: number,
+  message: string | undefined,
+  headers: Headers,
+): boolean {
+  if (status === 429) {
+    return true;
+  }
+  const lowerMessage = (message ?? "").toLowerCase();
+  if (status === 403 && lowerMessage.includes("rate limit")) {
+    return true;
+  }
+  return status >= 400 && headers.get("X-RateLimit-Remaining") === "0";
+}
+
 async function fallbackRequest(
   context: RepoContext,
   repoPath: string,
   init?: RequestInit,
 ): Promise<{ status: number; json: ContentsResponse | ContentsResponse[] }> {
   const { profileId, settings } = context;
-  await ensurePublicRepository(context);
   const method = (init?.method ?? "GET").toUpperCase();
   const isRead = method === "GET";
-  const token = isRead ? null : contextToken(context);
+  const token = contextToken(context);
+  const channel = requestChannel(token);
+  assertRateLimitCooldown(channel);
+  await ensurePublicRepository(context);
 
-  // 写操作必须有 PAT；读操作允许匿名（公开仓库）。
+  // 有 PAT 时认证读取；未配置 PAT 时才使用公开匿名读取。
   if (!token && !isRead) {
     throw new MissingProfilePatError(profileId);
   }
@@ -218,6 +297,13 @@ async function fallbackRequest(
     });
     lastStatus = response.status;
     lastJson = (await response.json()) as ContentsResponse | ContentsResponse[];
+    const responseMessage = Array.isArray(lastJson)
+      ? undefined
+      : lastJson.message;
+    if (isRateLimitResponse(response.status, responseMessage, response.headers)) {
+      const resetAt = rememberRateLimit(channel, response.headers);
+      throw new GithubRateLimitError(resetAt);
+    }
     if (!isTransientStatus(response.status)) {
       return { status: response.status, json: lastJson };
     }
@@ -515,11 +601,12 @@ async function gitApi(
   init?: RequestInit,
 ): Promise<{ status: number; json: JsonObject }> {
   const { profileId, settings } = context;
-  await ensurePublicRepository(context);
-  const token = getProfilePat(profileId);
+  const token = contextToken(context);
   if (!token) {
     throw new MissingProfilePatError(profileId);
   }
+  assertRateLimitCooldown("authenticated");
+  await ensurePublicRepository(context);
   const url = `https://api.github.com/repos/${settings.owner}/${settings.repo}/${apiPath}`;
   let lastStatus = 0;
   let lastJson: JsonObject = {};
@@ -536,6 +623,16 @@ async function gitApi(
     });
     lastStatus = response.status;
     lastJson = ((await response.json()) as JsonObject) ?? {};
+    if (
+      isRateLimitResponse(
+        response.status,
+        typeof lastJson.message === "string" ? lastJson.message : undefined,
+        response.headers,
+      )
+    ) {
+      const resetAt = rememberRateLimit("authenticated", response.headers);
+      throw new GithubRateLimitError(resetAt);
+    }
     if (!isTransientStatus(response.status)) {
       return { status: response.status, json: lastJson };
     }

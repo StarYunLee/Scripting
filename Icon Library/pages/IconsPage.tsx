@@ -120,7 +120,7 @@ export function IconsPage(props: {
       await onRefresh();
       setRefreshNote("刷新完成");
     } catch (err) {
-      setRefreshNote(`刷新失败：${String(err)}`);
+      setRefreshNote(`刷新失败：${formatError(err)}`);
       return;
     }
     setTimeout(() => {

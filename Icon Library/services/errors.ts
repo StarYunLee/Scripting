@@ -1,9 +1,31 @@
+export class GithubRateLimitError extends Error {
+  constructor(public readonly resetAt: number | null) {
+    const waitMinutes = resetAt && resetAt > Date.now()
+      ? Math.max(1, Math.ceil((resetAt - Date.now()) / 60000))
+      : null;
+    super(
+      waitMinutes
+        ? `GitHub API 请求已达到速率限制，预计约 ${waitMinutes} 分钟后恢复。`
+        : "GitHub API 请求已达到速率限制，请稍后再试。",
+    );
+    this.name = "GithubRateLimitError";
+  }
+}
+
 export function formatError(error: unknown): string {
   const raw =
     error instanceof Error && error.message ? error.message : String(error);
   const lower = raw.toLowerCase();
   if (
-    lower.includes("403") ||
+    lower.includes("rate limit") ||
+    lower.includes("rate-limit") ||
+    lower.includes("速率限制")
+  ) {
+    return lower.includes("速率限制")
+      ? raw
+      : "GitHub API 请求已达到速率限制，请稍后再试。";
+  }
+  if (
     lower.includes("resource not accessible by personal access token") ||
     lower.includes("permission denied") ||
     lower.includes("insufficient permission") ||
