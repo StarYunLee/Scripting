@@ -14,6 +14,7 @@ export function WorkflowPreviewPage(props: {
   return (
     <List
       navigationTitle={props.title}
+      tabBarVisibility="hidden"
       {...glassListPageProps()}
     >
       <Section

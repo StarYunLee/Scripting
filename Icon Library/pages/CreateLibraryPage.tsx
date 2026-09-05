@@ -137,6 +137,7 @@ export function CreateLibraryPage(props: {
   return (
     <List
       navigationTitle="创建图标库"
+      tabBarVisibility="hidden"
       {...glassListPageProps()}
       navigationDestination={{
         isPresented: preview != null,
@@ -219,7 +220,7 @@ export function CreateLibraryPage(props: {
             frame={{ maxWidth: "infinity" }}
           >
             {draftOnly
-              ? "这里只选择创建方式；返回后点击编辑页右上角「保存」才会写入仓库。"
+              ? "这里只编辑创建方式的草稿；返回后点击编辑页右上角「保存」才会写入仓库。"
               : `只读预览，内容已按当前目录「${resolved.iconDir}」和索引「${resolved.jsonPath}」生成。创建时写入仓库，不能在这里改。`}
           </Text>
         </GlassGroup>
@@ -230,7 +231,7 @@ export function CreateLibraryPage(props: {
           <GlassCenteredActionRow
             title={
               draftOnly
-                ? "确定创建"
+                ? "完成"
                 : busy
                   ? "创建中…"
                   : "创建并写入标准 workflow"

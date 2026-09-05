@@ -22,10 +22,7 @@ import {
   glassRowBackground,
 } from "../components/Glass";
 import { glassListPageProps } from "../components/GlassListPage";
-import type {
-  IconLibrarySettings,
-  RepoProfileStore,
-} from "../services/models";
+import type { IconLibrarySettings, RepoProfileStore } from "../services/models";
 import {
   defaultSettings,
   isLibraryReady,
@@ -46,10 +43,7 @@ type NewProfileDraft = {
 export function SettingsPage(props: {
   store: RepoProfileStore;
   settings: IconLibrarySettings;
-  onSettingsChange: (
-    profileId: string,
-    next: IconLibrarySettings,
-  ) => void;
+  onSettingsChange: (profileId: string, next: IconLibrarySettings) => void;
   onRenameProfile: (profileId: string, label: string) => void;
   onSelectProfile: (id: string) => void;
   onDeleteProfiles: (profileIds: string[]) => void;
@@ -58,6 +52,7 @@ export function SettingsPage(props: {
     settings: IconLibrarySettings,
     token: string,
   ) => void;
+  onProfileSaved?: () => void;
 }) {
   const {
     store,
@@ -69,8 +64,6 @@ export function SettingsPage(props: {
     onCreateProfile,
   } = props;
   const dismiss = Navigation.useDismiss();
-  const [managing, setManaging] = useState(false);
-  const [selectedProfileIds, setSelectedProfileIds] = useState<string[]>([]);
   const [destination, setDestination] = useState<Destination>(null);
   const [newProfileDraft, setNewProfileDraft] =
     useState<NewProfileDraft | null>(null);
@@ -87,65 +80,14 @@ export function SettingsPage(props: {
     setTimeout(() => setCopyStatus(null), 1600);
   }
 
-  function startManaging() {
-    setManaging(true);
-    setSelectedProfileIds([]);
-  }
-
-  function stopManaging() {
-    setManaging(false);
-    setSelectedProfileIds([]);
-  }
-
-  function toggleProfileSelection(profileId: string) {
-    setSelectedProfileIds((current) =>
-      current.includes(profileId)
-        ? current.filter((id) => id !== profileId)
-        : [...current, profileId],
-    );
-  }
-
-  async function deleteSelectedProfiles() {
-    if (selectedProfileIds.length === 0) {
+  function openSelectedProfile() {
+    if (!store.activeId) {
       return;
     }
-    const confirmed = await Dialog.confirm({
-      title: `删除所选 ${selectedProfileIds.length} 个仓库？`,
-      message:
-        "只会移除本机保存的仓库配置和对应令牌，不会删除 GitHub 仓库、图标、JSON 文件或 GitHub Actions。",
-      confirmLabel: "删除",
-    });
-    if (!confirmed) {
-      return;
-    }
-    try {
-      onDeleteProfiles(selectedProfileIds);
-      stopManaging();
-    } catch (error) {
-      await Dialog.alert({
-        title: "删除失败",
-        message: String(error),
-      });
-    }
+    setDestination("repo");
   }
 
-  const toolbar = managing ? (
-    <Toolbar>
-      <ToolbarItem placement="cancellationAction">
-        <Button title="取消" action={stopManaging} />
-      </ToolbarItem>
-      <ToolbarItem placement="topBarTrailing">
-        <Button
-          title={selectedProfileIds.length ? `删除 ${selectedProfileIds.length}` : "删除"}
-          role="destructive"
-          disabled={selectedProfileIds.length === 0}
-          action={() => {
-            void deleteSelectedProfiles();
-          }}
-        />
-      </ToolbarItem>
-    </Toolbar>
-  ) : (
+  const toolbar = (
     <Toolbar>
       <ToolbarItem placement="cancellationAction">
         <Button
@@ -158,8 +100,8 @@ export function SettingsPage(props: {
       <ToolbarItem placement="topBarTrailing">
         <Button
           title="管理"
-          disabled={store.profiles.length === 0}
-          action={startManaging}
+          disabled={!store.activeId}
+          action={openSelectedProfile}
         />
       </ToolbarItem>
     </Toolbar>
@@ -184,12 +126,13 @@ export function SettingsPage(props: {
   function finishProfileSave() {
     setDestination(null);
     setNewProfileDraft(null);
+    props.onProfileSaved?.();
   }
 
   return (
     <NavigationStack>
       <List
-        navigationTitle={managing ? "选择仓库" : "设置"}
+        navigationTitle="设置"
         {...glassListPageProps()}
         toolbar={toolbar}
         navigationDestination={{
@@ -204,7 +147,7 @@ export function SettingsPage(props: {
             destination === "repo" ? (
               <RepoSettingsPage
                 isNew={newProfileDraft != null}
-                profileId={newProfileDraft ? "" : store.activeId ?? ""}
+                profileId={newProfileDraft ? "" : (store.activeId ?? "")}
                 profileLabel={
                   newProfileDraft?.label ??
                   store.profiles.find((item) => item.id === store.activeId)
@@ -214,6 +157,9 @@ export function SettingsPage(props: {
                 settings={newProfileDraft?.settings ?? settings}
                 onSettingsChange={onSettingsChange}
                 onRenameProfile={onRenameProfile}
+                onDeleteProfile={(targetProfileId) => {
+                  onDeleteProfiles([targetProfileId]);
+                }}
                 onCreateProfile={
                   newProfileDraft ? handleCreateProfile : undefined
                 }
@@ -235,9 +181,7 @@ export function SettingsPage(props: {
               const pSettings = profile.settings;
               const pConfigured = isRepoConfigured(pSettings);
               const pReady = isLibraryReady(pSettings);
-              const pAddress = pConfigured
-                ? repoAddress(pSettings)
-                : "";
+              const pAddress = pConfigured ? repoAddress(pSettings) : "";
               const detail = pConfigured
                 ? `${pAddress} · ${
                     pReady
@@ -245,9 +189,6 @@ export function SettingsPage(props: {
                       : "未选择图标库方式"
                   }`
                 : "尚未配置仓库地址";
-              const isSelected = managing
-                ? selectedProfileIds.includes(profile.id)
-                : profile.id === store.activeId;
               return (
                 <VStack
                   key={profile.id}
@@ -257,44 +198,31 @@ export function SettingsPage(props: {
                   <GlassSelectionRow
                     title={profile.label}
                     detail={detail}
-                    selected={isSelected}
+                    selected={profile.id === store.activeId}
                     action={() => {
-                      if (managing) {
-                        toggleProfileSelection(profile.id);
-                      } else {
-                        onSelectProfile(profile.id);
-                        setDestination("repo");
-                      }
+                      onSelectProfile(profile.id);
                     }}
                   />
                   <GlassDivider />
                 </VStack>
               );
             })}
-            {!managing ? (
-              <>
-                <GlassCenteredActionRow
-                  title="新增仓库"
-                  action={addProfileAndOpenSettings}
-                />
-              </>
-            ) : null}
+            <GlassCenteredActionRow
+              title="新增仓库"
+              action={addProfileAndOpenSettings}
+            />
           </GlassGroup>
         </Section>
 
-        {!managing ? (
-          <>
-            <Section
-              listRowBackground={glassRowBackground}
-              header={<GlassSectionHeader title="订阅地址" />}
+        <Section
+          listRowBackground={glassRowBackground}
+          header={<GlassSectionHeader title="订阅地址" />}
             >
               <GlassGroup>
                 {ready && subUrl ? (
                   <GlassCopyInfoRow
                     value={subUrl}
-                    note={
-                      copyStatus ?? "由当前仓库和索引文件自动生成"
-                    }
+                    note={copyStatus ?? "由当前仓库和索引文件自动生成"}
                     action={copySubscribe}
                   />
                 ) : (
@@ -354,7 +282,7 @@ export function SettingsPage(props: {
                       foregroundStyle="secondaryLabel"
                       fixedSize={{ horizontal: false, vertical: true }}
                     >
-                      • 支持浏览、重命名、批量删除和导出 PNG。
+                      • 支持浏览、重命名、删除和导出 PNG。
                     </Text>
                     <Text
                       font={14}
@@ -373,8 +301,6 @@ export function SettingsPage(props: {
                 />
               </GlassGroup>
             </Section>
-          </>
-        ) : null}
       </List>
     </NavigationStack>
   );

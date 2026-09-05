@@ -31,7 +31,6 @@ import {
 import type { IconLibrarySettings } from "../services/models";
 import {
   isRepoConfigured,
-  libraryModeTitle,
   parseGithubRepoAddress,
   repoAddress,
 } from "../services/settings";
@@ -45,11 +44,9 @@ export function RepoSettingsPage(props: {
   profileId: string;
   profileLabel: string;
   settings: IconLibrarySettings;
-  onSettingsChange: (
-    profileId: string,
-    next: IconLibrarySettings,
-  ) => void;
+  onSettingsChange: (profileId: string, next: IconLibrarySettings) => void;
   onRenameProfile: (profileId: string, label: string) => void;
+  onDeleteProfile?: (profileId: string) => void;
   onCreateProfile?: (
     label: string,
     settings: IconLibrarySettings,
@@ -64,6 +61,7 @@ export function RepoSettingsPage(props: {
     settings,
     onSettingsChange,
     onRenameProfile,
+    onDeleteProfile,
     onCreateProfile,
     onSaved,
   } = props;
@@ -81,6 +79,7 @@ export function RepoSettingsPage(props: {
   const [editingToken, setEditingToken] = useState(isNew);
   const [clearTokenPending, setClearTokenPending] = useState(false);
   const [savingRepo, setSavingRepo] = useState(false);
+  const [deletingRepo, setDeletingRepo] = useState(false);
   const [savedToken, setSavedToken] = useState<string | null>(null);
   const [savedTokenMask, setSavedTokenMask] = useState("");
   const [destination, setDestination] = useState<Destination>(null);
@@ -169,7 +168,11 @@ export function RepoSettingsPage(props: {
   }
 
   function tokenForChild(): string | undefined {
-    return tokenDraft.trim() || (clearTokenPending ? undefined : savedToken) || undefined;
+    return (
+      tokenDraft.trim() ||
+      (clearTokenPending ? undefined : savedToken) ||
+      undefined
+    );
   }
 
   async function createLibraryForSave(
@@ -215,7 +218,8 @@ export function RepoSettingsPage(props: {
     if (next.mode === "unconfigured") {
       await Dialog.alert({
         title: "请选择图标库方式",
-        message: "先选择「创建图标库」或「连接已有图标库」，再点击右上角「保存」。",
+        message:
+          "先选择「创建图标库」或「连接已有图标库」，再点击右上角「保存」。",
       });
       return;
     }
@@ -230,6 +234,7 @@ export function RepoSettingsPage(props: {
     }
 
     const token = tokenForChild();
+    const tokenChanged = Boolean(tokenDraft.trim()) || clearTokenPending;
     const repoChanged =
       settings.owner !== next.owner ||
       settings.repo !== next.repo ||
@@ -247,15 +252,16 @@ export function RepoSettingsPage(props: {
     if (shouldCreateRemote && !token) {
       await Dialog.alert({
         title: "创建图标库需要令牌",
-        message: "请填写个人访问令牌后再保存。令牌仅在保存校验通过后写入本机 Keychain。",
+        message:
+          "请填写个人访问令牌后再保存。令牌仅在保存校验通过后写入本机 Keychain。",
       });
       return;
     }
 
     setSavingRepo(true);
     try {
-      if (isNew || repoChanged) {
-        await validatePublicRepository(next);
+      if (isNew || repoChanged || tokenChanged) {
+        await validatePublicRepository(next, token ?? undefined);
       }
       if (shouldCreateRemote) {
         const completed = await createLibraryForSave(next, token as string);
@@ -308,12 +314,6 @@ export function RepoSettingsPage(props: {
     setEditingToken(false);
     setClearTokenPending(false);
     setAddress(repoAddress(next));
-    await Dialog.alert({
-      title: "已保存",
-      message: isNew
-        ? "仓库已加入列表。"
-        : "仓库与授权设置已更新。",
-    });
     onSaved?.();
   }
 
@@ -341,6 +341,39 @@ export function RepoSettingsPage(props: {
     setClearTokenPending(true);
   }
 
+  async function requestDeleteProfile() {
+    if (isNew || !profileId || !onDeleteProfile || deletingRepo) {
+      return;
+    }
+    const confirmed = await Dialog.confirm({
+      title: `移除仓库“${profileLabel}”？`,
+      message:
+        "只会移除本机保存的仓库配置和对应令牌，不会删除 GitHub 仓库、图标、JSON 文件或 GitHub Actions。",
+      confirmLabel: "移除",
+    });
+    if (!confirmed) {
+      return;
+    }
+    setDeletingRepo(true);
+    try {
+      onDeleteProfile(profileId);
+      onSaved?.();
+    } catch (error) {
+      setDeletingRepo(false);
+      await Dialog.alert({
+        title: "移除失败",
+        message: String(error),
+      });
+    }
+  }
+
+  const draftSettings = buildSettingsFromDraft();
+  const draftMode = draftSettings?.mode ?? "unconfigured";
+  const libraryConfigSummary =
+    draftSettings && draftMode !== "unconfigured"
+      ? `${draftSettings.iconDir} · ${draftSettings.jsonPath}`
+      : "未配置";
+
   async function openMode(nextMode: Exclude<Destination, null>) {
     const next = buildSettingsFromDraft();
     if (!next) {
@@ -350,25 +383,38 @@ export function RepoSettingsPage(props: {
       });
       return;
     }
+    if (nextMode === "create" && !tokenForChild()) {
+      await Dialog.alert({
+        title: "创建图标库需要访问令牌",
+        message: "请先填写个人访问令牌，再进入创建图标库配置。",
+      });
+      return;
+    }
     setSettingsDraft(next);
     setDestination(nextMode);
   }
 
-  const draftSettings = buildSettingsFromDraft();
-  const draftMode = draftSettings?.mode ?? "unconfigured";
-  const libraryConfigSummary =
-    draftSettings && draftMode !== "unconfigured"
-      ? `${draftSettings.iconDir} · ${draftSettings.jsonPath}`
-      : "未配置";
-  const draftTokenLabel = clearTokenPending
-    ? "待清除（点击保存生效）"
-    : tokenDraft.trim()
-      ? maskPersonalAccessToken(tokenDraft)
-      : savedTokenMask || "未配置";
+  async function changeMode() {
+    if (draftMode === "unconfigured") {
+      return;
+    }
+    const nextMode: Exclude<Destination, null> =
+      draftMode === "create" ? "connect" : "create";
+    const nextTitle = nextMode === "create" ? "创建图标库" : "连接已有图标库";
+    const selected = await Dialog.actionSheet({
+      title: "更改图标库方式",
+      message: `当前类型：${draftMode === "create" ? "创建图标库" : "连接已有图标库"}`,
+      actions: [{ label: nextTitle }],
+    });
+    if (selected === 0) {
+      await openMode(nextMode);
+    }
+  }
 
   return (
     <List
       navigationTitle="仓库与授权"
+      tabBarVisibility="hidden"
       {...glassListPageProps()}
       toolbar={
         <Toolbar>
@@ -405,7 +451,7 @@ export function RepoSettingsPage(props: {
               onConfigured={handleLibraryConfigured}
             />
           ) : (
-            <Text>选择方式</Text>
+            <Text>选择图标库方式</Text>
           ),
       }}
     >
@@ -454,70 +500,105 @@ export function RepoSettingsPage(props: {
 
       <Section
         listRowBackground={glassRowBackground}
-        header={<GlassSectionHeader title="个人访问令牌" />}
+        header={
+          <GlassSectionHeader title={isNew ? "访问令牌" : "个人访问令牌"} />
+        }
       >
         <GlassGroup>
-          <GlassLabeledRow
-            title="当前令牌"
-            value={
-              clearTokenPending
-                ? "待清除（点击保存生效）"
-                : savedTokenMask || "未配置"
-            }
-          />
-          {isNew || !hasPat || editingToken ? (
+          {isNew ? (
             <>
+              <GlassLabeledRow
+                title="访问令牌"
+                value={tokenDraft.trim() ? "已填写，保存时验证" : "未填写"}
+              />
               <GlassDivider />
               <SecureField
-                title={hasPat ? "新令牌" : "设置令牌"}
-                prompt="粘贴 ghP_ 或 github_pat_ 开头的令牌"
+                title="输入令牌"
+                prompt="粘贴 ghp_ 或 github_pat_ 开头的令牌"
                 value={tokenDraft}
                 onChanged={updateTokenDraft}
                 padding={{ vertical: true }}
                 frame={{ minHeight: 44, maxWidth: "infinity" }}
               />
-              {hasPat && !isNew ? (
+            </>
+          ) : (
+            <>
+              <GlassLabeledRow
+                title="当前令牌"
+                value={
+                  clearTokenPending
+                    ? "待清除（点击保存生效）"
+                    : savedTokenMask || "未配置"
+                }
+              />
+              {!hasPat || editingToken ? (
+                <>
+                  <GlassDivider />
+                  <SecureField
+                    title={hasPat ? "新令牌" : "设置令牌"}
+                    prompt="粘贴 ghp_ 或 github_pat_ 开头的令牌"
+                    value={tokenDraft}
+                    onChanged={updateTokenDraft}
+                    padding={{ vertical: true }}
+                    frame={{ minHeight: 44, maxWidth: "infinity" }}
+                  />
+                  {tokenDraft.trim() ? (
+                    <>
+                      <GlassDivider />
+                      <GlassLabeledRow
+                        title="状态"
+                        value={
+                          hasPat
+                            ? "新令牌已填写，保存时验证"
+                            : "已填写，保存时验证"
+                        }
+                      />
+                    </>
+                  ) : null}
+                  {hasPat ? (
+                    <>
+                      <GlassDivider />
+                      <GlassCenteredActionRow
+                        title="取消更换"
+                        action={() => {
+                          setTokenDraft("");
+                          setEditingToken(false);
+                        }}
+                      />
+                    </>
+                  ) : null}
+                </>
+              ) : (
+                <>
+                  <GlassDivider />
+                  <GlassNavRow
+                    title="更换令牌"
+                    detail="输入新的 Token"
+                    action={() => {
+                      setEditingToken(true);
+                      setClearTokenPending(false);
+                    }}
+                  />
+                </>
+              )}
+              {hasPat ? (
                 <>
                   <GlassDivider />
                   <GlassCenteredActionRow
-                    title="取消更换"
+                    title={clearTokenPending ? "撤销清除" : "清除令牌"}
+                    destructive={!clearTokenPending}
                     action={() => {
-                      setTokenDraft("");
-                      setEditingToken(false);
+                      if (clearTokenPending) {
+                        setClearTokenPending(false);
+                      } else {
+                        void requestClearToken();
+                      }
                     }}
                   />
                 </>
               ) : null}
             </>
-          ) : (
-            <>
-              <GlassDivider />
-              <GlassNavRow
-                title="更换令牌"
-                detail="输入新的 Token"
-                action={() => {
-                  setEditingToken(true);
-                  setClearTokenPending(false);
-                }}
-              />
-            </>
           )}
-          {hasPat && !isNew ? (
-            <>
-              <GlassDivider />
-              <GlassCenteredActionRow
-                title={clearTokenPending ? "撤销清除" : "清除令牌"}
-                destructive={!clearTokenPending}
-                action={() => {
-                  if (clearTokenPending) {
-                    setClearTokenPending(false);
-                  } else {
-                    void requestClearToken();
-                  }
-                }}
-              />
-            </>
-          ) : null}
           <GlassDivider />
           <Text
             font={12}
@@ -526,96 +607,72 @@ export function RepoSettingsPage(props: {
             frame={{ maxWidth: "infinity" }}
           >
             Fine-grained：选择目标仓库，授予 Contents → Read and write。
-            Classic：授予 public_repo。
+            Classic：授予 public_repo。保存时会通过 GitHub 只读接口验证令牌，验证失败不会保存。
           </Text>
         </GlassGroup>
       </Section>
 
       <Section
         listRowBackground={glassRowBackground}
-        header={<GlassSectionHeader title="图标库类型" />}
+        header={<GlassSectionHeader title="图标库方式" />}
       >
         <GlassGroup>
-          <GlassNavRow
-            title="创建图标库"
-            detail={draftMode === "create" ? libraryConfigSummary : "未配置"}
-            action={() => {
-              void openMode("create");
-            }}
-          />
-          <GlassDivider />
-          <GlassNavRow
-            title="连接已有图标库"
-            detail={draftMode === "connect" ? libraryConfigSummary : "未配置"}
-            action={() => {
-              void openMode("connect");
-            }}
-          />
-        </GlassGroup>
-      </Section>
-
-      <Section
-        listRowBackground={glassRowBackground}
-        header={<GlassSectionHeader title="当前配置" />}
-      >
-        <GlassGroup>
-          {draftSettings ? (
+          {draftMode === "unconfigured" ? (
             <>
-              <GlassLabeledRow
-                title="仓库"
-                value={repoAddress(draftSettings)}
+              <GlassNavRow
+                title="创建图标库"
+                detail="新建目录、索引和 workflow"
+                action={() => {
+                  void openMode("create");
+                }}
               />
               <GlassDivider />
-              <GlassLabeledRow title="分支" value={draftSettings.branch} />
-              <GlassDivider />
-              <GlassLabeledRow
-                title="显示名称"
-                value={profileName || "未命名仓库"}
+              <GlassNavRow
+                title="连接已有图标库"
+                detail="选择已有目录和 JSON"
+                action={() => {
+                  void openMode("connect");
+                }}
               />
-              <GlassDivider />
-              <GlassLabeledRow title="访问令牌" value={draftTokenLabel} />
-              <GlassDivider />
-              <GlassLabeledRow
-                title="方式"
-                value={libraryModeTitle(draftMode)}
-              />
-              {draftMode === "unconfigured" ? (
-                <>
-                  <GlassDivider />
-                  <Text
-                    foregroundStyle="secondaryLabel"
-                    padding={{ vertical: true }}
-                    frame={{ maxWidth: "infinity" }}
-                  >
-                    尚未选择创建或连接，目录和索引未生效
-                  </Text>
-                </>
-              ) : (
-                <>
-                  <GlassDivider />
-                  <GlassLabeledRow
-                    title="图标目录"
-                    value={draftSettings.iconDir}
-                  />
-                  <GlassDivider />
-                  <GlassLabeledRow
-                    title="索引文件"
-                    value={draftSettings.jsonPath}
-                  />
-                </>
-              )}
             </>
           ) : (
-            <Text
-              foregroundStyle="secondaryLabel"
-              padding={{ vertical: true }}
-              frame={{ maxWidth: "infinity" }}
-            >
-              尚未填写有效仓库地址
-            </Text>
+            <>
+              <GlassNavRow
+                title={draftMode === "create" ? "创建图标库" : "连接已有图标库"}
+                detail={libraryConfigSummary}
+                action={() => {
+                  void openMode(draftMode);
+                }}
+              />
+              <GlassDivider />
+              <GlassCenteredActionRow
+                title="更改类型"
+                action={() => {
+                  void changeMode();
+                }}
+              />
+            </>
           )}
         </GlassGroup>
       </Section>
+
+      {!isNew && onDeleteProfile ? (
+        <Section
+          listRowBackground={glassRowBackground}
+          header={<GlassSectionHeader title="移除" />}
+        >
+          <GlassGroup>
+            <GlassCenteredActionRow
+              title={deletingRepo ? "移除中…" : "移除仓库"}
+              destructive={true}
+              disabled={deletingRepo || savingRepo}
+              action={() => {
+                void requestDeleteProfile();
+              }}
+            />
+          </GlassGroup>
+        </Section>
+      ) : null}
     </List>
   );
 }

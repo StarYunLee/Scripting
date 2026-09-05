@@ -69,10 +69,18 @@ function filterIcons(icons: CatalogIcon[], query: string): CatalogIcon[] {
   });
 }
 
+function isCredentialError(value: string | null): boolean {
+  if (!value) return false;
+  return /凭证无效|凭据无效|个人访问令牌|bad credentials|unauthorized|\b401\b/i.test(
+    value,
+  );
+}
+
 export function IconsPage(props: {
   profileId: string;
   settings: IconLibrarySettings;
   catalog: CatalogSnapshot | null;
+  loading: boolean;
   error: string | null;
   onRefresh: () => Promise<void>;
   onOpenSettings: () => void;
@@ -82,6 +90,7 @@ export function IconsPage(props: {
     profileId,
     settings,
     catalog,
+    loading,
     error,
     onRefresh,
     onOpenSettings,
@@ -98,6 +107,7 @@ export function IconsPage(props: {
   const dismiss = Navigation.useDismiss();
   const configured = isLibraryReady(settings);
   const hasRepository = isRepoConfigured(settings);
+  const credentialError = isCredentialError(error);
   const icons = catalog ? filterIcons(catalog.icons, query) : [];
   const pendingCount = countPendingIcons(catalog);
 
@@ -174,7 +184,11 @@ export function IconsPage(props: {
       </ToolbarItem>
       <ToolbarItem placement="primaryAction">
         <Button
-          title={busy ? "删除中…" : `删除${selected.length ? ` ${selected.length}` : ""}`}
+          title={
+            busy
+              ? "删除中…"
+              : `删除${selected.length ? ` ${selected.length}` : ""}`
+          }
           role="destructive"
           disabled={busy || selected.length === 0}
           action={() => {
@@ -254,7 +268,9 @@ export function IconsPage(props: {
             <Text
               font={12}
               foregroundStyle={
-                refreshNote.startsWith("刷新失败") ? "systemRed" : "secondaryLabel"
+                refreshNote.startsWith("刷新失败")
+                  ? "systemRed"
+                  : "secondaryLabel"
               }
             >
               {refreshNote}
@@ -279,7 +295,7 @@ export function IconsPage(props: {
                 <GlassEmptyStateCard
                   systemImage="square.grid.2x2"
                   title="还没有图标库"
-                  message="添加一个公开 GitHub 仓库并选择图标库类型，即可开始管理图标。"
+                  message="添加一个公开 GitHub 仓库并选择图标库方式，即可开始管理图标。"
                   actionTitle="去设置"
                   action={onOpenSettings}
                 />
@@ -294,7 +310,7 @@ export function IconsPage(props: {
                   action={onOpenSettings}
                 />
               </GlassEmptyStateContainer>
-            ) : query.trim() ? (
+            ) : query.trim() && catalog && catalog.icons.length > 0 ? (
               <Text
                 foregroundStyle="secondaryLabel"
                 frame={{ maxWidth: "infinity" }}
@@ -306,10 +322,22 @@ export function IconsPage(props: {
               <GlassEmptyStateContainer>
                 <GlassEmptyStateCard
                   systemImage="exclamationmark.triangle"
-                  title="图标读取失败"
-                  message={error}
-                  actionTitle="重新扫描"
-                  action={handleRefresh}
+                  title={credentialError ? "GitHub 凭证无效" : "图标读取失败"}
+                  message={
+                    credentialError
+                      ? "请到仓库与授权重新保存个人访问令牌。"
+                      : error
+                  }
+                  actionTitle={credentialError ? "去设置" : "重新扫描"}
+                  action={credentialError ? onOpenSettings : handleRefresh}
+                />
+              </GlassEmptyStateContainer>
+            ) : loading ? (
+              <GlassEmptyStateContainer>
+                <GlassEmptyStateCard
+                  systemImage="square.grid.2x2"
+                  title="正在读取图标"
+                  message="正在从 GitHub 仓库读取图标目录。"
                 />
               </GlassEmptyStateContainer>
             ) : catalog ? (

@@ -33,6 +33,7 @@ import {
 import { isLibraryReady } from "./services/settings";
 
 type RootTab = "icons" | "gallery" | "upload" | "settings";
+type CatalogLoadState = "idle" | "loading" | "loaded" | "error";
 
 function libraryKey(value: IconLibrarySettings): string {
   return [
@@ -49,12 +50,15 @@ function App() {
   const [store, setStore] = useState<RepoProfileStore>(() =>
     loadProfileStore(),
   );
+  const [credentialRevision, setCredentialRevision] = useState(0);
   const selection = useObservable<string>("icons");
   function setRootTab(tab: RootTab) {
     selection.setValue(tab);
   }
   const catalogRequestRef = useRef(0);
   const [catalog, setCatalog] = useState<CatalogSnapshot | null>(null);
+  const [catalogLoadState, setCatalogLoadState] =
+    useState<CatalogLoadState>("idle");
   const [error, setError] = useState<string | null>(null);
 
   const settings = currentSettings(store);
@@ -75,6 +79,10 @@ function App() {
       return;
     }
     const requestId = ++catalogRequestRef.current;
+    if (isCurrentRequest()) {
+      setCatalogLoadState("loading");
+      setError(null);
+    }
 
     function isCurrentRequest(): boolean {
       if (requestId !== catalogRequestRef.current) {
@@ -94,6 +102,7 @@ function App() {
       if (isCurrentRequest()) {
         setCatalog(null);
         setError(null);
+        setCatalogLoadState("idle");
       }
       return;
     }
@@ -105,12 +114,14 @@ function App() {
       }
       setCatalog(next);
       setError(null);
+      setCatalogLoadState("loaded");
     } catch (err) {
       if (!isCurrentRequest()) {
         return;
       }
       const message = formatError(err);
       setError(message);
+      setCatalogLoadState("error");
       throw err;
     }
   }
@@ -120,6 +131,7 @@ function App() {
       catalogRequestRef.current += 1;
       setCatalog(null);
       setError(null);
+      setCatalogLoadState("idle");
       return;
     }
 
@@ -130,7 +142,7 @@ function App() {
         // refreshCatalog 已把当前请求错误写入 state；effect 不再制造未处理 rejection。
       });
     }
-  }, [profileId, libraryKey(settings)]);
+  }, [profileId, libraryKey(settings), credentialRevision]);
 
   function handleSettingsChange(
     targetProfileId: string,
@@ -166,6 +178,10 @@ function App() {
     setStore(nextStore);
   }
 
+  function handleProfileSaved() {
+    setCredentialRevision((value) => value + 1);
+  }
+
   return (
     <TabView selection={selection}>
       <Tab title="图标" systemImage="square.grid.2x2.fill" value="icons">
@@ -174,6 +190,7 @@ function App() {
           profileId={profileId ?? ""}
           settings={settings}
           catalog={catalog}
+          loading={catalogLoadState === "loading"}
           error={error}
           onRefresh={() =>
             context ? refreshCatalog(context) : Promise.resolve()
@@ -207,6 +224,7 @@ function App() {
           onDeleteProfiles={handleDeleteProfiles}
           onSelectProfile={handleSelectProfile}
           onCreateProfile={handleCreateProfile}
+          onProfileSaved={handleProfileSaved}
         />
       </Tab>
     </TabView>

@@ -143,8 +143,8 @@ export function GlassEmptyStateCard(props: {
   systemImage: string;
   title: string;
   message: string;
-  actionTitle: string;
-  action: () => void | Promise<void>;
+  actionTitle?: string;
+  action?: () => void | Promise<void>;
 }) {
   return (
     <VStack
@@ -192,10 +192,12 @@ export function GlassEmptyStateCard(props: {
       >
         {props.message}
       </Text>
-      <GlassCenteredActionRow
-        title={props.actionTitle}
-        action={props.action}
-      />
+      {props.actionTitle && props.action ? (
+        <GlassCenteredActionRow
+          title={props.actionTitle}
+          action={props.action}
+        />
+      ) : null}
     </VStack>
   );
 }
@@ -341,10 +343,7 @@ export function GlassSelectionRow(props: {
   );
 }
 
-export function GlassLabeledRow(props: {
-  title: string;
-  value: string;
-}) {
+export function GlassLabeledRow(props: { title: string; value: string }) {
   return (
     <HStack
       padding={{ vertical: true }}

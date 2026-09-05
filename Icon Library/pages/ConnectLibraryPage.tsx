@@ -129,6 +129,7 @@ export function ConnectLibraryPage(props: {
   return (
     <List
       navigationTitle="连接已有图标库"
+      tabBarVisibility="hidden"
       {...glassListPageProps()}
     >
       <Section
@@ -207,18 +208,25 @@ export function ConnectLibraryPage(props: {
           />
           <GlassDivider />
           <GlassCenteredActionRow
-            title={
-              busy
-                ? "确认中…"
-                : draftOnly
-                  ? "确认目录和索引"
-                  : "连接"
-            }
+            title={busy ? "处理中…" : draftOnly ? "完成" : "连接"}
             disabled={busy || loading || !iconDir || !jsonPath}
             action={() => {
               void connect();
             }}
           />
+          {draftOnly ? (
+            <>
+              <GlassDivider />
+              <Text
+                font={12}
+                foregroundStyle="tertiaryLabel"
+                padding={{ vertical: true }}
+                frame={{ maxWidth: "infinity" }}
+              >
+                这里只修改草稿，返回后由右上角「保存」提交整个仓库配置。
+              </Text>
+            </>
+          ) : null}
         </GlassGroup>
       </Section>
     </List>
