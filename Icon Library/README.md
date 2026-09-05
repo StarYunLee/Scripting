@@ -11,7 +11,7 @@
 
 面向 [Scripting App](https://scriptingapp.github.io/) 的非官方图标库管理应用。用 GitHub 公开仓库托管自建图标，并自动生成可供订阅的索引；也可只读浏览别人的公开图标索引。
 
-当前版本：`1.1.0`
+当前版本：`1.1.1`
 
 > 本项目不是 GitHub、Apple、LobeHub 或 Scripting App 官方产品，与上述平台无隶属或合作关系。
 
