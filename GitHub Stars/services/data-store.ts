@@ -1,6 +1,7 @@
 import { hasToken } from "../auth/token";
 import type {
   AppState,
+  ForkSyncStatus,
   GitHubError,
   GitHubListDetail,
   GitHubListSummary,
@@ -14,21 +15,25 @@ import type {
 import {
   clearCache,
   clearDetailCaches,
+  clearForkStatusesCache,
   clearMembershipCache,
   clearOwnedRepositoriesCache,
   clearRepositoryPreferences,
   loadCache,
   loadDetailCache,
+  loadForkStatusesCache,
   loadMembershipCache,
   loadOwnedRepositoriesCache,
   loadRepositoryPreferences,
   removeDetailCache,
   saveCache,
   saveDetailCache,
+  saveForkStatusesCache,
   saveMembershipCache,
   saveOwnedRepositoriesCache,
   saveRepositoryPreferences,
 } from "./cache";
+import { classifyForkSyncState } from "./fork-status";
 import { mapWithConcurrency } from "./request-retry";
 import { normalizeThrownError } from "./errors";
 import {
@@ -43,6 +48,7 @@ import {
 } from "./github-graphql";
 import {
   archiveOwnedRepository as archiveOwnedRepositoryRequest,
+  fetchForkUpstreamComparison,
   fetchOwnedRepositories,
   fetchRepository,
   fetchStarredRepositories,
@@ -210,6 +216,28 @@ function membershipSourceFingerprint(
 }
 
 const MEMBERSHIP_CACHE_TTL_MS = 5 * 60 * 1000;
+const FORK_STATUS_TTL_MS = 20 * 60 * 1000;
+
+function unknownForkStatus(): ForkSyncStatus {
+  return {
+    state: "unknown",
+    upstreamFullName: null,
+    upstreamBranch: null,
+    aheadBy: 0,
+    behindBy: 0,
+    checkedAt: null,
+    error: null,
+  };
+}
+
+function isForkStatusFresh(status: ForkSyncStatus | undefined): boolean {
+  if (!status?.checkedAt || status.state === "checking") return false;
+  const checkedAt = new Date(status.checkedAt).getTime();
+  return (
+    Number.isFinite(checkedAt) && Date.now() - checkedAt < FORK_STATUS_TTL_MS
+  );
+}
+
 const STARTUP_REVALIDATE_MIN_INTERVAL_MS = 2 * 60 * 1000;
 const BACKGROUND_BACKOFF_BASE_MS = 30 * 1000;
 const BACKGROUND_BACKOFF_MAX_MS = 10 * 60 * 1000;
@@ -292,6 +320,7 @@ function initialState(): AppState {
   const preferences = loadRepositoryPreferences();
   const ownedRepositoriesCache = loadOwnedRepositoriesCache();
   const memberships = loadMembershipCache();
+  const forkStatusesCache = loadForkStatusesCache();
   const ownedRepositories = preferences.includePrivateRepositories
     ? (ownedRepositoriesCache?.repositories ?? [])
     : (ownedRepositoriesCache?.repositories ?? []).filter(
@@ -304,6 +333,7 @@ function initialState(): AppState {
     stars: cached?.stars ?? [],
     lists: cached?.lists ?? [],
     ownedRepositories,
+    forkStatuses: forkStatusesCache?.statuses ?? {},
     memberships,
     resourceSyncedAt: cachedResourceSyncedAt(
       cached,
@@ -352,6 +382,7 @@ export class GitHubDataStore {
   private repositoryMutations = new Map<string, Promise<void>>();
   private listMutations = new Map<string, Promise<void>>();
   private membershipMutations = new Map<string, Promise<void>>();
+  private forkStatusRefreshes = new Map<string, Promise<ForkSyncStatus>>();
   private mutationQueueGeneration = 0;
   private readRetryStates = new Map<ReadResource, ReadRetryState>();
   private resourceRevisions: Record<RefreshResource, number> = {
@@ -469,6 +500,7 @@ export class GitHubDataStore {
     this.repositoryMutations.clear();
     this.listMutations.clear();
     this.membershipMutations.clear();
+    this.forkStatusRefreshes.clear();
     this.readRetryStates.clear();
   }
 
@@ -483,6 +515,23 @@ export class GitHubDataStore {
     generation: number,
   ): boolean {
     return this.listDetailGenerations.get(listId) === generation;
+  }
+
+  private saveForkStatuses(): void {
+    saveForkStatusesCache({
+      version: 1,
+      statuses: this.state.forkStatuses,
+      savedAt: new Date().toISOString(),
+    });
+  }
+
+  private updateForkStatus(repositoryId: string, status: ForkSyncStatus): void {
+    const forkStatuses = {
+      ...this.state.forkStatuses,
+      [repositoryId]: status,
+    };
+    this.update({ forkStatuses }, ["repositories"]);
+    this.saveForkStatuses();
   }
 
   private saveNonSensitiveCache(): void {
@@ -1071,10 +1120,19 @@ export class GitHubDataStore {
         repositories: ownedRepositories,
         savedAt: new Date().toISOString(),
       });
+      const forkStatuses = Object.fromEntries(
+        Object.entries(this.state.forkStatuses).filter(([repositoryId]) =>
+          ownedRepositories.some(
+            (repository) =>
+              repository.nodeId === repositoryId && repository.isFork,
+          ),
+        ),
+      );
       this.update(
         {
           includePrivateRepositories: false,
           ownedRepositories,
+          forkStatuses,
           ownedRepositoriesState: "loaded",
           ownedRepositoriesError: null,
         },
@@ -1116,7 +1174,9 @@ export class GitHubDataStore {
       return;
     }
     // 有缓存时先直接展示，再后台校验公开仓库列表。
-    void this.requestOwnedRepositoriesRefresh(true).promise.catch(() => {});
+    void this.requestOwnedRepositoriesRefresh(true)
+      .promise.then(() => this.refreshForkStatuses(false))
+      .catch(() => {});
   }
 
   async ensurePinnedRepositories(): Promise<void> {
@@ -1215,6 +1275,78 @@ export class GitHubDataStore {
     await request.promise;
   }
 
+  async refreshForkStatus(
+    repository: OwnedRepository,
+    force = false,
+  ): Promise<ForkSyncStatus> {
+    if (!repository.isFork) return unknownForkStatus();
+    const cached = this.state.forkStatuses[repository.nodeId];
+    if (!force && isForkStatusFresh(cached)) return cached;
+    const existing = this.forkStatusRefreshes.get(repository.nodeId);
+    if (existing) return existing;
+
+    const generation = this.sessionGeneration;
+    this.updateForkStatus(repository.nodeId, {
+      ...(cached ?? unknownForkStatus()),
+      state: "checking",
+      error: null,
+    });
+    const request = (async (): Promise<ForkSyncStatus> => {
+      try {
+        const comparison = await fetchForkUpstreamComparison(
+          repository.fullName,
+          repository.defaultBranch,
+        );
+        const status: ForkSyncStatus = {
+          state: classifyForkSyncState(comparison.aheadBy, comparison.behindBy),
+          upstreamFullName: comparison.upstreamFullName,
+          upstreamBranch: comparison.upstreamBranch,
+          aheadBy: comparison.aheadBy,
+          behindBy: comparison.behindBy,
+          checkedAt: new Date().toISOString(),
+          error: null,
+        };
+        if (this.isCurrentGeneration(generation)) {
+          this.updateForkStatus(repository.nodeId, status);
+        }
+        return status;
+      } catch (error) {
+        const status: ForkSyncStatus = {
+          ...(cached ?? unknownForkStatus()),
+          state: "error",
+          checkedAt: new Date().toISOString(),
+          error:
+            typeof error === "object" && error !== null && "message" in error
+              ? String(error.message)
+              : String(error),
+        };
+        if (this.isCurrentGeneration(generation)) {
+          this.updateForkStatus(repository.nodeId, status);
+        }
+        throw error;
+      }
+    })().finally(() => {
+      if (this.forkStatusRefreshes.get(repository.nodeId) === request) {
+        this.forkStatusRefreshes.delete(repository.nodeId);
+      }
+    });
+    this.forkStatusRefreshes.set(repository.nodeId, request);
+    return request;
+  }
+
+  async refreshForkStatuses(force = false): Promise<void> {
+    const forks = this.state.ownedRepositories.filter(
+      (repository) => repository.isFork && !repository.isArchived,
+    );
+    await mapWithConcurrency(forks, 3, async (repository) => {
+      try {
+        await this.refreshForkStatus(repository, force);
+      } catch {
+        // 单个 Fork 检查失败不阻止其他仓库继续更新状态。
+      }
+    });
+  }
+
   async updateOwnedRepository(
     repository: OwnedRepository,
     input: UpdateOwnedRepositoryInput,
@@ -1242,17 +1374,20 @@ export class GitHubDataStore {
     });
   }
 
-  async syncOwnedFork(repository: OwnedRepository): Promise<void> {
+  async syncOwnedFork(repository: OwnedRepository): Promise<ForkSyncStatus> {
     return this.enqueueRepositoryMutation(repository.fullName, async () => {
       if (!repository.isFork || repository.isArchived) {
         throw new Error("只有未归档的 Fork 仓库可以同步上游。");
       }
       const generation = this.sessionGeneration;
       await syncOwnedForkRequest(repository.fullName, repository.defaultBranch);
-      if (!this.isCurrentGeneration(generation)) return;
+      if (!this.isCurrentGeneration(generation)) return unknownForkStatus();
       this.bumpRevision("ownedRepositories");
-      // GitHub 返回后重新读取完整列表，更新推送时间与仓库状态。
-      await this.refreshOwnedRepositories();
+      const [status] = await Promise.all([
+        this.refreshForkStatus(repository, true),
+        this.refreshOwnedRepositories(),
+      ]);
+      return status;
     });
   }
 
@@ -1854,6 +1989,7 @@ export class GitHubDataStore {
     this.membershipDetailRequests.clear();
     clearCache();
     clearDetailCaches();
+    clearForkStatusesCache();
     clearMembershipCache();
     clearOwnedRepositoriesCache();
     clearRepositoryPreferences();
@@ -1870,6 +2006,7 @@ export class GitHubDataStore {
         listsState: "idle",
         listsError: null,
         ownedRepositories: [],
+        forkStatuses: {},
         ownedRepositoriesState: "idle",
         ownedRepositoriesError: null,
         memberships: null,

@@ -8,7 +8,8 @@ import {
   type Color,
 } from "scripting";
 import { languageColor } from "../data/language-colors";
-import type { OwnedRepository } from "../types";
+import { forkStatusColor, forkStatusLabel } from "../services/fork-status";
+import type { ForkSyncStatus, OwnedRepository } from "../types";
 
 function formatRelativeTime(value: string | null): string {
   if (!value) return "最近推送：未知";
@@ -102,10 +103,43 @@ function RepositoryStatus(props: { repository: OwnedRepository }) {
   );
 }
 
+function ForkStatusButton(props: {
+  status?: ForkSyncStatus;
+  disabled?: boolean;
+  onPress: () => void;
+}) {
+  const state = props.status?.state ?? "unknown";
+  const color = forkStatusColor(state) as Color;
+  const label = forkStatusLabel(state);
+  return (
+    <Button
+      buttonStyle="plain"
+      frame={{ minWidth: 44, height: 44 }}
+      contentShape="rect"
+      disabled={props.disabled}
+      action={props.onPress}
+    >
+      <HStack spacing={5} padding={{ leading: 6, trailing: 2 }}>
+        <Image
+          systemName="arrow.triangle.branch"
+          foregroundStyle={color}
+          font={14}
+        />
+        <Text font={14} foregroundStyle="secondaryLabel" lineLimit={1}>
+          {label}
+        </Text>
+      </HStack>
+    </Button>
+  );
+}
+
 export function OwnedRepositoryCard(props: {
   repository: OwnedRepository;
   isPinned?: boolean;
+  forkStatus?: ForkSyncStatus;
+  forkBusy?: boolean;
   onManage: () => void;
+  onForkStatus: () => void;
 }) {
   const repo = props.repository;
   const repositoryLanguageColor: Color =
@@ -180,68 +214,76 @@ export function OwnedRepositoryCard(props: {
             action={props.onManage}
           />
         </HStack>
-        <Button
-          buttonStyle="plain"
-          frame={{ maxWidth: "infinity" }}
-          action={() => {
-            void Safari.present(repo.htmlUrl, false);
-          }}
-        >
-          <VStack
-            spacing={8}
-            alignment="leading"
-            frame={{ minHeight: 44, maxWidth: "infinity" }}
-            contentShape="rect"
+        <VStack spacing={8} frame={{ maxWidth: "infinity" }}>
+          <Button
+            buttonStyle="plain"
+            frame={{ maxWidth: "infinity" }}
+            action={() => {
+              void Safari.present(repo.htmlUrl, false);
+            }}
           >
-            <Text
-              font="headline"
-              lineLimit={2}
-              frame={{ maxWidth: "infinity", alignment: "leading" }}
+            <VStack
+              spacing={8}
+              alignment="leading"
+              frame={{ minHeight: 44, maxWidth: "infinity" }}
+              contentShape="rect"
             >
-              {repo.name}
-            </Text>
-            {repo.description ? (
-              <Text foregroundStyle="secondaryLabel">
-                {repo.description}
+              <Text
+                font="headline"
+                lineLimit={2}
+                frame={{ maxWidth: "infinity", alignment: "leading" }}
+              >
+                {repo.name}
               </Text>
-            ) : (
-              <Text foregroundStyle="tertiaryLabel">暂无描述</Text>
-            )}
-            <HStack spacing={8}>
-              <MetricLabel
-                icon="star.fill"
-                value={repo.stargazersCount}
-                color="systemYellow"
-              />
-              <MetricLabel
-                icon="arrow.triangle.branch"
-                value={repo.forksCount}
-                color="systemBlue"
-              />
-              {repo.language ? (
-                <LanguageLabel
-                  language={repo.language}
-                  color={repositoryLanguageColor}
+              {repo.description ? (
+                <Text foregroundStyle="secondaryLabel">{repo.description}</Text>
+              ) : (
+                <Text foregroundStyle="tertiaryLabel">暂无描述</Text>
+              )}
+              <HStack spacing={8}>
+                <MetricLabel
+                  icon="star.fill"
+                  value={repo.stargazersCount}
+                  color="systemYellow"
                 />
-              ) : null}
-            </HStack>
-            <HStack spacing={8} frame={{ maxWidth: "infinity" }}>
-              <Text font={14} foregroundStyle="secondaryLabel">
-                {formatRelativeTime(repo.pushedAt)}
-              </Text>
-              <Spacer />
-              <RepositoryStatus repository={repo} />
-            </HStack>
-            {repo.topics.length > 0 ? (
-              <HStack spacing={5} foregroundStyle="secondaryLabel">
-                <Image systemName="number" font={14} fontWeight="semibold" />
-                <Text font={14} lineLimit={1}>
-                  {repo.topics.slice(0, 4).join(" · ")}
-                </Text>
+                <MetricLabel
+                  icon="arrow.triangle.branch"
+                  value={repo.forksCount}
+                  color="systemBlue"
+                />
+                {repo.language ? (
+                  <LanguageLabel
+                    language={repo.language}
+                    color={repositoryLanguageColor}
+                  />
+                ) : null}
               </HStack>
-            ) : null}
-          </VStack>
-        </Button>
+            </VStack>
+          </Button>
+          <HStack spacing={8} frame={{ maxWidth: "infinity" }}>
+            <Text font={14} foregroundStyle="secondaryLabel">
+              {formatRelativeTime(repo.pushedAt)}
+            </Text>
+            <Spacer />
+            {repo.isFork ? (
+              <ForkStatusButton
+                status={props.forkStatus}
+                disabled={props.forkBusy}
+                onPress={props.onForkStatus}
+              />
+            ) : (
+              <RepositoryStatus repository={repo} />
+            )}
+          </HStack>
+          {repo.topics.length > 0 ? (
+            <HStack spacing={5} foregroundStyle="secondaryLabel">
+              <Image systemName="number" font={14} fontWeight="semibold" />
+              <Text font={14} lineLimit={1}>
+                {repo.topics.slice(0, 4).join(" · ")}
+              </Text>
+            </HStack>
+          ) : null}
+        </VStack>
       </VStack>
     </VStack>
   );

@@ -29,6 +29,10 @@ export type RestStarredRepository = {
   homepage?: unknown;
   topics?: unknown;
   default_branch?: unknown;
+  parent?: {
+    full_name?: unknown;
+    default_branch?: unknown;
+  };
   pushed_at?: unknown;
   starred_at?: unknown;
   updated_at?: unknown;
@@ -403,8 +407,83 @@ export async function syncOwnedFork(
   );
 }
 
+export type RestCompareResponse = {
+  status?: unknown;
+  ahead_by?: unknown;
+  behind_by?: unknown;
+  html_url?: unknown;
+};
+
+export async function compareForkWithUpstream(
+  forkFullName: string,
+  upstreamFullName: string,
+  upstreamBranch: string,
+  forkBranch: string,
+): Promise<RestCompareResponse> {
+  const [upstreamOwner] = upstreamFullName.split("/");
+  const [forkOwner] = forkFullName.split("/");
+  if (!upstreamOwner || !forkOwner) {
+    throw createGitHubError("invalid_response", "Fork 上游信息无效");
+  }
+  const basehead = `${upstreamOwner}:${upstreamBranch}...${forkOwner}:${forkBranch}`;
+  return requestJson<RestCompareResponse>(
+    `${repositoryPath(forkFullName)}/compare/${encodeURIComponent(basehead)}`,
+  );
+}
+
 export async function fetchRepository(
   fullName: string,
 ): Promise<RestStarredRepository> {
   return requestJson<RestStarredRepository>(repositoryPath(fullName));
+}
+
+export type ForkUpstreamComparison = {
+  upstreamFullName: string;
+  upstreamBranch: string;
+  aheadBy: number;
+  behindBy: number;
+};
+
+function requiredString(value: unknown, label: string): string {
+  if (typeof value === "string" && value.length > 0) return value;
+  throw createGitHubError("invalid_response", `${label} 缺失`);
+}
+
+function comparisonCount(value: unknown): number {
+  return typeof value === "number" && Number.isFinite(value)
+    ? Math.max(0, value)
+    : 0;
+}
+
+export async function fetchForkUpstreamComparison(
+  forkFullName: string,
+  forkBranch: string,
+): Promise<ForkUpstreamComparison> {
+  const repository = await fetchRepository(forkFullName);
+  if (repository.fork !== true || !repository.parent) {
+    throw createGitHubError(
+      "invalid_response",
+      "该仓库没有可用的 Fork 上游信息",
+    );
+  }
+  const upstreamFullName = requiredString(
+    repository.parent.full_name,
+    "Fork 上游仓库名称",
+  );
+  const upstreamBranch = requiredString(
+    repository.parent.default_branch,
+    "Fork 上游默认分支",
+  );
+  const comparison = await compareForkWithUpstream(
+    forkFullName,
+    upstreamFullName,
+    upstreamBranch,
+    forkBranch,
+  );
+  return {
+    upstreamFullName,
+    upstreamBranch,
+    aheadBy: comparisonCount(comparison.ahead_by),
+    behindBy: comparisonCount(comparison.behind_by),
+  };
 }

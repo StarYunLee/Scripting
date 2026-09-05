@@ -10,15 +10,15 @@ import {
   useMemo,
   useState,
 } from "scripting";
-import type {
-  AppState,
-  GitHubRepository,
-  OwnedRepository,
-} from "../types";
+import type { AppState, GitHubRepository, OwnedRepository } from "../types";
 import type { GitHubDataStore } from "../services/data-store";
 import { displayError } from "../services/errors";
 import { EmptyState } from "../ui/common";
-import { GlassGroup, GlassSectionHeader, glassRowBackground } from "../ui/glass";
+import {
+  GlassGroup,
+  GlassSectionHeader,
+  glassRowBackground,
+} from "../ui/glass";
 import { glassListPageProps } from "../ui/glass-list-page";
 import { OwnedRepositoryCard } from "../ui/owned-repository-row";
 import { useRootToolbar } from "./root-toolbar";
@@ -118,10 +118,17 @@ export function RepositoriesPage(props: { store: GitHubDataStore }) {
 
   useEffect(() => {
     const unsubscribe = store.subscribe("repositories", setState);
-    void Promise.all([
-      store.ensureOwnedRepositories(),
-      store.ensurePinnedRepositories(),
-    ]).catch(() => {});
+    void (async () => {
+      try {
+        await Promise.all([
+          store.ensureOwnedRepositories(),
+          store.ensurePinnedRepositories(),
+        ]);
+        await store.refreshForkStatuses(false);
+      } catch {
+        // Store state contains displayable errors; cached repositories remain usable.
+      }
+    })();
     return unsubscribe;
   }, []);
 
@@ -160,8 +167,7 @@ export function RepositoriesPage(props: { store: GitHubDataStore }) {
       }
     >
       {FILTERS.filter(
-        (item) =>
-          state.includePrivateRepositories || item.key !== "private",
+        (item) => state.includePrivateRepositories || item.key !== "private",
       ).map((item) => (
         <Button
           key={item.key}
@@ -179,7 +185,11 @@ export function RepositoriesPage(props: { store: GitHubDataStore }) {
       }
     >
       {SORTS.map((item) => (
-        <Button key={item.key} title={item.label} action={() => setSort(item.key)} />
+        <Button
+          key={item.key}
+          title={item.label}
+          action={() => setSort(item.key)}
+        />
       ))}
     </Menu>,
   ]);
@@ -194,7 +204,6 @@ export function RepositoriesPage(props: { store: GitHubDataStore }) {
       return;
     }
     const actions = [
-      ...(repository.isFork ? [{ label: "同步上游仓库" }] : []),
       { label: "编辑描述与主页" },
       { label: "编辑 Topics" },
       { label: repository.hasIssues ? "关闭 Issues" : "开启 Issues" },
@@ -206,7 +215,6 @@ export function RepositoriesPage(props: { store: GitHubDataStore }) {
     });
     if (action == null || action < 0) return;
     const selected = actions[action]?.label;
-    if (selected === "同步上游仓库") await syncFork(repository);
     if (selected === "编辑描述与主页") {
       await editDescriptionAndHomepage(repository);
     }
@@ -217,10 +225,95 @@ export function RepositoriesPage(props: { store: GitHubDataStore }) {
     if (selected === "归档仓库") await archiveRepository(repository);
   }
 
-  async function syncFork(repository: OwnedRepository) {
+  async function showForkStatus(repository: OwnedRepository) {
+    if (busyRepositoryId) return;
+    setBusyRepositoryId(repository.nodeId);
+    let status = store.getState().forkStatuses[repository.nodeId];
+    try {
+      if (!status || status.state === "unknown" || status.state === "error") {
+        status = await store.refreshForkStatus(repository, true);
+      }
+    } catch (error) {
+      await Dialog.alert({
+        title: "无法检查上游状态",
+        message: errorMessage(error),
+      });
+      setBusyRepositoryId(null);
+      return;
+    }
+    setBusyRepositoryId(null);
+
+    const upstream = status.upstreamFullName ?? "上游仓库";
+    const branch = status.upstreamBranch ?? repository.defaultBranch;
+    const detail =
+      status.state === "current"
+        ? `当前 ${repository.defaultBranch} 分支已与 ${upstream}:${branch} 保持一致。`
+        : status.state === "behind"
+          ? `当前分支落后 ${upstream}:${branch} ${status.behindBy} 个提交。`
+          : status.state === "diverged"
+            ? `当前分支领先 ${status.aheadBy} 个提交，同时落后上游 ${status.behindBy} 个提交。`
+            : "当前无法确定上游状态。";
+    const actions = [
+      ...(status.behindBy > 0
+        ? [
+            {
+              label:
+                status.state === "diverged"
+                  ? "尝试同步上游"
+                  : `同步上游 ${status.behindBy} 个提交`,
+            },
+          ]
+        : []),
+      { label: "重新检查" },
+      ...(status.state === "diverged"
+        ? [{ label: "在 GitHub 中查看差异" }]
+        : []),
+    ];
+    const action = await Dialog.actionSheet({
+      title: "Fork 上游状态",
+      message: detail,
+      actions,
+    });
+    if (action == null || action < 0) return;
+    const selected = actions[action]?.label;
+    if (selected === "重新检查") {
+      await checkForkStatus(repository);
+      return;
+    }
+    if (selected === "在 GitHub 中查看差异") {
+      const [upstreamOwner] = upstream.split("/");
+      const [forkOwner] = repository.fullName.split("/");
+      if (upstreamOwner && forkOwner) {
+        const compareUrl = `https://github.com/${repository.fullName}/compare/${encodeURIComponent(`${upstreamOwner}:${branch}...${forkOwner}:${repository.defaultBranch}`)}`;
+        void Safari.present(compareUrl, false);
+      }
+      return;
+    }
+    if (selected?.startsWith("同步上游") || selected === "尝试同步上游") {
+      await syncFork(repository, status.state === "diverged");
+    }
+  }
+
+  async function checkForkStatus(repository: OwnedRepository) {
+    setBusyRepositoryId(repository.nodeId);
+    try {
+      await store.refreshForkStatus(repository, true);
+    } catch (error) {
+      await Dialog.alert({
+        title: "检查失败",
+        message: errorMessage(error),
+      });
+    } finally {
+      setBusyRepositoryId(null);
+    }
+  }
+
+  async function syncFork(repository: OwnedRepository, diverged = false) {
     const confirmed = await Dialog.confirm({
       title: "同步上游仓库",
-      message: `将上游最新提交同步到 ${repository.fullName} 的 ${repository.defaultBranch} 分支。存在冲突时不会强制覆盖，确定继续吗？`,
+      message: diverged
+        ? `当前 ${repository.defaultBranch} 分支与上游都有独立提交。GitHub 会尝试合并上游变更，可能产生合并提交或冲突，确定继续吗？`
+        : `将上游最新提交同步到 ${repository.fullName} 的 ${repository.defaultBranch} 分支。存在冲突时不会强制覆盖，确定继续吗？`,
       cancelLabel: "取消",
       confirmLabel: "同步",
     });
@@ -362,6 +455,7 @@ export function RepositoriesPage(props: { store: GitHubDataStore }) {
         store.refreshOwnedRepositories(),
         store.refreshViewer(true),
       ]);
+      await store.refreshForkStatuses(true);
     } catch {
       // State already contains the displayable error.
     }
@@ -378,7 +472,11 @@ export function RepositoriesPage(props: { store: GitHubDataStore }) {
         navigationTitle="仓库"
         {...glassListPageProps()}
         listRowSpacing={0}
-        searchable={{ value: query, onChanged: setQuery, prompt: "搜索我的仓库" }}
+        searchable={{
+          value: query,
+          onChanged: setQuery,
+          prompt: "搜索我的仓库",
+        }}
         refreshable={refresh}
         toolbar={toolbar}
       >
@@ -400,7 +498,8 @@ export function RepositoriesPage(props: { store: GitHubDataStore }) {
           {error ||
           (state.ownedRepositoriesState === "loading" &&
             state.ownedRepositories.length === 0) ||
-          (state.ownedRepositoriesState !== "loading" && repositories.length === 0) ? (
+          (state.ownedRepositoriesState !== "loading" &&
+            repositories.length === 0) ? (
             <GlassGroup>
               {error ? (
                 <VStack
@@ -447,12 +546,15 @@ export function RepositoriesPage(props: { store: GitHubDataStore }) {
             <OwnedRepositoryCard
               key={repository.nodeId}
               repository={repository}
+              forkStatus={state.forkStatuses[repository.nodeId]}
+              forkBusy={busyRepositoryId === repository.nodeId}
               isPinned={state.viewer?.pinnedRepositories?.some(
                 (pinned) =>
                   pinned.fullName.toLowerCase() ===
                   repository.fullName.toLowerCase(),
               )}
               onManage={() => void editRepository(repository)}
+              onForkStatus={() => void showForkStatus(repository)}
             />
           ))}
         </Section>

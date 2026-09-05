@@ -19,6 +19,24 @@ export type GitHubRepository = {
   };
 };
 
+export type ForkSyncState =
+  | "unknown"
+  | "checking"
+  | "current"
+  | "behind"
+  | "diverged"
+  | "error";
+
+export type ForkSyncStatus = {
+  state: ForkSyncState;
+  upstreamFullName: string | null;
+  upstreamBranch: string | null;
+  aheadBy: number;
+  behindBy: number;
+  checkedAt: string | null;
+  error: string | null;
+};
+
 export type OwnedRepository = GitHubRepository & {
   isPrivate: boolean;
   visibility: "public" | "private" | "internal";
@@ -28,6 +46,12 @@ export type OwnedRepository = GitHubRepository & {
   homepage: string | null;
   topics: string[];
   defaultBranch: string;
+};
+
+export type ForkStatusesCache = {
+  version: 1;
+  statuses: Record<string, ForkSyncStatus>;
+  savedAt: string;
 };
 
 export type OwnedRepositoriesCache = {
@@ -152,6 +176,7 @@ export type AppState = {
   stars: GitHubRepository[];
   lists: GitHubListSummary[];
   ownedRepositories: OwnedRepository[];
+  forkStatuses: Record<string, ForkSyncStatus>;
   memberships: MembershipSnapshot | null;
   resourceSyncedAt: ResourceSyncTimestamps;
   listDetails: Record<string, GitHubListDetail>;

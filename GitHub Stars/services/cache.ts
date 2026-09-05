@@ -1,5 +1,6 @@
 import type {
   CacheEnvelope,
+  ForkStatusesCache,
   GitHubListDetail,
   MembershipSnapshot,
   OwnedRepositoriesCache,
@@ -12,6 +13,7 @@ const DETAIL_CACHE_INDEX_KEY = "github_stars_detail_index_v1";
 const DETAIL_CACHE_KEY_PREFIX = "github_stars_detail_v1:";
 const DETAIL_CACHE_LIMIT = 5;
 const OWNED_REPOSITORIES_CACHE_KEY = "github_stars_owned_repositories_v1";
+const FORK_STATUSES_CACHE_KEY = "github_stars_fork_statuses_v1";
 const REPOSITORY_PREFERENCES_KEY = "github_stars_repository_preferences_v1";
 
 export type DetailCacheRecord = {
@@ -54,19 +56,37 @@ export function clearMembershipCache(): void {
 }
 
 export function loadOwnedRepositoriesCache(): OwnedRepositoriesCache | null {
-  const value = Storage.get<OwnedRepositoriesCache>(OWNED_REPOSITORIES_CACHE_KEY);
+  const value = Storage.get<OwnedRepositoriesCache>(
+    OWNED_REPOSITORIES_CACHE_KEY,
+  );
   if (!value || value.version !== 1 || !Array.isArray(value.repositories)) {
     return null;
   }
   return value;
 }
 
-export function saveOwnedRepositoriesCache(value: OwnedRepositoriesCache): void {
+export function saveOwnedRepositoriesCache(
+  value: OwnedRepositoriesCache,
+): void {
   Storage.set(OWNED_REPOSITORIES_CACHE_KEY, value);
 }
 
 export function clearOwnedRepositoriesCache(): void {
   Storage.remove(OWNED_REPOSITORIES_CACHE_KEY);
+}
+
+export function loadForkStatusesCache(): ForkStatusesCache | null {
+  const value = Storage.get<ForkStatusesCache>(FORK_STATUSES_CACHE_KEY);
+  if (!value || value.version !== 1 || !value.statuses) return null;
+  return value;
+}
+
+export function saveForkStatusesCache(value: ForkStatusesCache): void {
+  Storage.set(FORK_STATUSES_CACHE_KEY, value);
+}
+
+export function clearForkStatusesCache(): void {
+  Storage.remove(FORK_STATUSES_CACHE_KEY);
 }
 
 export function loadRepositoryPreferences(): RepositoryPreferences {
@@ -80,9 +100,7 @@ export function loadRepositoryPreferences(): RepositoryPreferences {
   };
 }
 
-export function saveRepositoryPreferences(
-  value: RepositoryPreferences,
-): void {
+export function saveRepositoryPreferences(value: RepositoryPreferences): void {
   Storage.set(REPOSITORY_PREFERENCES_KEY, value);
 }
 
