@@ -18,7 +18,11 @@ export type ProviderUsageError = {
 };
 
 export type ProviderUsageResult =
-  | { ok: true; snapshot: { source: "live" | "cache" } }
+  | {
+      ok: true;
+      snapshot: { source: "live" | "cache" };
+      storageAccepted?: boolean;
+    }
   | {
       ok: false;
       error: ProviderUsageError;

@@ -1,3 +1,4 @@
+import { usageRuntimeRevision } from "./runtime-consistency";
 export type AccountProfileBase = {
   id: string;
   name: string;
@@ -235,7 +236,12 @@ export function createAccountStore<TProfile extends AccountProfileBase>(
     }
   }
 
+  let registryRevision = usageRuntimeRevision();
   function readRaw(): AccountRegistryBase<TProfile> {
+    if (registryRevision !== usageRuntimeRevision()) {
+      registryCache = null;
+      registryRevision = usageRuntimeRevision();
+    }
     if (registryCache) return registryCache;
     try {
       const normalized = normalizeRegistry<TProfile>(

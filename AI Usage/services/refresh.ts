@@ -1,10 +1,20 @@
+import { captureAccountWork } from "./account-work-guard";
+import { invalidateUsageRuntime } from "./runtime-consistency";
 import { createRefreshSingleFlight } from "./refresh-single-flight";
 import { credentialPersistenceFailure } from "./credential-errors";
 import { recordWidgetRefreshFailure } from "./widget-refresh-state";
 import { recordWidgetRefreshSuccess } from "./widget-refresh-metadata";
-import { getUsageProvider } from "../providers/usage-registry";
+import {
+  getUsageProvider,
+  getWidgetRefreshProvider,
+} from "../providers/usage-registry";
+import { getSnapshotProvider } from "../providers/snapshot-registry";
+import { getWidgetRefreshMetadata } from "./widget-refresh-metadata";
+import { getAppDisplaySettings } from "./settings";
+import { planUsageRefresh } from "./refresh-policy";
+import type { NormalizedUsageSnapshot } from "./usage-model";
 import { PROVIDER_IDS, type ProviderId } from "../models";
-import { writeLog } from "./logger";
+import { writeLog, flushRunRecordBatch, type RunRecord } from "./logger";
 import { runWithConcurrency } from "./refresh-batches";
 
 export type RefreshTarget = {
@@ -15,6 +25,9 @@ export type RefreshTarget = {
 export type RefreshOutcome = RefreshTarget & {
   ok: boolean;
   source?: "live" | "cache";
+  snapshot?: NormalizedUsageSnapshot;
+  storageAccepted?: boolean;
+  warning?: string;
   error?: {
     message: string;
     code?: string;
@@ -23,6 +36,7 @@ export type RefreshOutcome = RefreshTarget & {
 };
 
 export type RefreshOptions = {
+  logBatch?: RunRecord[];
   force: boolean;
   source: "app" | "intent";
 };
@@ -40,15 +54,22 @@ export async function refreshAccount(
   target: RefreshTarget,
   options: RefreshOptions,
 ): Promise<RefreshOutcome> {
-  return refreshSingleFlight.run(target, () =>
-    performRefreshAccount(target, options),
-  );
+  const execute = () =>
+    refreshSingleFlight.run(target, () =>
+      performRefreshAccount(target, options),
+    );
+  const result = await execute();
+  return options.force && result.ok && result.source === "cache"
+    ? execute()
+    : result;
 }
 
 async function performRefreshAccount(
   target: RefreshTarget,
   options: RefreshOptions,
 ): Promise<RefreshOutcome> {
+  const currentWork = captureAccountWork(target.provider, target.profileId);
+  invalidateUsageRuntime();
   const provider = getUsageProvider(target.provider);
   const account = provider.list().find((item) => item.id === target.profileId);
   if (!account) {
@@ -70,12 +91,51 @@ async function performRefreshAccount(
   }
 
   try {
-    const result = await provider.fetch({
+    const cached = getSnapshotProvider(target.provider).cache(target.profileId);
+    const plan = planUsageRefresh({
+      fetchedAt: cached?.fetchedAt || null,
+      reloadMinutes: getAppDisplaySettings().reloadMinutes,
+      metadata: getWidgetRefreshMetadata(target.provider, target.profileId),
+      force: options.force,
+    });
+    if (plan.action === "use_cache") {
+      if (plan.reason === "fresh" || plan.reason === "manual") {
+        return {
+          ...target,
+          ok: true,
+          source: "cache",
+          snapshot: cached || undefined,
+        };
+      }
+      return {
+        ...target,
+        ok: false,
+        error: {
+          code: plan.reason,
+          message:
+            plan.reason === "authorization_required"
+              ? "授权已失效，请重新授权"
+              : "自动刷新退避中，请稍后重试",
+        },
+      };
+    }
+    const result = await getWidgetRefreshProvider(
+      target.provider,
+    ).fetchSnapshot({
       force: options.force,
       profileId: target.profileId,
     });
+    if (!currentWork())
+      return {
+        ...target,
+        ok: false,
+        error: { code: "superseded", message: "账号已变化，已忽略旧结果" },
+      };
     if (result.ok) {
-      if (result.snapshot.source === "live") {
+      if (
+        result.snapshot.source === "live" &&
+        result.storageAccepted !== false
+      ) {
         const refreshedAt = new Date().toISOString();
         recordWidgetRefreshSuccess(
           target.provider,
@@ -83,20 +143,42 @@ async function performRefreshAccount(
           refreshedAt,
         );
       }
-      writeLog({
-        level: "info",
-        source: options.source,
-        category: result.snapshot.source === "cache" ? "cache" : "refresh",
-        event:
-          result.snapshot.source === "cache"
-            ? "refresh.cache"
-            : "refresh.succeeded",
-        provider: target.provider,
-        accountId: target.profileId,
-        message:
-          result.snapshot.source === "cache" ? "使用最近缓存" : "刷新成功",
-      });
-      return { ...target, ok: true, source: result.snapshot.source };
+      writeLog(
+        {
+          level: "info",
+          source: options.source,
+          category: result.snapshot.source === "cache" ? "cache" : "refresh",
+          event:
+            result.snapshot.source === "cache"
+              ? "refresh.cache"
+              : "refresh.succeeded",
+          provider: target.provider,
+          accountId: target.profileId,
+          message:
+            result.snapshot.source === "cache" ? "使用最近缓存" : "刷新成功",
+        },
+        options.logBatch,
+      );
+      const warning =
+        result.storageAccepted === false
+          ? "本轮用量已更新，但缓存保存失败，小组件可能仍显示旧数据"
+          : undefined;
+      if (warning)
+        writeLog({
+          level: "warning",
+          source: options.source,
+          category: "cache",
+          event: "refresh.cache_rejected",
+          message: warning,
+        });
+      return {
+        ...target,
+        ok: true,
+        source: result.snapshot.source,
+        snapshot: result.snapshot,
+        storageAccepted: result.storageAccepted,
+        warning,
+      };
     }
 
     recordWidgetRefreshFailure(target.provider, target.profileId, result.error);
@@ -121,6 +203,12 @@ async function performRefreshAccount(
       },
     };
   } catch (error) {
+    if (!currentWork())
+      return {
+        ...target,
+        ok: false,
+        error: { code: "superseded", message: "账号已变化，已忽略旧结果" },
+      };
     const credentialFailure = credentialPersistenceFailure(error);
     const detail = credentialFailure
       ? credentialFailure.code
@@ -167,6 +255,7 @@ export async function refreshAccounts(
   options: RefreshOptions,
   callbacks: RefreshBatchCallbacks = {},
 ): Promise<RefreshSummary> {
+  const logBatch: RunRecord[] = [];
   const settled = await runWithConcurrency(
     targets,
     REFRESH_BATCH_SIZE,
@@ -176,7 +265,7 @@ export async function refreshAccounts(
       } catch {
         /* UI callback failures must not skip the provider refresh. */
       }
-      const outcome = await refreshAccount(target, options);
+      const outcome = await refreshAccount(target, { ...options, logBatch });
       try {
         await callbacks.onResult?.(outcome);
       } catch {
@@ -185,6 +274,7 @@ export async function refreshAccounts(
       return outcome;
     },
   );
+  flushRunRecordBatch(logBatch);
   const outcomes = settled.map((item, index): RefreshOutcome =>
     item.ok
       ? item.value

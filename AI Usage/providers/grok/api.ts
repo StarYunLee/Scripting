@@ -1,3 +1,14 @@
+import {
+  captureAccountWork,
+  assertCurrentAccountWork,
+} from "../../services/account-work-guard";
+import { publishUsageProgress } from "../../services/usage-progress";
+import { normalizeUsageSnapshot } from "./normalize";
+import {
+  createRequestBudget,
+  type RequestBudget,
+} from "../../services/request-budget";
+import { parseUsageRetryAfter } from "../../services/refresh-policy";
 import { fetch, Response } from "scripting";
 import {
   getProfileAccessToken,
@@ -58,22 +69,24 @@ function billingHeaders(
 async function requestBilling(
   token: string,
   userId: string | null,
+  budget: RequestBudget,
 ): Promise<Response> {
   return fetch(`${BILLING_URL}?format=credits`, {
     method: "GET",
     headers: billingHeaders(token, userId),
-    timeout: 20,
+    timeout: budget.timeoutSeconds(20),
     debugLabel: "GrokWeeklyUsage",
   });
 }
 async function requestPlan(
   token: string,
   userId: string | null,
+  budget: RequestBudget,
 ): Promise<string | null> {
   const response = await fetch(SETTINGS_URL, {
     method: "GET",
     headers: billingHeaders(token, userId),
-    timeout: 8,
+    timeout: budget.timeoutSeconds(3),
     debugLabel: "GrokPlan",
   });
   if (!response.ok) return null;
@@ -161,6 +174,7 @@ function parseRemainingResetsFrame(bytes: Uint8Array): ResetCreditsSummary {
 async function requestRemainingResets(
   token: string,
   userId: string | null,
+  budget: RequestBudget,
 ): Promise<ResetCreditsSummary> {
   const headers: Record<string, string> = {
     Authorization: `Bearer ${token}`,
@@ -177,7 +191,7 @@ async function requestRemainingResets(
     method: "POST",
     headers,
     body: new Uint8Array(5).buffer,
-    timeout: 20,
+    timeout: budget.timeoutSeconds(3),
     debugLabel: "GrokRemainingResets",
   });
   if (!response.ok) throw new Error(`重置权益请求失败 HTTP ${response.status}`);
@@ -289,11 +303,11 @@ function readCache(profileId?: string | null): UsageSnapshot | null {
     return null;
   }
 }
-function writeCache(profileId: string, value: UsageSnapshot): void {
+function writeCache(profileId: string, value: UsageSnapshot): boolean {
   try {
-    Storage.set(cacheKey(profileId), { ...value, source: "cache" });
+    return Storage.set(cacheKey(profileId), { ...value, source: "cache" });
   } catch {
-    /* ignore */
+    return false;
   }
 }
 export const getCachedUsage = (profileId?: string | null) =>
@@ -328,6 +342,7 @@ export async function fetchUsage(options?: {
   force?: boolean;
   profileId?: string | null;
 }): Promise<UsageResult> {
+  const budget = createRequestBudget(30_000);
   const profile = resolveProfile(options?.profileId);
   if (!profile)
     return {
@@ -335,6 +350,7 @@ export async function fetchUsage(options?: {
       error: { code: "missing_token", message: "未找到指定账号" },
       cache: null,
     };
+  const currentWork = captureAccountWork("grok", profile.id);
   const cache = readCache(profile.id);
   const userId = getProfileAccountId(profile.id);
   const cacheIsRecent = recent(cache);
@@ -357,12 +373,12 @@ export async function fetchUsage(options?: {
     };
   try {
     // 每周 Credits 是唯一核心数据源；先确保 Token 有效，再发可失败辅助请求。
-    let weeklyResponse = await requestBilling(token, userId);
+    let weeklyResponse = await requestBilling(token, userId, budget);
     if (weeklyResponse.status === 401) {
       const refreshedToken = await refreshOAuthToken(profile.id, true);
       if (refreshedToken) {
         token = refreshedToken;
-        weeklyResponse = await requestBilling(token, userId);
+        weeklyResponse = await requestBilling(token, userId, budget);
       }
     }
     if (!weeklyResponse.ok) {
@@ -374,6 +390,10 @@ export async function fetchUsage(options?: {
         ok: false,
         error: {
           code: unauthorized ? "unauthorized" : "http_error",
+          status: weeklyResponse.status,
+          retryAt: parseUsageRetryAfter(
+            weeklyResponse.headers.get("Retry-After"),
+          ),
           message: unauthorized
             ? "Grok 授权无效或当前账号没有用量权限"
             : `Grok 每周额度请求失败 HTTP ${weeklyResponse.status}`,
@@ -398,9 +418,33 @@ export async function fetchUsage(options?: {
         cache: readCache(profile.id) || cache,
       };
     }
+    const primary: UsageSnapshot = {
+      windows: parsed.weeklyBuild
+        ? [parsed.weekly, parsed.weeklyBuild]
+        : [parsed.weekly],
+      fiveHour: null,
+      weekly: parsed.weekly,
+      weeklyBuild: parsed.weeklyBuild,
+      monthly: null,
+      planType: parsed.planLabel || cache?.planLabel || null,
+      planLabel: parsed.planLabel || cache?.planLabel || null,
+      resetCreditsAvailable: cache?.resetCreditsAvailable ?? null,
+      resetCreditExpirations: cache?.resetCreditExpirations ?? [],
+      fetchedAt: new Date().toISOString(),
+      source: "live",
+    };
+    assertCurrentAccountWork(
+      currentWork,
+      getProfileAccessToken(profile.id) === token,
+    );
+    publishUsageProgress({
+      provider: "grok",
+      profileId: profile.id,
+      snapshot: normalizeUsageSnapshot(primary),
+    });
     const [resetResult, settingsPlan] = await Promise.all([
-      requestRemainingResets(token, userId).catch(() => null),
-      requestPlan(token, userId).catch(() => null),
+      requestRemainingResets(token, userId, budget).catch(() => null),
+      requestPlan(token, userId, budget).catch(() => null),
     ]);
     const resetCreditsAvailable =
       resetResult?.available ?? cache?.resetCreditsAvailable ?? null;
@@ -424,8 +468,16 @@ export async function fetchUsage(options?: {
       fetchedAt: new Date().toISOString(),
       source: "live",
     };
-    writeCache(profile.id, snapshot);
-    return { ok: true, snapshot };
+    assertCurrentAccountWork(
+      currentWork,
+      getProfileAccessToken(profile.id) === token,
+    );
+    const storageAccepted = writeCache(profile.id, snapshot);
+    return {
+      ok: true,
+      snapshot,
+      storageAccepted,
+    };
   } catch (e) {
     const recovered = recoverRecentCache(profile.id, Boolean(options?.force));
     if (recovered) return recovered;

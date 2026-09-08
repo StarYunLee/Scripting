@@ -1,3 +1,5 @@
+import { captureAccountWork } from "../../services/account-work-guard";
+import { createAccountOperationFlight } from "../../services/runtime-consistency";
 import { activePendingAuthorization } from "../../services/oauth-pending";
 import { CredentialPersistenceError } from "../../services/credential-errors";
 import { fetch, Response } from "scripting";
@@ -413,10 +415,30 @@ export async function ensureAccountEmail(
   return saved ? identity.email : null;
 }
 
+const renewAccount = createAccountOperationFlight<{
+  token: string | null;
+  forced: boolean;
+}>();
 export async function refreshOAuthToken(
   profileId: string,
   force = false,
 ): Promise<string | null> {
+  const before = getProfileAccessToken(profileId);
+  const execute = () =>
+    renewAccount(profileId, async () => ({
+      token: await performTokenRefresh(profileId, force),
+      forced: force,
+    }));
+  const result = await execute();
+  return force && !result.forced && result.token === before
+    ? (await execute()).token
+    : result.token;
+}
+async function performTokenRefresh(
+  profileId: string,
+  force = false,
+): Promise<string | null> {
+  const currentWork = captureAccountWork("cursor", profileId);
   const current = getProfileAccessToken(profileId);
   const expiresAt = getProfileTokenExpiresAt(profileId);
   if (!force && current && (!expiresAt || expiresAt > Date.now() + 2 * 60_000))
@@ -443,6 +465,12 @@ export async function refreshOAuthToken(
     return current;
   }
   const identity = await resolveIdentity(data.accessToken, data);
+  if (
+    !currentWork() ||
+    getProfileAccessToken(profileId) !== current ||
+    getProfileRefreshToken(profileId) !== refreshToken
+  )
+    return getProfileAccessToken(profileId);
   const saved = saveProfileCredentials(profileId, {
     accessToken: data.accessToken,
     refreshToken:

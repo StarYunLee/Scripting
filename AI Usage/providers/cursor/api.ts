@@ -1,3 +1,11 @@
+import {
+  captureAccountWork,
+  assertCurrentAccountWork,
+} from "../../services/account-work-guard";
+import {
+  createRequestBudget,
+  type RequestBudget,
+} from "../../services/request-budget";
 import { fetch, type Response } from "scripting";
 import {
   getProfileAccessToken,
@@ -64,18 +72,22 @@ function authHeaders(token: string): Record<string, string> {
 async function requestDashboard(
   token: string,
   path: string,
+  budget: RequestBudget,
   body: Record<string, unknown> = {},
 ): Promise<Response> {
   return fetch(`${API_BASE}${path}`, {
     method: "POST",
     headers: authHeaders(token),
     body: JSON.stringify(body),
-    timeout: 20,
+    timeout: budget.timeoutSeconds(20),
     debugLabel: "CursorDashboard",
   });
 }
 
-async function requestPlanInfo(token: string): Promise<CursorPlanInfo> {
+async function requestPlanInfo(
+  token: string,
+  budget: RequestBudget,
+): Promise<CursorPlanInfo> {
   const empty: CursorPlanInfo = {
     planLabel: null,
     includedAmountCents: null,
@@ -85,6 +97,7 @@ async function requestPlanInfo(token: string): Promise<CursorPlanInfo> {
     const response = await requestDashboard(
       token,
       "/aiserver.v1.DashboardService/GetPlanInfo",
+      budget,
     );
     if (!response.ok) return empty;
     const payload = asObject(JSON.parse(await response.text()));
@@ -109,11 +122,15 @@ async function requestPlanInfo(token: string): Promise<CursorPlanInfo> {
   }
 }
 
-async function requestMembershipLabel(token: string): Promise<string | null> {
+async function requestMembershipLabel(
+  token: string,
+  budget: RequestBudget,
+): Promise<string | null> {
   try {
     const response = await requestDashboard(
       token,
       "/aiserver.v1.DashboardService/GetTeamMembers",
+      budget,
     );
     if (!response.ok) return null;
     const payload = asObject(JSON.parse(await response.text()));
@@ -126,11 +143,13 @@ async function requestMembershipLabel(token: string): Promise<string | null> {
 async function attachGrokBotWindow(
   token: string,
   parsed: ParsedCursorUsage,
+  budget: RequestBudget,
 ): Promise<ParsedCursorUsage> {
   try {
     const response = await requestDashboard(
       token,
       "/aiserver.v1.DashboardService/GetSandUsageStatus",
+      budget,
     );
     if (!response.ok) return parsed;
     const payload = asObject(JSON.parse(await response.text()));
@@ -155,10 +174,14 @@ export function clearUsageCache(profileId?: string | null): void {
   usageCache.clear(profileId);
 }
 
-async function fetchUsagePayload(token: string): Promise<FetchPayloadOutcome> {
+async function fetchUsagePayload(
+  token: string,
+  budget: RequestBudget,
+): Promise<FetchPayloadOutcome> {
   const response = await requestDashboard(
     token,
     "/aiserver.v1.DashboardService/GetCurrentPeriodUsage",
+    budget,
   );
   if (response.status === 401 || response.status === 403) {
     return {
@@ -172,12 +195,19 @@ async function fetchUsagePayload(token: string): Promise<FetchPayloadOutcome> {
     try {
       const payload = asObject(JSON.parse(await response.text()));
       if (payload) {
-        const plan = await requestPlanInfo(token);
+        const plan = await requestPlanInfo(token, budget);
         if (!plan.planLabel)
-          plan.planLabel = await requestMembershipLabel(token);
+          plan.planLabel = await requestMembershipLabel(
+            token,
+            createRequestBudget(Math.min(3000, budget.remainingMs())),
+          );
         let parsed = parseCursorCurrentUsage(payload, plan);
         if (parsed) {
-          parsed = await attachGrokBotWindow(token, parsed);
+          parsed = await attachGrokBotWindow(
+            token,
+            parsed,
+            createRequestBudget(Math.min(3000, budget.remainingMs())),
+          );
           return { ok: true, parsed };
         }
       }
@@ -189,7 +219,7 @@ async function fetchUsagePayload(token: string): Promise<FetchPayloadOutcome> {
   const legacy = await fetch(`${API_BASE}/auth/usage`, {
     method: "GET",
     headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
-    timeout: 20,
+    timeout: budget.timeoutSeconds(20),
     debugLabel: "CursorLegacyUsage",
   });
   if (legacy.status === 401 || legacy.status === 403) {
@@ -212,7 +242,11 @@ async function fetchUsagePayload(token: string): Promise<FetchPayloadOutcome> {
     const payload = asObject(JSON.parse(await legacy.text()));
     let parsed = payload ? parseCursorLegacyUsage(payload) : null;
     if (parsed) {
-      parsed = await attachGrokBotWindow(token, parsed);
+      parsed = await attachGrokBotWindow(
+        token,
+        parsed,
+        createRequestBudget(Math.min(3000, budget.remainingMs())),
+      );
       return { ok: true, parsed };
     }
   } catch {
@@ -233,6 +267,7 @@ export async function fetchUsage(options?: {
   force?: boolean;
   profileId?: string | null;
 }): Promise<UsageResult> {
+  const budget = createRequestBudget(30_000);
   const profile = resolveProfile(options?.profileId);
   if (!profile) {
     return {
@@ -241,6 +276,7 @@ export async function fetchUsage(options?: {
       cache: null,
     };
   }
+  const currentWork = captureAccountWork("cursor", profile.id);
   const cache = usageCache.read(profile.id);
   if (needsEmailBackfill(profile)) {
     const identityToken =
@@ -273,12 +309,12 @@ export async function fetchUsage(options?: {
     };
   }
   try {
-    let outcome = await fetchUsagePayload(token);
+    let outcome = await fetchUsagePayload(token, budget);
     if (!outcome.ok) {
       const refreshed = await refreshOAuthToken(profile.id, true);
       if (refreshed) {
         token = refreshed;
-        const retry = await fetchUsagePayload(token);
+        const retry = await fetchUsagePayload(token, budget);
         if (retry.ok || outcome.code === "unauthorized") outcome = retry;
       }
     }
@@ -303,8 +339,12 @@ export async function fetchUsage(options?: {
       new Date().toISOString(),
       "live",
     );
-    usageCache.write(profile.id, snapshot);
-    return { ok: true, snapshot };
+    assertCurrentAccountWork(
+      currentWork,
+      getProfileAccessToken(profile.id) === token,
+    );
+    const storageAccepted = usageCache.write(profile.id, snapshot);
+    return { ok: true, snapshot, storageAccepted };
   } catch (error) {
     const recovered = usageCache.recoverRecent(
       profile.id,

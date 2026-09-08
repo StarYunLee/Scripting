@@ -1,3 +1,14 @@
+import {
+  captureAccountWork,
+  assertCurrentAccountWork,
+} from "../../services/account-work-guard";
+import { publishUsageProgress } from "../../services/usage-progress";
+import { normalizeUsageSnapshot } from "./normalize";
+import {
+  createRequestBudget,
+  type RequestBudget,
+} from "../../services/request-budget";
+import { parseUsageRetryAfter } from "../../services/refresh-policy";
 import { fetch } from "scripting";
 import {
   getProfileAccountId,
@@ -167,12 +178,13 @@ function resetCreditsInfo(
 async function fetchResetCredits(
   token: string,
   accountId: string | null,
+  budget: RequestBudget,
 ): Promise<ResetCreditsInfo | null> {
   try {
     const response = await fetch(RESET_CREDITS_URL, {
       method: "GET",
       headers: authHeaders(token, accountId),
-      timeout: 12,
+      timeout: budget.timeoutSeconds(3),
       debugLabel: "CodexResetCredits",
     });
     if (!response.ok) {
@@ -210,11 +222,11 @@ function readCache(profileId?: string | null): UsageSnapshot | null {
     return null;
   }
 }
-function writeCache(profileId: string, v: UsageSnapshot): void {
+function writeCache(profileId: string, v: UsageSnapshot): boolean {
   try {
-    Storage.set(cacheKey(profileId), { ...v, source: "cache" });
+    return Storage.set(cacheKey(profileId), { ...v, source: "cache" });
   } catch {
-    /* ignore */
+    return false;
   }
 }
 export const getCachedUsage = (profileId?: string | null) =>
@@ -256,6 +268,7 @@ export async function fetchUsage(options?: {
   force?: boolean;
   profileId?: string | null;
 }): Promise<UsageResult> {
+  const budget = createRequestBudget(30_000);
   const profile = resolveProfile(options?.profileId);
   if (!profile)
     return {
@@ -263,6 +276,7 @@ export async function fetchUsage(options?: {
       error: { code: "missing_token", message: "未找到指定账号" },
       cache: null,
     };
+  const currentWork = captureAccountWork("codex", profile.id);
   const cache = readCache(profile.id);
   const accountId = getProfileAccountId(profile.id);
   const cacheIsRecent = recent(cache);
@@ -287,7 +301,7 @@ export async function fetchUsage(options?: {
     let response = await fetch(USAGE_URL, {
       method: "GET",
       headers: authHeaders(token, accountId),
-      timeout: 20,
+      timeout: budget.timeoutSeconds(20),
       debugLabel: "CodexUsage",
     });
     if (response.status === 401) {
@@ -297,7 +311,7 @@ export async function fetchUsage(options?: {
         response = await fetch(USAGE_URL, {
           method: "GET",
           headers: authHeaders(token, accountId),
-          timeout: 20,
+          timeout: budget.timeoutSeconds(20),
           debugLabel: "CodexUsageRetry",
         });
       }
@@ -318,6 +332,8 @@ export async function fetchUsage(options?: {
         ok: false,
         error: {
           code: unauthorized ? "unauthorized" : "http_error",
+          status: response.status,
+          retryAt: parseUsageRetryAfter(response.headers.get("Retry-After")),
           message: unauthorized
             ? "登录已失效，请重新登录"
             : `请求失败 HTTP ${response.status}`,
@@ -354,7 +370,41 @@ export async function fetchUsage(options?: {
     const spendControl = parseSpendControl(payload);
     const status = rateLimitStatus(payload);
     const embeddedResetCredits = resetCreditsInfo(payload);
-    const detailedResetCredits = await fetchResetCredits(token, accountId);
+    const primary: UsageSnapshot = {
+      windows,
+      fiveHour: pickOrdinaryCodexWindow(windows, "five_hour"),
+      weekly: pickOrdinaryCodexWindow(windows, "weekly"),
+      monthly: pickOrdinaryCodexWindow(windows, "monthly"),
+      planType: rawPlanType,
+      planLabel: resolveCodexPlanLabel(
+        rawPlanType,
+        cache?.planLabel,
+        cache?.planType,
+      ),
+      creditStatus,
+      spendControl,
+      rateLimitAllowed: status.allowed,
+      rateLimitReached: status.reached,
+      rateLimitReachedType: status.reachedType,
+      resetCreditsAvailable: cache?.resetCreditsAvailable ?? null,
+      resetCreditExpirations: cache?.resetCreditExpirations ?? [],
+      fetchedAt: new Date().toISOString(),
+      source: "live",
+    };
+    assertCurrentAccountWork(
+      currentWork,
+      getProfileAccessToken(profile.id) === token,
+    );
+    publishUsageProgress({
+      provider: "codex",
+      profileId: profile.id,
+      snapshot: normalizeUsageSnapshot(primary),
+    });
+    const detailedResetCredits = await fetchResetCredits(
+      token,
+      accountId,
+      budget,
+    );
     const liveResetCredits =
       detailedResetCredits?.count ?? embeddedResetCredits.count;
     const liveResetExpirations =
@@ -389,8 +439,16 @@ export async function fetchUsage(options?: {
       fetchedAt: new Date().toISOString(),
       source: "live",
     };
-    writeCache(profile.id, snapshot);
-    return { ok: true, snapshot };
+    assertCurrentAccountWork(
+      currentWork,
+      getProfileAccessToken(profile.id) === token,
+    );
+    const storageAccepted = writeCache(profile.id, snapshot);
+    return {
+      ok: true,
+      snapshot,
+      storageAccepted,
+    };
   } catch (e) {
     const recovered = recoverRecentCache(profile.id, Boolean(options?.force));
     if (recovered) return recovered;

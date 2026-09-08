@@ -3,8 +3,8 @@ import type { WidgetRefreshResult } from "../providers/usage-registry";
 import type { NormalizedUsageSnapshot } from "./usage-model";
 import { nextWidgetRefreshFailure } from "./widget-refresh-state";
 import type { WidgetRefreshMetadata } from "./widget-refresh-metadata";
+import { planUsageRefresh } from "./refresh-policy";
 import {
-  planWidgetAutomaticRefresh,
   resolveWidgetReloadPolicy,
   widgetRefreshStatusText,
   type WidgetRefreshPlan,
@@ -43,7 +43,7 @@ export async function loadWidgetAccountSnapshotWith(
   const now = dependencies.now();
   let snapshot = dependencies.readSnapshot();
   let metadata = dependencies.readMetadata();
-  const plan = planWidgetAutomaticRefresh({
+  const plan = planUsageRefresh({
     fetchedAt: snapshot?.fetchedAt || null,
     reloadMinutes: input.reloadMinutes,
     metadata,
@@ -63,17 +63,26 @@ export async function loadWidgetAccountSnapshotWith(
       const result = await dependencies.fetch();
       if (result.ok) {
         snapshot = result.snapshot;
-        const successAt = snapshot?.fetchedAt || iso(dependencies.now());
-        metadata = {
-          version: 1,
-          lastAttemptAt: attemptAt,
-          lastSuccessAt: successAt,
-          lastFailureAt: null,
-          failureCount: 0,
-          nextAutomaticAttemptAt: null,
-          lastErrorCode: null,
-          lastHttpStatus: null,
-        };
+        if (result.storageAccepted === false) {
+          errorMessage = "本轮用量已获取，但缓存保存失败";
+          metadata = nextWidgetRefreshFailure(
+            metadata,
+            { code: "cache_write_failed", message: errorMessage },
+            iso(dependencies.now()),
+          );
+        } else {
+          const successAt = snapshot?.fetchedAt || iso(dependencies.now());
+          metadata = {
+            version: 1,
+            lastAttemptAt: attemptAt,
+            lastSuccessAt: successAt,
+            lastFailureAt: null,
+            failureCount: 0,
+            nextAutomaticAttemptAt: null,
+            lastErrorCode: null,
+            lastHttpStatus: null,
+          };
+        }
       } else {
         errorMessage = result.error.message;
         metadata = nextWidgetRefreshFailure(

@@ -1,3 +1,6 @@
+import { captureAccountWork } from "../../services/account-work-guard";
+import { createAccountOperationFlight } from "../../services/runtime-consistency";
+import type { RequestBudget } from "../../services/request-budget";
 import { activePendingAuthorization } from "../../services/oauth-pending";
 import {
   CredentialPersistenceError,
@@ -252,10 +255,30 @@ export async function completeAntigravityLogin(input: string): Promise<void> {
   }
 }
 
+const renewAccount = createAccountOperationFlight<{
+  token: string | null;
+  forced: boolean;
+}>();
 export async function refreshOAuthToken(
   profileId: string,
   force = false,
 ): Promise<string | null> {
+  const before = getProfileAccessToken(profileId);
+  const execute = () =>
+    renewAccount(profileId, async () => ({
+      token: await performTokenRefresh(profileId, force),
+      forced: force,
+    }));
+  const result = await execute();
+  return force && !result.forced && result.token === before
+    ? (await execute()).token
+    : result.token;
+}
+async function performTokenRefresh(
+  profileId: string,
+  force = false,
+): Promise<string | null> {
+  const currentWork = captureAccountWork("antigravity", profileId);
   const current = getProfileAccessToken(profileId);
   const expiresAt = getProfileTokenExpiresAt(profileId);
   if (
@@ -285,6 +308,12 @@ export async function refreshOAuthToken(
     });
     const payload = (await jsonObject(response)) as TokenPayload;
     if (!response.ok || !payload.access_token) return current;
+    if (
+      !currentWork() ||
+      getProfileAccessToken(profileId) !== current ||
+      getProfileRefreshToken(profileId) !== refreshToken
+    )
+      return getProfileAccessToken(profileId);
     const saved = saveProfileCredentials(profileId, {
       accessToken: payload.access_token,
       refreshToken: payload.refresh_token || refreshToken,
@@ -302,6 +331,7 @@ export async function refreshOAuthToken(
 /** CliRelay 账号状态探测：使用 Antigravity 客户端身份读取项目与套餐。 */
 export async function fetchAccountInfo(
   accessToken: string,
+  budget?: RequestBudget,
 ): Promise<AntigravityProjectInfo> {
   let lastError: unknown = null;
   for (const host of CODE_ASSIST_HOSTS) {
@@ -320,7 +350,7 @@ export async function fetchAccountInfo(
             pluginType: "GEMINI",
           },
         }),
-        timeout: 15,
+        timeout: budget ? budget.timeoutSeconds(15) : 15,
         debugLabel: "AntigravityAccountInfo",
       });
       if (response.ok) return parseProjectInfo(await jsonObject(response));

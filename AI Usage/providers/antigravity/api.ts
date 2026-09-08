@@ -1,3 +1,11 @@
+import {
+  captureAccountWork,
+  assertCurrentAccountWork,
+} from "../../services/account-work-guard";
+import {
+  createRequestBudget,
+  type RequestBudget,
+} from "../../services/request-budget";
 import { fetch, Response } from "scripting";
 import {
   getProfileAccessToken,
@@ -48,11 +56,11 @@ function readCache(profileId?: string | null): UsageSnapshot | null {
   }
 }
 
-function writeCache(profileId: string, value: UsageSnapshot): void {
+function writeCache(profileId: string, value: UsageSnapshot): boolean {
   try {
-    Storage.set(cacheKey(profileId), { ...value, source: "cache" });
+    return Storage.set(cacheKey(profileId), { ...value, source: "cache" });
   } catch {
-    /* ignore */
+    return false;
   }
 }
 
@@ -101,6 +109,7 @@ async function postQuota(
   token: string,
   path: string,
   projectId: string | null,
+  budget: RequestBudget,
 ): Promise<JsonObject> {
   let lastError: unknown = null;
   for (const host of CODE_ASSIST_HOSTS) {
@@ -111,7 +120,7 @@ async function postQuota(
           method: "POST",
           headers: authHeaders(token),
           body: JSON.stringify(body),
-          timeout: 15,
+          timeout: budget.timeoutSeconds(15),
           debugLabel: "AntigravityUsage",
         });
         if (response.ok) return parseResponse(response);
@@ -135,16 +144,24 @@ async function postQuota(
 async function fetchQuotaWindows(
   token: string,
   projectId: string | null,
+  budget: RequestBudget,
 ): Promise<LimitWindow[]> {
   try {
-    const summary = await postQuota(token, QUOTA_SUMMARY_PATH, projectId);
+    const summary = await postQuota(
+      token,
+      QUOTA_SUMMARY_PATH,
+      projectId,
+      budget,
+    );
     const windows = parseQuotaSummary(summary);
     if (windows.length) return windows;
   } catch (error) {
     const status = (error as UpstreamError).status;
     if (status === 401 || status === 403 || status === 429) throw error;
   }
-  return parseAvailableModels(await postQuota(token, MODELS_PATH, projectId));
+  return parseAvailableModels(
+    await postQuota(token, MODELS_PATH, projectId, budget),
+  );
 }
 
 function shouldRefreshAccountInfo(planLabel: string | null): boolean {
@@ -156,13 +173,17 @@ async function fetchLive(
   profileId: string,
   token: string,
   profile: NonNullable<ReturnType<typeof resolveProfile>>,
+  budget: RequestBudget,
 ): Promise<UsageSnapshot> {
   const accountInfo = shouldRefreshAccountInfo(profile.planLabel)
-    ? fetchAccountInfo(token).catch(() => null)
+    ? fetchAccountInfo(
+        token,
+        createRequestBudget(Math.min(3000, budget.remainingMs())),
+      ).catch(() => null)
     : Promise.resolve(null);
   const [info, windows] = await Promise.all([
     accountInfo,
-    fetchQuotaWindows(token, profile.projectId),
+    fetchQuotaWindows(token, profile.projectId, budget),
   ]);
   const projectId = info?.projectId || profile.projectId;
   const planLabel = info?.planLabel || profile.planLabel;
@@ -209,6 +230,7 @@ export async function fetchUsage(options?: {
   force?: boolean;
   profileId?: string | null;
 }): Promise<UsageResult> {
+  const budget = createRequestBudget(30_000);
   const profile = resolveProfile(options?.profileId);
   if (!profile) {
     return {
@@ -217,6 +239,7 @@ export async function fetchUsage(options?: {
       cache: null,
     };
   }
+  const currentWork = captureAccountWork("antigravity", profile.id);
   const cache = readCache(profile.id);
   if (!options?.force && recent(cache)) return { ok: true, snapshot: cache! };
 
@@ -236,15 +259,20 @@ export async function fetchUsage(options?: {
   try {
     let snapshot: UsageSnapshot;
     try {
-      snapshot = await fetchLive(profile.id, token, profile);
+      snapshot = await fetchLive(profile.id, token, profile, budget);
     } catch (error) {
       if ((error as UpstreamError).status !== 401) throw error;
       const refreshed = await refreshOAuthToken(profile.id, true);
       if (!refreshed || refreshed === token) throw error;
-      snapshot = await fetchLive(profile.id, refreshed, profile);
+      token = refreshed;
+      snapshot = await fetchLive(profile.id, token, profile, budget);
     }
-    writeCache(profile.id, snapshot);
-    return { ok: true, snapshot };
+    assertCurrentAccountWork(
+      currentWork,
+      getProfileAccessToken(profile.id) === token,
+    );
+    const storageAccepted = writeCache(profile.id, snapshot);
+    return { ok: true, snapshot, storageAccepted };
   } catch (error) {
     return failure(error, cache);
   }

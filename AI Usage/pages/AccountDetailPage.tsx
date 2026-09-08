@@ -1,6 +1,7 @@
 import {
   Button,
   HStack,
+  Image,
   List,
   Navigation,
   Picker,
@@ -60,6 +61,7 @@ function DetailActionRow(props: {
         frame={{ minHeight: 44, maxWidth: "infinity" }}
         contentShape="rect"
       >
+        <Spacer />
         <Text foregroundStyle={props.destructive ? "systemRed" : "accentColor"}>
           {props.title}
         </Text>
@@ -85,6 +87,7 @@ export function AccountDetailPage(props: {
   >("choose");
   const [overviewTick, setOverviewTick] = useState(0);
   const [widgetTick, setWidgetTick] = useState(0);
+  const [parameterCopied, setParameterCopied] = useState(false);
   const meta = providerMeta(props.provider);
   const title = props.account.email || props.account.name;
 
@@ -339,18 +342,49 @@ export function AccountDetailPage(props: {
               <Text tag="systemMedium">Medium 小组件</Text>
             </Picker>
             <GlassDivider />
-            <DetailActionRow
-              title="复制小组件参数"
+            <Button
+              buttonStyle="plain"
+              frame={{ maxWidth: "infinity" }}
               action={async () => {
                 const param = widgetParameter(props.provider, props.account.id);
                 await Pasteboard.setString(param);
-                await Dialog.alert({
-                  title: "已复制小组件参数",
-                  message: param,
-                  buttonLabel: "知道了",
-                });
+                setParameterCopied(true);
+                setTimeout(() => setParameterCopied(false), 1800);
               }}
-            />
+            >
+              <HStack
+                padding={{ vertical: true }}
+                frame={{ minHeight: 44, maxWidth: "infinity" }}
+                contentShape="rect"
+              >
+                <VStack alignment="leading" spacing={2}>
+                  <Text
+                    font="caption"
+                    foregroundStyle={
+                      parameterCopied ? "systemGreen" : "secondaryLabel"
+                    }
+                  >
+                    {parameterCopied
+                      ? "小组件参数已复制到剪贴板"
+                      : "小组件参数（点击复制）"}
+                  </Text>
+                  <Text
+                    font="subheadline"
+                    fontWeight="medium"
+                    lineLimit={1}
+                    truncationMode="middle"
+                  >
+                    {widgetParameter(props.provider, props.account.id)}
+                  </Text>
+                </VStack>
+                <Spacer />
+                <Image
+                  systemName="doc.on.doc"
+                  imageScale="medium"
+                  foregroundStyle="accentColor"
+                />
+              </HStack>
+            </Button>
             <GlassDivider />
             <GlassNoteRow text="复制后长按主屏幕小组件，在“编辑小组件”中粘贴到“参数”。" />
           </GlassGroup>

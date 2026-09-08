@@ -1,3 +1,4 @@
+import { usageRuntimeRevision } from "./runtime-consistency";
 type UsageSnapshotBase = {
   fetchedAt: string;
   source: "live" | "cache";
@@ -18,7 +19,12 @@ export function createUsageCache<TSnapshot extends UsageSnapshotBase>(
   const resolve = (profileId?: string | null) =>
     options.resolveProfileId(profileId);
 
+  let revision = usageRuntimeRevision();
   function read(profileId?: string | null): TSnapshot | null {
+    if (revision !== usageRuntimeRevision()) {
+      memory.clear();
+      revision = usageRuntimeRevision();
+    }
     const id = resolve(profileId);
     if (!id) return null;
     if (memory.has(id)) return memory.get(id) || null;
@@ -37,13 +43,22 @@ export function createUsageCache<TSnapshot extends UsageSnapshotBase>(
 
   return {
     read,
-    write(profileId: string, value: TSnapshot): void {
+    invalidate(profileId?: string): void {
+      if (profileId) memory.delete(profileId);
+      else memory.clear();
+    },
+    readFresh(profileId: string): TSnapshot | null {
+      memory.delete(profileId);
+      return read(profileId);
+    },
+    write(profileId: string, value: TSnapshot): boolean {
       const snapshot = { ...value, source: "cache" } as TSnapshot;
       try {
-        if (Storage.set(key(profileId), snapshot))
-          memory.set(profileId, snapshot);
+        if (!Storage.set(key(profileId), snapshot)) return false;
+        memory.set(profileId, snapshot);
+        return true;
       } catch {
-        /* ignore */
+        return false;
       }
     },
     clear(profileId?: string | null): void {

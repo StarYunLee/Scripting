@@ -1,3 +1,5 @@
+import { captureAccountWork } from "../../services/account-work-guard";
+import { createAccountOperationFlight } from "../../services/runtime-consistency";
 import { activePendingAuthorization } from "../../services/oauth-pending";
 import { CredentialPersistenceError } from "../../services/credential-errors";
 import { fetch, Response } from "scripting";
@@ -268,10 +270,30 @@ export async function completeGrokLogin(callbackOrCode: string): Promise<void> {
   }
 }
 
+const renewAccount = createAccountOperationFlight<{
+  token: string | null;
+  forced: boolean;
+}>();
 export async function refreshOAuthToken(
   profileId: string,
   force = false,
 ): Promise<string | null> {
+  const before = getProfileAccessToken(profileId);
+  const execute = () =>
+    renewAccount(profileId, async () => ({
+      token: await performTokenRefresh(profileId, force),
+      forced: force,
+    }));
+  const result = await execute();
+  return force && !result.forced && result.token === before
+    ? (await execute()).token
+    : result.token;
+}
+async function performTokenRefresh(
+  profileId: string,
+  force = false,
+): Promise<string | null> {
+  const currentWork = captureAccountWork("grok", profileId);
   const current = getProfileAccessToken(profileId),
     expiresAt = getProfileTokenExpiresAt(profileId);
   if (!force && current && (!expiresAt || expiresAt > Date.now() + 2 * 60_000))
@@ -295,6 +317,12 @@ export async function refreshOAuthToken(
   const tokens = (await jsonObject(response)) as TokenPayload;
   if (!response.ok || !tokens.access_token) return current;
   const identity = await fetchIdentity(tokens.id_token || tokens.access_token);
+  if (
+    !currentWork() ||
+    getProfileAccessToken(profileId) !== current ||
+    getProfileRefreshToken(profileId) !== refreshToken
+  )
+    return getProfileAccessToken(profileId);
   const saved = saveProfileCredentials(profileId, {
     accessToken: tokens.access_token,
     refreshToken: tokens.refresh_token || refreshToken,

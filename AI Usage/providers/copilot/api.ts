@@ -1,3 +1,7 @@
+import {
+  captureAccountWork,
+  assertCurrentAccountWork,
+} from "../../services/account-work-guard";
 import { fetch } from "scripting";
 import { getProfileAccessToken, resolveProfile } from "./accounts";
 import {
@@ -43,6 +47,7 @@ export async function fetchUsage(options?: {
       cache: null,
     };
   }
+  const currentWork = captureAccountWork("copilot", profile.id);
   const cache = usageCache.read(profile.id);
   if (!options?.force && usageCache.recent(cache)) {
     return { ok: true, snapshot: cache! };
@@ -118,8 +123,12 @@ export async function fetchUsage(options?: {
       fetchedAt: new Date().toISOString(),
       source: "live",
     };
-    usageCache.write(profile.id, snapshot);
-    return { ok: true, snapshot };
+    assertCurrentAccountWork(
+      currentWork,
+      getProfileAccessToken(profile.id) === token,
+    );
+    const storageAccepted = usageCache.write(profile.id, snapshot);
+    return { ok: true, snapshot, storageAccepted };
   } catch (error) {
     const recovered = usageCache.recoverRecent(
       profile.id,

@@ -263,12 +263,6 @@ export function DashboardWidgetSettingsPage(props: {
                           </Text>
                         ))}
                     </Picker>
-                    {index === 0 ? (
-                      <>
-                        <GlassDivider />
-                        <GlassNoteRow text="每个账号最多 2 个额度窗口，只作用于多账号小组件。" />
-                      </>
-                    ) : null}
                   </VStack>
                 ) : null}
                 {visible && card.windows.length === 0 ? (

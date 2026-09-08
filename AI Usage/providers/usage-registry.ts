@@ -1,3 +1,4 @@
+import { createAccountOperationFlight } from "../services/runtime-consistency";
 import { ACCOUNT_PROVIDERS } from "./account-registry";
 import { fetchUsage as fetchCodexUsage } from "./codex/api";
 import { fetchUsage as fetchGrokUsage } from "./grok/api";
@@ -61,7 +62,11 @@ export const USAGE_PROVIDERS = {
 } satisfies Record<ProviderId, UsageProvider>;
 
 export type WidgetRefreshResult =
-  | { ok: true; snapshot: NormalizedUsageSnapshot }
+  | {
+      ok: true;
+      snapshot: NormalizedUsageSnapshot;
+      storageAccepted?: boolean;
+    }
   | { ok: false; error: ProviderUsageError };
 
 export type WidgetRefreshProvider = UsageProvider & {
@@ -75,12 +80,25 @@ function withSnapshot<T>(
   provider: UsageProvider,
   normalize: (snapshot: T) => NormalizedUsageSnapshot,
 ): WidgetRefreshProvider {
+  const run = createAccountOperationFlight<WidgetRefreshResult>();
   return {
     ...provider,
     async fetchSnapshot(options) {
-      const result = await provider.fetch(options);
-      return result.ok
-        ? { ok: true, snapshot: normalize(result.snapshot as T) }
+      const execute = () =>
+        run(options.profileId || "default", async () => {
+          const result = await provider.fetch(options);
+          return result.ok
+            ? {
+                ok: true as const,
+                snapshot: normalize(result.snapshot as T),
+                storageAccepted: result.storageAccepted,
+              }
+            : result;
+        });
+      const result = await execute();
+      // A force caller joining an automatic cache hit must still obtain live data.
+      return options.force && result.ok && result.snapshot.source === "cache"
+        ? execute()
         : result;
     },
   };

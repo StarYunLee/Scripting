@@ -1,3 +1,7 @@
+import {
+  captureAccountWork,
+  assertCurrentAccountWork,
+} from "../../services/account-work-guard";
 import { fetch, Response } from "scripting";
 import { getProfileAccessToken, resolveProfile } from "./accounts";
 import { decideClaudeFetchGate } from "./fetch-gate";
@@ -229,11 +233,11 @@ function readCache(profileId?: string | null): UsageSnapshot | null {
     return null;
   }
 }
-function writeCache(profileId: string, value: UsageSnapshot): void {
+function writeCache(profileId: string, value: UsageSnapshot): boolean {
   try {
-    Storage.set(cacheKey(profileId), { ...value, source: "cache" });
+    return Storage.set(cacheKey(profileId), { ...value, source: "cache" });
   } catch {
-    /* ignore */
+    return false;
   }
 }
 export const getCachedUsage = (profileId?: string | null) =>
@@ -286,6 +290,7 @@ export async function fetchUsage(options?: {
       cache: null,
     };
   }
+  const currentWork = captureAccountWork("claude", profile.id);
   const cache = readCache(profile.id);
   const gate = decideClaudeFetchGate({
     force: Boolean(options?.force),
@@ -421,8 +426,12 @@ export async function fetchUsage(options?: {
       source: "live",
     };
     clearBlockedUntil(profile.id);
-    writeCache(profile.id, snapshot);
-    return { ok: true, snapshot };
+    assertCurrentAccountWork(
+      currentWork,
+      getProfileAccessToken(profile.id) === token,
+    );
+    const storageAccepted = writeCache(profile.id, snapshot);
+    return { ok: true, snapshot, storageAccepted };
   } catch (e) {
     return {
       ok: false,

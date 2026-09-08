@@ -1,3 +1,5 @@
+import { captureAccountWork } from "./account-work-guard";
+import { invalidateUsageRuntime } from "./runtime-consistency";
 import type { ProviderId } from "../models";
 import { getSnapshotProvider } from "../providers/snapshot-registry";
 import { getWidgetRefreshProvider } from "../providers/usage-registry";
@@ -15,6 +17,8 @@ export function loadWidgetAccountSnapshot(input: {
   profileId: string;
   reloadMinutes: number;
 }): Promise<LoadedWidgetSnapshot> {
+  const currentWork = captureAccountWork(input.provider, input.profileId);
+  invalidateUsageRuntime();
   const snapshotProvider = getSnapshotProvider(input.provider);
   const refreshProvider = getWidgetRefreshProvider(input.provider);
   return loadWidgetAccountSnapshotWith(input, {
@@ -27,6 +31,7 @@ export function loadWidgetAccountSnapshot(input: {
     readMetadata: () =>
       getWidgetRefreshMetadata(input.provider, input.profileId),
     writeMetadata: (value) =>
+      currentWork() &&
       setWidgetRefreshMetadata(input.provider, input.profileId, value),
     now: () => Date.now(),
   });

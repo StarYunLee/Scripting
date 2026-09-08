@@ -1,4 +1,7 @@
+import { invalidateUsageRuntime } from "./services/runtime-consistency";
 import {
+  AppEvents,
+  type ScenePhase,
   Navigation,
   Script,
   Tab,
@@ -26,6 +29,19 @@ function App() {
   // 顶层只保证旧版本升级后尽早跑完未触达的 provider。
   useEffect(() => {
     ensureAllMigrations();
+  }, []);
+
+  useEffect(() => {
+    let wasBackground = false;
+    const listener = (phase: ScenePhase) => {
+      if (phase === "background") wasBackground = true;
+      if (phase !== "active" || !wasBackground) return;
+      wasBackground = false;
+      invalidateUsageRuntime();
+      setOverviewRevision((value) => value + 1);
+    };
+    AppEvents.scenePhase.addListener(listener);
+    return () => AppEvents.scenePhase.removeListener(listener);
   }, []);
 
   async function updateDemoMode(enabled: boolean) {

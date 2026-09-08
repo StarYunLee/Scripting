@@ -1,3 +1,4 @@
+import { retireAccountWork } from "./account-work-guard";
 import { getProvider } from "../providers/registry";
 import type { ProviderAccount } from "../providers/contracts";
 import {
@@ -76,6 +77,8 @@ export async function refreshCard(
   if (!account) throw new Error("账号不存在");
   return buildCard(provider, account, {
     source: outcome.source || "live",
+    snapshot: outcome.snapshot,
+    errorMessage: outcome.warning,
   });
 }
 
@@ -84,6 +87,7 @@ export function deleteAuthorizedAccount(
   profileId: string,
 ): ReturnType<typeof deleteAccountData> {
   const api = getProvider(provider);
+  retireAccountWork(provider, profileId);
   return deleteAccountData({
     remove: () => api.remove(profileId),
     clearCache: () => api.usage.clearCache(profileId),

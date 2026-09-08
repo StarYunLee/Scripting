@@ -1,3 +1,7 @@
+import {
+  captureAccountWork,
+  assertCurrentAccountWork,
+} from "../../services/account-work-guard";
 import { fetch } from "scripting";
 import {
   getProfileAccessToken,
@@ -58,7 +62,7 @@ function readCache(profileId?: string | null) {
   return usageCache.read(profileId);
 }
 function writeCache(profileId: string, value: UsageSnapshot) {
-  usageCache.write(profileId, value);
+  return usageCache.write(profileId, value);
 }
 export const getCachedUsage = (profileId?: string | null) =>
   usageCache.read(profileId);
@@ -114,6 +118,7 @@ export async function fetchUsage(options?: {
       cache: null,
     };
 
+  const currentWork = captureAccountWork("zai", profile.id);
   const cache = readCache(profile.id);
   if (!options?.force && recent(cache)) return { ok: true, snapshot: cache! };
 
@@ -216,8 +221,12 @@ export async function fetchUsage(options?: {
       fetchedAt: new Date().toISOString(),
       source: "live",
     };
-    writeCache(profile.id, snapshot);
-    return { ok: true, snapshot };
+    assertCurrentAccountWork(
+      currentWork,
+      getProfileAccessToken(profile.id) === token,
+    );
+    const storageAccepted = writeCache(profile.id, snapshot);
+    return { ok: true, snapshot, storageAccepted };
   } catch (error) {
     const recovered = recoverRecentCache(profile.id, Boolean(options?.force));
     if (recovered) return recovered;

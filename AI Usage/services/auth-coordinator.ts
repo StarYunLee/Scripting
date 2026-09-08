@@ -1,3 +1,4 @@
+import { retireAccountWork } from "./account-work-guard";
 import type { AuthSheet, ProviderId } from "../models";
 import {
   clearWidgetRefreshMetadata,
@@ -153,6 +154,7 @@ export function createAuthCoordinator(
         account = api.create();
         createdHere = true;
       }
+      retireAccountWork(options.provider, account.id);
       const url = await api.auth.start(account.id, options.providerInput);
       dependencies.writeLog({
         level: "info",

@@ -1,3 +1,4 @@
+import { countUsageOperation } from "./performance-counters";
 import type { ProviderAccount } from "../providers/contracts";
 import type { ProviderId, UsageCard } from "../models";
 import type { NormalizedUsageSnapshot } from "./usage-model";
@@ -6,6 +7,7 @@ export type WidgetCardExtras = {
   refreshing?: boolean;
   errorMessage?: string;
   source?: UsageCard["source"];
+  snapshot?: NormalizedUsageSnapshot;
 };
 
 export type WidgetCardProvider = {
@@ -19,9 +21,12 @@ export function buildWidgetCardFromProvider(
   api: WidgetCardProvider,
   account: ProviderAccount,
   extras?: WidgetCardExtras,
+  knownAuthorized?: boolean,
 ): UsageCard {
-  const authorized = Boolean(api.token(account.id));
-  const cache = authorized ? api.cache(account.id) : null;
+  if (knownAuthorized === undefined) countUsageOperation("authorizationReads");
+  const authorized = knownAuthorized ?? Boolean(api.token(account.id));
+  if (authorized && !extras?.snapshot) countUsageOperation("snapshotReads");
+  const cache = authorized ? (extras?.snapshot ?? api.cache(account.id)) : null;
   return {
     key: `${provider}:${account.id}`,
     provider,
@@ -43,17 +48,49 @@ export function buildWidgetCardFromProvider(
 export function listAuthorizedWidgetCardsFromProviders(
   providers: readonly ProviderId[],
   resolveProvider: (provider: ProviderId) => WidgetCardProvider,
+  select?: (accounts: UsageCard[]) => UsageCard[],
 ): UsageCard[] {
-  const cards: UsageCard[] = [];
+  countUsageOperation("cardLists");
+  const summaries: UsageCard[] = [];
+  const accountsByKey = new Map<
+    string,
+    { api: WidgetCardProvider; account: ProviderAccount }
+  >();
   for (const provider of providers) {
     const api = resolveProvider(provider);
     const authorized = api
       .list()
-      .filter((account) => api.token(account.id))
+      .filter((account) => {
+        countUsageOperation("authorizationReads");
+        return Boolean(api.token(account.id));
+      })
       .sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)));
     for (const account of authorized) {
-      cards.push(buildWidgetCardFromProvider(provider, api, account));
+      const key = `${provider}:${account.id}`;
+      accountsByKey.set(key, { api, account });
+      summaries.push({
+        key,
+        provider,
+        accountId: account.id,
+        title: account.email || account.name,
+        planLabel: null,
+        authorized: true,
+        windows: [],
+        resetCredits: null,
+        fetchedAt: null,
+        source: "empty",
+        refreshing: false,
+      });
     }
   }
-  return cards;
+  return (select ? select(summaries) : summaries).map((summary) => {
+    const entry = accountsByKey.get(summary.key)!;
+    return buildWidgetCardFromProvider(
+      summary.provider,
+      entry.api,
+      entry.account,
+      undefined,
+      true,
+    );
+  });
 }

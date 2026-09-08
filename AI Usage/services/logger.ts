@@ -101,7 +101,7 @@ function status(input: Input): RunRecord["status"] {
   if (input.level === "warning") return "warning";
   return "success";
 }
-export function writeLog(input: Input): void {
+export function writeLog(input: Input, batch?: RunRecord[]): void {
   const item: RunRecord = {
     id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
     at: new Date().toISOString(),
@@ -118,10 +118,11 @@ export function writeLog(input: Input): void {
         .filter(Boolean)
         .join(" · ") || undefined,
   };
-  try {
-    Storage.set(KEY, [...records(), item].slice(-MAX), { shared: true });
-  } catch {
-    /* logging must never break app */
+  if (batch && input.level === "info") {
+    batch.push(item);
+    if (batch.length >= MAX) flushRunRecordBatch(batch);
+  } else {
+    flushRunRecordBatch([item]);
   }
   try {
     const method =
@@ -133,6 +134,21 @@ export function writeLog(input: Input): void {
     console[method](`[AI Usage] ${item.summary}`);
   } catch {
     /* ignore */
+  }
+}
+export function flushRunRecordBatch(batch: RunRecord[]): void {
+  if (!batch.length) return;
+  const pending = batch.splice(0);
+  try {
+    Storage.set(
+      KEY,
+      [...records(), ...pending]
+        .sort((a, b) => a.at.localeCompare(b.at))
+        .slice(-MAX),
+      { shared: true },
+    );
+  } catch {
+    /* logging must not break refresh */
   }
 }
 export function readRunRecords(): RunRecord[] {

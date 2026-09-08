@@ -35,7 +35,7 @@ export type UsageSnapshot = {
   source: "live" | "cache";
 };
 export type UsageResult =
-  | { ok: true; snapshot: UsageSnapshot }
+  | { ok: true; snapshot: UsageSnapshot; storageAccepted?: boolean }
   | {
       ok: false;
       error: {

@@ -52,10 +52,20 @@ export async function loadDashboardWidgetUsage(input: {
   dataSource: WidgetDataSource;
 }): Promise<DashboardWidgetData> {
   const preferences = readDashboardWidgetPreferences(input.dataSource);
-  const raw =
-    input.dataSource === "demo" ? listDemoCards() : listAuthorizedWidgetCards();
-  const selected = applyDashboardWidgetPreferences(raw, preferences);
   const kind = parseWidgetFamily(input.family);
+  const raw =
+    input.dataSource === "demo"
+      ? listDemoCards()
+      : listAuthorizedWidgetCards((accounts) => {
+          const ordered = applyDashboardWidgetPreferences(
+            accounts,
+            preferences,
+          );
+          return kind
+            ? dashboardWidgetCandidateCards(ordered, input.family)
+            : ordered;
+        });
+  const selected = applyDashboardWidgetPreferences(raw, preferences);
   if (input.dataSource === "demo") {
     return {
       cards: selected,

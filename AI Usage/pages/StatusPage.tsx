@@ -1,4 +1,6 @@
 import { List, NavigationStack, Text, useEffect, useState } from "scripting";
+import { captureAccountWork } from "../services/account-work-guard";
+import { observeUsageProgress } from "../services/usage-progress";
 import { AccountDetailPage } from "./AccountDetailPage";
 import {
   authCoordinator,
@@ -43,20 +45,32 @@ export function StatusPage(props: {
   onOverviewChange: () => void;
 }) {
   const [provider, setProvider] = useState<ProviderId>("codex");
-  const [cards, setCards] = useState<UsageCard[]>(() =>
-    applyOverviewPreferences(listAuthorizedCards()),
-  );
+  const [cards, setCards] = useState<UsageCard[]>([]);
+  const [hasAccounts, setHasAccounts] = useState(false);
+  const [accountsLoaded, setAccountsLoaded] = useState(false);
   const [sheet, setSheet] = useState<AuthSheet | null>(null);
   const [busy, setBusy] = useState(false);
   const [openedCard, setOpenedCard] = useState<UsageCard | null>(null);
   const displayMode = "remaining";
-  const hasAccounts = listAuthorizedCards().length > 0;
+  const [feedbackTimers] = useState(
+    () => new Map<string, ReturnType<typeof setTimeout>>(),
+  );
+  useEffect(
+    () => () => {
+      for (const timer of feedbackTimers.values()) clearTimeout(timer);
+      feedbackTimers.clear();
+    },
+    [],
+  );
 
   function setCardRefreshState(
     key: string,
     refreshing: boolean,
     refreshStatus?: "success" | "failure",
   ) {
+    const timer = feedbackTimers.get(key);
+    if (timer !== undefined) clearTimeout(timer);
+    feedbackTimers.delete(key);
     setCards((current) =>
       current.map((item) =>
         item.key === key ? { ...item, refreshing, refreshStatus } : item,
@@ -65,17 +79,46 @@ export function StatusPage(props: {
   }
 
   function clearCardRefreshState(key: string) {
-    setTimeout(() => {
+    const previous = feedbackTimers.get(key);
+    if (previous !== undefined) clearTimeout(previous);
+    const timer = setTimeout(() => {
+      if (feedbackTimers.get(key) !== timer) return;
+      feedbackTimers.delete(key);
       setCards((current) =>
         current.map((item) =>
           item.key === key ? { ...item, refreshStatus: undefined } : item,
         ),
       );
     }, 1600);
+    feedbackTimers.set(key, timer);
   }
 
+  useEffect(() => {
+    if (props.demoMode) return;
+    return observeUsageProgress((event) => {
+      setCards((current) =>
+        current.map((card) => {
+          if (card.key !== `${event.provider}:${event.profileId}`) return card;
+          const [next] = applyOverviewPreferences([
+            {
+              ...card,
+              ...event.snapshot,
+              refreshing: true,
+              refreshStatus: undefined,
+              errorMessage: undefined,
+            },
+          ]);
+          return next || card;
+        }),
+      );
+    });
+  }, [props.demoMode]);
+
   function reloadCards() {
-    setCards(applyOverviewPreferences(listAuthorizedCards()));
+    const authorized = listAuthorizedCards();
+    setHasAccounts(authorized.length > 0);
+    setCards(applyOverviewPreferences(authorized));
+    setAccountsLoaded(true);
   }
 
   useEffect(() => {
@@ -123,6 +166,8 @@ export function StatusPage(props: {
             if (!account) return;
             const next = buildCard(outcome.provider, account, {
               source: outcome.source || "live",
+              snapshot: outcome.snapshot,
+              errorMessage: outcome.warning,
             });
             const [visibleNext] = applyOverviewPreferences([next]);
             if (!visibleNext) return;
@@ -301,13 +346,15 @@ export function StatusPage(props: {
             setCardRefreshState(`${target.provider}:${target.profileId}`, true);
           },
           onResult: (outcome) => {
+            if (outcome.error?.code === "superseded") return;
             const account = listProviderAccounts(outcome.provider).find(
               (item) => item.id === outcome.profileId,
             );
             if (!account) return;
             const key = `${outcome.provider}:${outcome.profileId}`;
             const next = buildCard(outcome.provider, account, {
-              errorMessage: outcome.error?.message,
+              errorMessage: outcome.error?.message || outcome.warning,
+              snapshot: outcome.snapshot,
               source: outcome.ok ? outcome.source || "live" : "error",
             });
             const [visibleNext] = applyOverviewPreferences([next]);
@@ -345,11 +392,12 @@ export function StatusPage(props: {
 
   async function refreshOne(card: UsageCard) {
     if (card.refreshing || busy) return;
+    const currentWork = captureAccountWork(card.provider, card.accountId);
     setCardRefreshState(card.key, true);
     try {
       const next = await refreshCard(card.provider, card.accountId, true);
       const [visibleNext] = applyOverviewPreferences([next]);
-      if (!visibleNext) return;
+      if (!currentWork() || !visibleNext) return;
       const refreshStatus =
         visibleNext.source === "error" ? "failure" : "success";
       setCards((current) =>
@@ -362,6 +410,7 @@ export function StatusPage(props: {
       clearCardRefreshState(card.key);
       requestWidgetReload();
     } catch (error) {
+      if (!currentWork()) return;
       setCards((current) =>
         current.map((item) =>
           item.key === card.key
@@ -392,6 +441,14 @@ export function StatusPage(props: {
         onSubmit={submitAuth}
         onCancel={cancelAuth}
       />
+    );
+  }
+
+  if (!accountsLoaded) {
+    return (
+      <NavigationStack>
+        <Text foregroundStyle="secondaryLabel">正在读取账号…</Text>
+      </NavigationStack>
     );
   }
 

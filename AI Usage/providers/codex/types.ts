@@ -72,13 +72,18 @@ export type UsageErrorCode =
   | "unknown";
 
 export type UsageResult =
-  | { ok: true; snapshot: UsageSnapshot }
+  | {
+      ok: true;
+      snapshot: UsageSnapshot;
+      storageAccepted?: boolean;
+    }
   | {
       ok: false;
       error: {
         code: UsageErrorCode;
         message: string;
         status?: number;
+        retryAt?: string;
         detail?: string;
       };
       cache?: UsageSnapshot | null;

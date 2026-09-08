@@ -101,6 +101,8 @@ export function SettingsPage(props: {
   const [selectedDestination, setSelectedDestination] =
     useState<SelectedDestination | null>(null);
   const [busy, setBusy] = useState(false);
+  const [dashboardParameterCopied, setDashboardParameterCopied] =
+    useState(false);
   const settings = getAppDisplaySettings();
   const dashboardPreferences = getDashboardWidgetPreferences(
     props.demoMode ? "demo" : "live",
@@ -488,13 +490,8 @@ export function SettingsPage(props: {
                   ? "dashboard:demo"
                   : "dashboard";
                 await Pasteboard.setString(parameter);
-                await Dialog.alert({
-                  title: "已复制小组件参数",
-                  message: props.demoMode
-                    ? "添加 AI Usage 小组件后，将参数粘贴为 dashboard:demo。该参数只显示演示账号，不影响真实 Dashboard。"
-                    : "添加 AI Usage 小组件后，将参数粘贴为 dashboard。只影响真实多账号桌面小组件。",
-                  buttonLabel: "知道了",
-                });
+                setDashboardParameterCopied(true);
+                setTimeout(() => setDashboardParameterCopied(false), 1800);
               }}
             >
               <HStack
@@ -502,8 +499,29 @@ export function SettingsPage(props: {
                 frame={{ minHeight: 44, maxWidth: "infinity" }}
                 contentShape="rect"
               >
-                <Text foregroundStyle="accentColor">复制参数</Text>
+                <VStack alignment="leading" spacing={2}>
+                  <Text
+                    font="caption"
+                    foregroundStyle={
+                      dashboardParameterCopied
+                        ? "systemGreen"
+                        : "secondaryLabel"
+                    }
+                  >
+                    {dashboardParameterCopied
+                      ? "小组件参数已复制到剪贴板"
+                      : "小组件参数（点击复制）"}
+                  </Text>
+                  <Text font="subheadline" fontWeight="medium">
+                    {props.demoMode ? "dashboard:demo" : "dashboard"}
+                  </Text>
+                </VStack>
                 <Spacer />
+                <Image
+                  systemName="doc.on.doc"
+                  imageScale="medium"
+                  foregroundStyle="accentColor"
+                />
               </HStack>
             </Button>
             <GlassDivider />

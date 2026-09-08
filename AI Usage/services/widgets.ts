@@ -19,7 +19,7 @@ export function requestWidgetReload(): boolean {
  * 提高 Widget 进程读取到新值的概率。两次请求都不代表 WidgetKit 会立即调度。
  */
 export function requestWidgetReloadAfterStorage(delayMs = 750): void {
-  requestWidgetReload();
+  if (trailingReload === null) requestWidgetReload();
   if (trailingReload !== null) clearTimeout(trailingReload);
   trailingReload = setTimeout(() => {
     trailingReload = null;

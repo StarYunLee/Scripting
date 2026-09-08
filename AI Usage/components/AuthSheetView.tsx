@@ -4,6 +4,7 @@ import {
   Image,
   List,
   NavigationStack,
+  Rectangle,
   Section,
   Spacer,
   Text,
@@ -109,60 +110,69 @@ export function AuthSheetView(props: {
               />
             )}
             <GlassDivider />
-            {props.authSheet.authorizationUrl ? (
-              <>
-                <Button
-                  buttonStyle="plain"
-                  frame={{ maxWidth: "infinity" }}
-                  action={() => {
-                    void openAuthorizationPage(
-                      props.authSheet.authorizationUrl!,
-                    ).catch(async (error) => {
-                      await Dialog.alert({
-                        title: "无法打开授权页",
-                        message:
-                          error instanceof Error && error.message
-                            ? error.message
-                            : "请稍后重试。",
-                        buttonLabel: "关闭",
-                      });
-                    });
-                  }}
-                >
-                  <HStack
-                    padding={{ vertical: true }}
-                    frame={{ minHeight: 44, maxWidth: "infinity" }}
-                    contentShape="rect"
-                  >
-                    <Image
-                      systemName="safari"
-                      imageScale="medium"
-                      foregroundStyle="accentColor"
-                    />
-                    <Text foregroundStyle="accentColor">重新打开授权页</Text>
-                    <Spacer />
-                  </HStack>
-                </Button>
-                <GlassDivider />
-              </>
-            ) : null}
-            <Button
-              buttonStyle="plain"
-              frame={{ maxWidth: "infinity" }}
-              action={props.onSubmit}
-            >
-              <HStack
-                padding={{ vertical: true }}
-                frame={{ minHeight: 44, maxWidth: "infinity" }}
-                contentShape="rect"
-              >
-                <Text foregroundStyle="accentColor">提交并完成授权</Text>
-                <Spacer />
-              </HStack>
-            </Button>
-            <GlassDivider />
             <GlassNoteRow text={meta.pasteHint} />
           </GlassGroup>
+        </Section>
+
+        <Section
+          listRowBackground={<Rectangle fill="clear" />}
+          listRowSeparator="hidden"
+          listRowInsets={{ top: 0, bottom: 0, leading: 16, trailing: 16 }}
+        >
+          <HStack spacing={12} frame={{ maxWidth: "infinity" }}>
+            <Spacer />
+            {props.authSheet.authorizationUrl ? (
+              <Button
+                controlSize="large"
+                buttonStyle="glass"
+                buttonBorderShape="capsule"
+                action={() => {
+                  void openAuthorizationPage(
+                    props.authSheet.authorizationUrl!,
+                  ).catch(async (error) => {
+                    await Dialog.alert({
+                      title: "无法打开授权页",
+                      message:
+                        error instanceof Error && error.message
+                          ? error.message
+                          : "请稍后重试。",
+                      buttonLabel: "关闭",
+                    });
+                  });
+                }}
+              >
+                <HStack
+                  spacing={8}
+                  frame={{ width: 128, height: 28 }}
+                  contentShape="rect"
+                >
+                  <Spacer />
+                  <Image systemName="safari" imageScale="medium" />
+                  <Text font={16} fontWeight="medium">
+                    {props.authSheet.deviceCode ? "继续授权" : "重新授权"}
+                  </Text>
+                  <Spacer />
+                </HStack>
+              </Button>
+            ) : null}
+            <Button
+              controlSize="large"
+              buttonStyle="glassProminent"
+              buttonBorderShape="capsule"
+              tint={meta.accent === "#111111" ? "label" : meta.accent}
+              action={props.onSubmit}
+            >
+              <Text
+                font={16}
+                fontWeight="semibold"
+                multilineTextAlignment="center"
+                frame={{ width: 128, height: 28 }}
+              >
+                完成授权
+              </Text>
+            </Button>
+            <Spacer />
+          </HStack>
         </Section>
       </List>
     </NavigationStack>

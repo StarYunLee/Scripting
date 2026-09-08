@@ -33,9 +33,12 @@ export function buildWidgetCard(
 }
 
 /** Read authorized accounts and their local usage snapshots only. */
-export function listAuthorizedWidgetCards(): UsageCard[] {
+export function listAuthorizedWidgetCards(
+  select?: (accounts: UsageCard[]) => UsageCard[],
+): UsageCard[] {
   return listAuthorizedWidgetCardsFromProviders(
     PROVIDER_IDS,
     getSnapshotProvider,
+    select,
   );
 }
