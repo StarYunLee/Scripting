@@ -11,7 +11,7 @@
 
 面向 [Scripting App](https://scriptingapp.github.io/) 的非官方 GitHub Stars 与仓库管理应用。在 iPhone 上浏览 Stars、维护自定义列表与本人仓库，并查看个人资料、贡献热力图与常用语言。
 
-当前版本：`1.1.0`
+当前版本：`1.1.1`
 
 > 本项目不是 GitHub 或 Scripting App 官方产品，与上述平台无隶属或合作关系。
 

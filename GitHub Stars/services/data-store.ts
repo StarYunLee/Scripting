@@ -1,4 +1,8 @@
-import { hasToken } from "../auth/token";
+import {
+  clearAccountCaches,
+  hasToken,
+  invalidateCredentialSession,
+} from "../auth/token";
 import type {
   AppState,
   ForkSyncStatus,
@@ -13,11 +17,6 @@ import type {
   RepositoryMembership,
 } from "../types";
 import {
-  clearCache,
-  clearDetailCaches,
-  clearForkStatusesCache,
-  clearMembershipCache,
-  clearOwnedRepositoriesCache,
   clearRepositoryPreferences,
   loadCache,
   loadDetailCache,
@@ -41,6 +40,7 @@ import {
   deleteUserList,
   fetchContributionsByYear,
   fetchListItems,
+  fetchListMembershipIds,
   fetchListSummaries,
   fetchViewerSummary,
   updateUserList,
@@ -48,6 +48,7 @@ import {
 } from "./github-graphql";
 import {
   archiveOwnedRepository as archiveOwnedRepositoryRequest,
+  clearForkParentCache,
   fetchForkUpstreamComparison,
   fetchOwnedRepositories,
   fetchRepository,
@@ -66,6 +67,58 @@ import {
   normalizeRestRepository,
   normalizeViewer,
 } from "./normalizer";
+
+type StoreNetworkHooks = {
+  fetchListItems?: typeof fetchListItems;
+  deleteUserList?: typeof deleteUserList;
+  updateUserListsForItem?: typeof updateUserListsForItem;
+  fetchListSummaries?: typeof fetchListSummaries;
+  unstarRepository?: typeof unstarRepository;
+  fetchForkUpstreamComparison?: typeof fetchForkUpstreamComparison;
+};
+
+let storeNetworkHooks: StoreNetworkHooks = {};
+
+export function setStoreNetworkHooksForTests(hooks: StoreNetworkHooks): void {
+  storeNetworkHooks = hooks;
+}
+
+export function resetStoreNetworkHooksForTests(): void {
+  storeNetworkHooks = {};
+}
+
+function listItems(listId: string, cursor: string | null = null) {
+  return (storeNetworkHooks.fetchListItems ?? fetchListItems)(listId, cursor);
+}
+
+function removeUserList(listId: string) {
+  return (storeNetworkHooks.deleteUserList ?? deleteUserList)(listId);
+}
+
+function saveItemLists(itemId: string, listIds: readonly string[]) {
+  return (storeNetworkHooks.updateUserListsForItem ?? updateUserListsForItem)(
+    itemId,
+    listIds,
+  );
+}
+
+function listSummaries() {
+  return (storeNetworkHooks.fetchListSummaries ?? fetchListSummaries)();
+}
+
+function unstar(fullName: string) {
+  return (storeNetworkHooks.unstarRepository ?? unstarRepository)(fullName);
+}
+
+function forkComparison(
+  fullName: string,
+  branch: string,
+  options?: { refreshParent?: boolean },
+) {
+  return (
+    storeNetworkHooks.fetchForkUpstreamComparison ?? fetchForkUpstreamComparison
+  )(fullName, branch, options);
+}
 
 type Listener = (state: AppState) => void;
 type StoreScope =
@@ -86,9 +139,16 @@ type ListDetailRequest = {
   promise: Promise<void>;
 };
 
+type MembershipIdSnapshot = {
+  listId: string;
+  listName: string;
+  repositoryIds: string[];
+};
+
 type MembershipDetailRequest = {
   generation: number;
-  promise: Promise<GitHubListDetail>;
+  listsRevision: number;
+  promise: Promise<MembershipIdSnapshot>;
 };
 
 type MembershipRefreshRequest = {
@@ -312,6 +372,7 @@ function cachedResourceSyncedAt(
 
 function initialState(): AppState {
   const cached = loadCache();
+  const accountLogin = cached?.accountLogin ?? cached?.viewer?.login ?? null;
   const hasCachedMain = cached !== null;
   const preferences = loadRepositoryPreferences();
   const ownedRepositoriesCache = loadOwnedRepositoriesCache();
@@ -324,6 +385,7 @@ function initialState(): AppState {
       );
   return {
     tokenConfigured: hasToken(),
+    accountLogin,
     includePrivateRepositories: preferences.includePrivateRepositories,
     viewer: cached?.viewer ?? null,
     stars: cached?.stars ?? [],
@@ -379,6 +441,8 @@ export class GitHubDataStore {
   private listMutations = new Map<string, Promise<void>>();
   private membershipMutations = new Map<string, Promise<void>>();
   private forkStatusRefreshes = new Map<string, Promise<ForkSyncStatus>>();
+  private forkStatusPersistTimer: ReturnType<typeof setTimeout> | null = null;
+  private contributionRequests = new Map<number, Promise<void>>();
   private mutationQueueGeneration = 0;
   private readRetryStates = new Map<ReadResource, ReadRetryState>();
   private resourceRevisions: Record<RefreshResource, number> = {
@@ -391,6 +455,11 @@ export class GitHubDataStore {
 
   getState(): AppState {
     return this.state;
+  }
+
+  /** @internal 仅供隔离测试注入非敏感状态。 */
+  replaceStateForTests(patch: Partial<AppState>): void {
+    this.state = { ...this.state, ...patch };
   }
 
   subscribe(scope: StoreScope, listener: Listener): () => void {
@@ -491,13 +560,22 @@ export class GitHubDataStore {
   }
 
   private invalidateSession(): void {
+    invalidateCredentialSession();
+    if (this.forkStatusPersistTimer != null) {
+      clearTimeout(this.forkStatusPersistTimer);
+      this.forkStatusPersistTimer = null;
+    }
     this.sessionGeneration += 1;
     this.mutationQueueGeneration += 1;
     this.repositoryMutations.clear();
     this.listMutations.clear();
     this.membershipMutations.clear();
     this.forkStatusRefreshes.clear();
+    this.membershipDetailRequests.clear();
+    this.listDetailRequests.clear();
     this.readRetryStates.clear();
+    this.contributionRequests.clear();
+    clearForkParentCache();
   }
 
   private nextListDetailGeneration(listId: string): number {
@@ -514,25 +592,52 @@ export class GitHubDataStore {
   }
 
   private saveForkStatuses(): void {
+    const persisted = Object.fromEntries(
+      Object.entries(this.state.forkStatuses).filter(
+        ([, status]) => status.state !== "checking",
+      ),
+    );
     saveForkStatusesCache({
       version: 1,
-      statuses: this.state.forkStatuses,
+      statuses: persisted,
       savedAt: new Date().toISOString(),
     });
   }
 
-  private updateForkStatus(repositoryId: string, status: ForkSyncStatus): void {
+  private scheduleForkStatusPersist(): void {
+    if (this.forkStatusPersistTimer != null) return;
+    this.forkStatusPersistTimer = setTimeout(() => {
+      this.forkStatusPersistTimer = null;
+      this.flushForkStatusPersist();
+    }, 250);
+  }
+
+  private flushForkStatusPersist(): void {
+    if (this.forkStatusPersistTimer != null) {
+      clearTimeout(this.forkStatusPersistTimer);
+      this.forkStatusPersistTimer = null;
+    }
+    this.saveForkStatuses();
+  }
+
+  private updateForkStatus(
+    repositoryId: string,
+    status: ForkSyncStatus,
+    options?: { persist?: boolean },
+  ): void {
+    const persist = options?.persist !== false && status.state !== "checking";
     const forkStatuses = {
       ...this.state.forkStatuses,
       [repositoryId]: status,
     };
     this.update({ forkStatuses }, ["repositories"]);
-    this.saveForkStatuses();
+    if (persist) this.scheduleForkStatusPersist();
   }
 
   private saveNonSensitiveCache(): void {
     saveCache({
       version: 1,
+      accountLogin: this.state.accountLogin ?? this.state.viewer?.login ?? null,
       viewer: this.state.viewer,
       stars: this.state.stars,
       lists: this.state.lists,
@@ -608,6 +713,10 @@ export class GitHubDataStore {
   refreshTokenState(invalidateInFlight = false): void {
     if (invalidateInFlight) {
       this.invalidateSession();
+      clearAccountCaches();
+      this.bumpRevision("viewer", "stars", "lists", "ownedRepositories");
+      this.clearAccountBoundState();
+      return;
     }
     this.update({ tokenConfigured: hasToken() }, [
       "stars",
@@ -615,6 +724,55 @@ export class GitHubDataStore {
       "repositories",
       "settings",
     ]);
+  }
+
+  private emptyResourceSyncedAt(): ResourceSyncTimestamps {
+    return {
+      viewer: null,
+      stars: null,
+      lists: null,
+      ownedRepositories: null,
+      memberships: null,
+    };
+  }
+
+  private clearAccountBoundState(): void {
+    this.listDetailGenerations.clear();
+    this.update(
+      {
+        tokenConfigured: hasToken(),
+        accountLogin: null,
+        viewer: null,
+        viewerState: "idle",
+        viewerError: null,
+        stars: [],
+        starsState: "idle",
+        starsError: null,
+        lists: [],
+        listsState: "idle",
+        listsError: null,
+        ownedRepositories: [],
+        forkStatuses: {},
+        ownedRepositoriesState: "idle",
+        ownedRepositoriesError: null,
+        memberships: null,
+        resourceSyncedAt: this.emptyResourceSyncedAt(),
+        listDetails: {},
+        detailStates: {},
+        detailErrors: {},
+        lastSyncedAt: null,
+        hasCachedMain: false,
+      },
+      [
+        "stars",
+        "lists",
+        "repositories",
+        "settings",
+        ...Array.from(this.scopedListeners.keys()).filter(
+          (scope): scope is `detail:${string}` => scope.startsWith("detail:"),
+        ),
+      ],
+    );
   }
 
   async syncOnLaunch(): Promise<void> {
@@ -771,6 +929,7 @@ export class GitHubDataStore {
       const updated = await updateUserList(listId, name.trim());
       if (!this.isCurrentGeneration(generation)) return;
       this.bumpRevision("lists");
+      this.nextListDetailGeneration(listId);
       const lists = this.state.lists.map((list) =>
         list.id === listId ? { ...list, name: updated.name } : list,
       );
@@ -822,9 +981,10 @@ export class GitHubDataStore {
   async deleteList(listId: string): Promise<void> {
     return this.enqueueListMutation(listId, async () => {
       const generation = this.sessionGeneration;
-      await deleteUserList(listId);
+      await removeUserList(listId);
       if (!this.isCurrentGeneration(generation)) return;
       this.bumpRevision("lists");
+      this.nextListDetailGeneration(listId);
       const lists = this.state.lists.filter((list) => list.id !== listId);
       const sourceFingerprint = membershipSourceFingerprint(lists);
       const currentMemberships = this.state.memberships;
@@ -902,14 +1062,51 @@ export class GitHubDataStore {
     listIds: readonly string[],
   ): Promise<void> {
     return this.enqueueMembershipMutation(repositoryId, async () => {
+      if (
+        this.state.starsState === "loaded" &&
+        !this.state.stars.some((item) => item.nodeId === repositoryId)
+      ) {
+        throw new Error("仓库状态已变化，请刷新页面后重新管理列表归属。");
+      }
       const generation = this.sessionGeneration;
-      const lists = await updateUserListsForItem(repositoryId, listIds);
+      const lists = await saveItemLists(repositoryId, listIds);
       if (!this.isCurrentGeneration(generation)) return;
       this.bumpRevision("lists");
+      const previousListIds = new Set(
+        (this.state.memberships?.repositories[repositoryId] ?? []).map(
+          (membership) => membership.listId,
+        ),
+      );
       const memberships: RepositoryMembership[] = lists.map((list) => ({
         listId: list.id,
         listName: list.name,
       }));
+      const nextListIds = new Set(memberships.map((item) => item.listId));
+      const affectedListIds = new Set([...previousListIds, ...nextListIds]);
+      for (const listId of affectedListIds) {
+        this.nextListDetailGeneration(listId);
+      }
+      const listDetails = { ...this.state.listDetails };
+      for (const listId of affectedListIds) {
+        const detail = listDetails[listId];
+        if (!detail) continue;
+        const shouldContain = nextListIds.has(listId);
+        const contains = detail.items.some(
+          (item) => item.nodeId === repositoryId,
+        );
+        if (!shouldContain && contains) {
+          const next = {
+            ...detail,
+            items: detail.items.filter((item) => item.nodeId !== repositoryId),
+            itemCount: Math.max(0, detail.itemCount - 1),
+          };
+          listDetails[listId] = next;
+          saveDetailCache(listId, next);
+        } else if (shouldContain && !contains) {
+          delete listDetails[listId];
+          removeDetailCache(listId);
+        }
+      }
       const sourceFingerprint = membershipSourceFingerprint(this.state.lists);
       const current = this.state.memberships;
       const snapshot: MembershipSnapshot = {
@@ -922,7 +1119,13 @@ export class GitHubDataStore {
         sourceFingerprint,
       };
       saveMembershipCache(snapshot);
-      this.update({ memberships: snapshot }, ["stars", "settings"]);
+      this.update({ memberships: snapshot, listDetails }, [
+        "stars",
+        "settings",
+        ...Array.from(affectedListIds).map(
+          (listId) => `detail:${listId}` as const,
+        ),
+      ]);
       try {
         await this.refreshLists();
       } catch {
@@ -938,7 +1141,7 @@ export class GitHubDataStore {
         (item) => item.nodeId === repository.nodeId,
       );
       if (!existing) return;
-      await unstarRepository(repository.fullName);
+      await unstar(repository.fullName);
       if (!this.isCurrentGeneration(generation)) return;
       this.bumpRevision("stars", "lists");
       const repositoryId = repository.nodeId;
@@ -951,6 +1154,17 @@ export class GitHubDataStore {
           (membership) => membership.listId,
         ),
       );
+      for (const list of this.state.lists) {
+        affectedListIds.add(list.id);
+      }
+      for (const [listId, detail] of Object.entries(this.state.listDetails)) {
+        if (detail.items.some((item) => item.nodeId === repositoryId)) {
+          affectedListIds.add(listId);
+        }
+      }
+      for (const listId of affectedListIds) {
+        this.nextListDetailGeneration(listId);
+      }
       const listDetails = Object.fromEntries(
         Object.entries(this.state.listDetails).map(([listId, detail]) => {
           const items = detail.items.filter(
@@ -1212,7 +1426,12 @@ export class GitHubDataStore {
     const operation = (async (): Promise<boolean> => {
       try {
         const raw = await fetchOwnedRepositories(includePrivateRepositories);
-        const ownedRepositories = raw.map(normalizeOwnedRepository);
+        if (!raw.complete) {
+          throw new Error(
+            "仓库分页达到安全上限，已保留上一次完整数据；请稍后重试。",
+          );
+        }
+        const ownedRepositories = raw.items.map(normalizeOwnedRepository);
         if (!this.isCurrentRequest("ownedRepositories", generation, revision))
           return false;
         const syncedAt = new Date().toISOString();
@@ -1282,9 +1501,10 @@ export class GitHubDataStore {
     });
     const request = (async (): Promise<ForkSyncStatus> => {
       try {
-        const comparison = await fetchForkUpstreamComparison(
+        const comparison = await forkComparison(
           repository.fullName,
           repository.defaultBranch,
+          { refreshParent: force },
         );
         const status: ForkSyncStatus = {
           state: classifyForkSyncState(comparison.aheadBy, comparison.behindBy),
@@ -1300,10 +1520,13 @@ export class GitHubDataStore {
         }
         return status;
       } catch (error) {
+        const retryable = isRetryableReadError(error);
         const status: ForkSyncStatus = {
           ...(cached ?? unknownForkStatus()),
           state: "error",
-          checkedAt: new Date().toISOString(),
+          checkedAt: retryable
+            ? new Date(Date.now() - FORK_STATUS_TTL_MS + 30_000).toISOString()
+            : new Date().toISOString(),
           error:
             typeof error === "object" && error !== null && "message" in error
               ? String(error.message)
@@ -1324,16 +1547,23 @@ export class GitHubDataStore {
   }
 
   async refreshForkStatuses(force = false): Promise<void> {
+    const generation = this.sessionGeneration;
     const forks = this.state.ownedRepositories.filter(
       (repository) => repository.isFork && !repository.isArchived,
     );
-    await mapWithConcurrency(forks, 3, async (repository) => {
-      try {
-        await this.refreshForkStatus(repository, force);
-      } catch {
-        // 单个 Fork 检查失败不阻止其他仓库继续更新状态。
+    try {
+      await mapWithConcurrency(forks, 3, async (repository) => {
+        try {
+          await this.refreshForkStatus(repository, force);
+        } catch (error) {
+          if (asError(error).kind === "rate_limited") throw error;
+        }
+      });
+    } finally {
+      if (this.isCurrentGeneration(generation)) {
+        this.flushForkStatusPersist();
       }
-    });
+    }
   }
 
   async updateOwnedRepository(
@@ -1429,20 +1659,24 @@ export class GitHubDataStore {
         ]);
         const normalized = normalizeViewer(user, summary);
         const currentViewer = this.state.viewer;
+        const sameAccount =
+          currentViewer?.login.toLowerCase() === normalized.login.toLowerCase();
         const viewer: GitHubUser = {
           ...normalized,
           contributionsByYear: {
-            ...(currentViewer?.contributionsByYear ?? {}),
+            ...(sameAccount ? (currentViewer?.contributionsByYear ?? {}) : {}),
             ...(normalized.contributionsByYear ?? {}),
           },
         };
         if (!this.isCurrentRequest("viewer", generation, revision))
           return false;
-        const unchanged = viewerEqual(this.state.viewer, viewer);
+        const unchanged =
+          viewerEqual(this.state.viewer, viewer) &&
+          this.state.accountLogin === viewer.login;
         const syncedAt = new Date().toISOString();
         this.update(
           {
-            ...(unchanged ? {} : { viewer }),
+            ...(unchanged ? {} : { viewer, accountLogin: viewer.login }),
             viewerState: "loaded",
             viewerError: null,
             resourceSyncedAt: {
@@ -1513,7 +1747,12 @@ export class GitHubDataStore {
     const operation = (async (): Promise<boolean> => {
       try {
         const raw = await fetchStarredRepositories();
-        const stars = raw.map(normalizeRestRepository);
+        if (!raw.complete) {
+          throw new Error(
+            "Stars 分页达到安全上限，已保留上一次完整数据；请稍后重试。",
+          );
+        }
+        const stars = raw.items.map(normalizeRestRepository);
         if (!this.isCurrentRequest("stars", generation, revision)) return false;
         const unchanged = repositoryArraysEqual(this.state.stars, stars);
         const syncedAt = new Date().toISOString();
@@ -1588,7 +1827,7 @@ export class GitHubDataStore {
     };
     const operation = (async (): Promise<boolean> => {
       try {
-        const raw = await fetchListSummaries();
+        const raw = await listSummaries();
         const lists = raw.map(normalizeListSummary);
         if (!this.isCurrentRequest("lists", generation, revision)) return false;
         const unchanged = listArraysEqual(this.state.lists, lists);
@@ -1721,14 +1960,14 @@ export class GitHubDataStore {
   ): Promise<boolean> {
     const lists = this.state.lists;
     const details = await mapWithConcurrency(lists, 3, (list) =>
-      this.fetchCompleteListDetail(list, generation),
+      this.fetchCompleteListMembershipIds(list, generation, listsRevision),
     );
     const repositories: Record<string, RepositoryMembership[]> = {};
     for (const detail of details) {
-      for (const repository of detail.items) {
-        const memberships = repositories[repository.nodeId] ?? [];
-        memberships.push({ listId: detail.id, listName: detail.name });
-        repositories[repository.nodeId] = memberships;
+      for (const repositoryId of detail.repositoryIds) {
+        const memberships = repositories[repositoryId] ?? [];
+        memberships.push({ listId: detail.listId, listName: detail.listName });
+        repositories[repositoryId] = memberships;
       }
     }
     if (
@@ -1753,20 +1992,34 @@ export class GitHubDataStore {
           memberships: syncedAt,
         },
       },
-      ["stars", "settings"],
+      [
+        "stars",
+        "settings",
+        ...lists.map((list) => `detail:${list.id}` as const),
+      ],
     );
     return true;
   }
 
-  private fetchCompleteListDetail(
+  private fetchCompleteListMembershipIds(
     list: GitHubListSummary,
     generation = this.sessionGeneration,
-  ): Promise<GitHubListDetail> {
+    listsRevision = this.currentRevision("lists"),
+  ): Promise<{ listId: string; listName: string; repositoryIds: string[] }> {
     const existing = this.membershipDetailRequests.get(list.id);
-    if (existing?.generation === generation) return existing.promise;
+    if (
+      existing?.generation === generation &&
+      existing.listsRevision === listsRevision
+    ) {
+      return existing.promise;
+    }
 
-    const operation = this.fetchCompleteListDetailUncached(list);
-    const entry: MembershipDetailRequest = { generation, promise: operation };
+    const operation = this.fetchCompleteListMembershipIdsUncached(list);
+    const entry: MembershipDetailRequest = {
+      generation,
+      listsRevision,
+      promise: operation,
+    };
     this.membershipDetailRequests.set(list.id, entry);
     void operation
       .finally(() => {
@@ -1778,19 +2031,43 @@ export class GitHubDataStore {
     return operation;
   }
 
-  private async fetchCompleteListDetailUncached(
+  private async fetchCompleteListMembershipIdsUncached(
     list: GitHubListSummary,
-  ): Promise<GitHubListDetail> {
-    let detail: GitHubListDetail | null = null;
+  ): Promise<{ listId: string; listName: string; repositoryIds: string[] }> {
+    const repositoryIds: string[] = [];
+    const seenRepositoryIds = new Set<string>();
+    const seenCursors = new Set<string>();
     let cursor: string | null = null;
+    let pages = 0;
     do {
-      const raw = await fetchListItems(list.id, cursor);
+      pages += 1;
+      if (pages > 100) {
+        throw new Error(
+          `分组“${list.name}”分页达到安全上限，已保留原归属快照。`,
+        );
+      }
+      if (cursor) {
+        if (seenCursors.has(cursor)) {
+          throw new Error(`分组“${list.name}”返回了重复分页游标。`);
+        }
+        seenCursors.add(cursor);
+      }
+      const raw = await fetchListMembershipIds(list.id, cursor);
       if (!raw) throw new Error(`分组详情不存在：${list.name}`);
-      detail = normalizeListDetail(raw, detail);
-      cursor = detail.hasNextPage ? detail.endCursor : null;
+      for (const node of raw.items.nodes) {
+        if (node?.id && !seenRepositoryIds.has(node.id)) {
+          seenRepositoryIds.add(node.id);
+          repositoryIds.push(node.id);
+        }
+      }
+      if (raw.items.pageInfo.hasNextPage && !raw.items.pageInfo.endCursor) {
+        throw new Error(`分组“${list.name}”声明还有下一页但未返回游标。`);
+      }
+      cursor = raw.items.pageInfo.hasNextPage
+        ? raw.items.pageInfo.endCursor
+        : null;
     } while (cursor);
-    if (!detail) throw new Error(`分组详情为空：${list.name}`);
-    return detail;
+    return { listId: list.id, listName: list.name, repositoryIds };
   }
 
   private startListDetailRequest(
@@ -1899,7 +2176,7 @@ export class GitHubDataStore {
       [`detail:${listId}`],
     );
     try {
-      const raw = await fetchListItems(listId, cursor);
+      const raw = await listItems(listId, cursor);
       if (!raw) throw new Error("分组详情不存在");
       if (
         !this.isCurrentGeneration(sessionGeneration) ||
@@ -1944,31 +2221,36 @@ export class GitHubDataStore {
   async loadYearContributions(year: number): Promise<void> {
     if (!this.state.viewer) return;
     if (this.state.viewer.contributionsByYear?.[year]) return;
-    const generation = this.sessionGeneration;
-
-    try {
-      const calendar = await fetchContributionsByYear(year);
-      if (!this.isCurrentGeneration(generation) || !this.state.viewer) return;
-      const updatedViewer: GitHubUser = {
-        ...this.state.viewer,
-        contributionsByYear: {
-          ...(this.state.viewer.contributionsByYear ?? {}),
-          [year]: calendar,
-        },
-      };
-      this.update({ viewer: updatedViewer }, ["settings"]);
-      saveCache({
-        version: 1,
-        viewer: updatedViewer,
-        stars: this.state.stars,
-        lists: this.state.lists,
-        savedAt: this.state.lastSyncedAt ?? new Date().toISOString(),
-        resourceSyncedAt: this.state.resourceSyncedAt,
-      });
-    } catch (error) {
-      if (!this.isCurrentGeneration(generation)) return;
-      throw asError(error);
+    const existing = this.contributionRequests.get(year);
+    if (existing) {
+      await existing;
+      return;
     }
+    const generation = this.sessionGeneration;
+    const request = (async () => {
+      try {
+        const calendar = await fetchContributionsByYear(year);
+        if (!this.isCurrentGeneration(generation) || !this.state.viewer) return;
+        const updatedViewer: GitHubUser = {
+          ...this.state.viewer,
+          contributionsByYear: {
+            ...(this.state.viewer.contributionsByYear ?? {}),
+            [year]: calendar,
+          },
+        };
+        this.update({ viewer: updatedViewer }, ["settings"]);
+        this.saveNonSensitiveCache();
+      } catch (error) {
+        if (!this.isCurrentGeneration(generation)) return;
+        throw asError(error);
+      }
+    })().finally(() => {
+      if (this.contributionRequests.get(year) === request) {
+        this.contributionRequests.delete(year);
+      }
+    });
+    this.contributionRequests.set(year, request);
+    await request;
   }
 
   clearLocalData(): void {
@@ -1976,14 +2258,12 @@ export class GitHubDataStore {
     this.listDetailRequests.clear();
     this.listDetailGenerations.clear();
     this.membershipDetailRequests.clear();
-    clearCache();
-    clearDetailCaches();
-    clearForkStatusesCache();
-    clearMembershipCache();
-    clearOwnedRepositoriesCache();
+    clearAccountCaches();
     clearRepositoryPreferences();
     this.update(
       {
+        tokenConfigured: hasToken(),
+        accountLogin: null,
         viewer: null,
         viewerState: "idle",
         viewerError: null,

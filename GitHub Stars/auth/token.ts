@@ -1,3 +1,38 @@
+import {
+  clearCache,
+  clearDetailCaches,
+  clearForkStatusesCache,
+  clearMembershipCache,
+  clearOwnedRepositoriesCache,
+} from "../services/cache";
+import { createGitHubError } from "../services/errors";
+
+let credentialRevision = 0;
+export function invalidateCredentialSession(): void {
+  credentialRevision += 1;
+}
+
+export function captureCredentialGuard(): () => void {
+  const revision = credentialRevision;
+  const token = readToken();
+  return () => {
+    if (revision !== credentialRevision || token !== readToken()) {
+      throw createGitHubError(
+        "unknown",
+        "操作已因账户切换或本地数据清理而取消。",
+      );
+    }
+  };
+}
+
+export function clearAccountCaches(): void {
+  clearCache();
+  clearDetailCaches();
+  clearForkStatusesCache();
+  clearMembershipCache();
+  clearOwnedRepositoriesCache();
+}
+
 const TOKEN_KEY = "github_stars_token";
 
 export function hasToken(): boolean {
@@ -22,10 +57,14 @@ export function saveToken(value: string): void {
   ) {
     throw new Error("Token 写入 Keychain 失败");
   }
+  invalidateCredentialSession();
+  clearAccountCaches();
 }
 
 export function removeToken(): void {
   Keychain.remove(TOKEN_KEY);
+  invalidateCredentialSession();
+  clearAccountCaches();
 }
 
 export function tokenMask(value: string | null): string {

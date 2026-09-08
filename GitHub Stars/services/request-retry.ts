@@ -102,12 +102,15 @@ export type RetryableError = {
 };
 
 export const READ_RETRY_DELAYS_MS = [750, 1500] as const;
+export const READ_MAX_ATTEMPTS = READ_RETRY_DELAYS_MS.length + 1;
+export const READ_RETRY_WAIT_CAP_MS = 10_000;
 
 export function retryDelayMs(
   error: unknown,
   attempt: number,
   now = Date.now(),
 ): number | null {
+  if (attempt >= READ_RETRY_DELAYS_MS.length) return null;
   if (typeof error !== "object" || error === null) return null;
   const value = error as RetryableError;
   if (
@@ -129,7 +132,9 @@ export function retryDelayMs(
   const delay = Number.isFinite(serverDelay)
     ? serverDelay
     : READ_RETRY_DELAYS_MS[attempt];
-  return delay !== undefined && delay <= 10_000 ? Math.max(250, delay) : null;
+  return delay !== undefined && delay <= READ_RETRY_WAIT_CAP_MS
+    ? Math.max(250, delay)
+    : null;
 }
 
 export function wait(milliseconds: number): Promise<void> {

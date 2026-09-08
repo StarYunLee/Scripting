@@ -20,12 +20,7 @@ export type GitHubRepository = {
 };
 
 export type ForkSyncState =
-  | "unknown"
-  | "checking"
-  | "current"
-  | "behind"
-  | "diverged"
-  | "error";
+  "unknown" | "checking" | "current" | "behind" | "diverged" | "error";
 
 export type ForkSyncStatus = {
   state: ForkSyncState;
@@ -93,6 +88,11 @@ export type ResourceSyncTimestamps = {
   lists: string | null;
   ownedRepositories: string | null;
   memberships: string | null;
+};
+
+export type PagedCollection<T> = {
+  items: T[];
+  complete: boolean;
 };
 
 export type MembershipSnapshot = {
@@ -171,6 +171,7 @@ export type GitHubError = {
 
 export type AppState = {
   tokenConfigured: boolean;
+  accountLogin: string | null;
   includePrivateRepositories: boolean;
   viewer: GitHubUser | null;
   stars: GitHubRepository[];
@@ -196,9 +197,11 @@ export type AppState = {
 
 export type CacheEnvelope = {
   version: 1;
+  accountLogin?: string | null;
   viewer: GitHubUser | null;
   stars: GitHubRepository[];
   lists: GitHubListSummary[];
   savedAt: string;
   resourceSyncedAt?: ResourceSyncTimestamps;
+  starsComplete?: boolean;
 };

@@ -1,3 +1,4 @@
+import { captureCredentialGuard, sessionAwait } from "./session-guard";
 import { fetch, type RequestInit, type Response } from "scripting";
 import { readToken } from "../auth/token";
 import {
@@ -5,8 +6,8 @@ import {
   isRateLimitedResponse,
   responseRetryAfter,
 } from "./errors";
-
-import { retryDelayMs, wait } from "./request-retry";
+import { READ_MAX_ATTEMPTS, retryDelayMs, wait } from "./request-retry";
+import type { PagedCollection } from "../types";
 
 const API_BASE = "https://api.github.com";
 const API_VERSION = "2026-03-10";
@@ -72,15 +73,19 @@ export type RestUser = {
   public_repos?: unknown;
 };
 
+function resolveToken(tokenOverride?: string): string {
+  const token = tokenOverride ?? readToken();
+  if (!token) throw createGitHubError("missing_token", "未配置 Token");
+  return token;
+}
+
 function headers(
   accept = "application/vnd.github+json",
   tokenOverride?: string,
 ): Record<string, string> {
-  const token = tokenOverride ?? readToken();
-  if (!token) throw createGitHubError("missing_token", "未配置 Token");
   return {
     Accept: accept,
-    Authorization: `Bearer ${token}`,
+    Authorization: `Bearer ${resolveToken(tokenOverride)}`,
     "X-GitHub-Api-Version": API_VERSION,
   };
 }
@@ -96,27 +101,38 @@ async function requestOnce(
   init: RequestInit = {},
   tokenOverride?: string,
 ): Promise<RequestResult> {
+  const assertOperationCurrent = captureCredentialGuard();
+
+  const requestHeaders = {
+    ...headers("application/vnd.github+json", tokenOverride),
+    ...(init.headers ?? {}),
+  };
   let response: Response;
   try {
-    response = await fetch(`${API_BASE}${path}`, {
-      ...init,
-      headers: {
-        ...headers("application/vnd.github+json", tokenOverride),
-        ...(init.headers ?? {}),
-      },
-      timeout: 30,
-      debugLabel: `github-rest:${path.split("?")[0]}`,
-    });
+    response = await sessionAwait(
+      () =>
+        fetch(`${API_BASE}${path}`, {
+          ...init,
+          headers: requestHeaders,
+          timeout: 30,
+          debugLabel: `github-rest:${path.split("?")[0]}`,
+        }),
+      assertOperationCurrent,
+    );
   } catch {
+    assertOperationCurrent();
+
     throw createGitHubError("network", "网络请求失败");
   }
 
-  const raw = await response.text();
+  const raw = await sessionAwait(() => response.text(), assertOperationCurrent);
   let body: unknown = null;
   if (raw) {
     try {
       body = JSON.parse(raw);
     } catch {
+      assertOperationCurrent();
+
       body = { message: raw.slice(0, 200) };
     }
   }
@@ -172,15 +188,24 @@ async function request(
   init: RequestInit = {},
   tokenOverride?: string,
 ): Promise<RequestResult> {
-  for (let attempt = 0; ; attempt += 1) {
+  const assertOperationCurrent = captureCredentialGuard();
+
+  const sessionToken = tokenOverride ?? readToken() ?? undefined;
+  for (let attempt = 0; attempt < READ_MAX_ATTEMPTS; attempt += 1) {
     try {
-      return await requestOnce(path, init, tokenOverride);
+      return await sessionAwait(
+        () => requestOnce(path, init, sessionToken),
+        assertOperationCurrent,
+      );
     } catch (error) {
+      assertOperationCurrent();
+
       const delay = isReadMethod(init) ? retryDelayMs(error, attempt) : null;
       if (delay === null) throw error;
-      await wait(delay);
+      await sessionAwait(() => wait(delay), assertOperationCurrent);
     }
   }
+  throw createGitHubError("unknown", "请求重试已达上限");
 }
 
 async function requestJsonWithScopes<T>(
@@ -188,10 +213,11 @@ async function requestJsonWithScopes<T>(
   init: RequestInit = {},
   tokenOverride?: string,
 ): Promise<{ data: T; oauthScopes: string | null }> {
-  const { status, body, oauthScopes } = await request(
-    path,
-    init,
-    tokenOverride,
+  const assertOperationCurrent = captureCredentialGuard();
+
+  const { status, body, oauthScopes } = await sessionAwait(
+    () => request(path, init, tokenOverride),
+    assertOperationCurrent,
   );
   if (body === null) {
     throw createGitHubError("invalid_response", "响应为空", status);
@@ -204,33 +230,69 @@ async function requestJson<T>(
   init: RequestInit = {},
   tokenOverride?: string,
 ): Promise<T> {
-  const { status, body } = await request(path, init, tokenOverride);
+  const assertOperationCurrent = captureCredentialGuard();
+
+  const { status, body } = await sessionAwait(
+    () => request(path, init, tokenOverride),
+    assertOperationCurrent,
+  );
   if (body === null)
     throw createGitHubError("invalid_response", "响应为空", status);
   return body as T;
 }
 
+const REST_PAGE_LIMIT = 100;
+
+function appendUniqueRepositories(
+  result: RestStarredRepository[],
+  seen: Set<string>,
+  batch: RestStarredRepository[],
+): void {
+  for (const item of batch) {
+    const key =
+      typeof item.node_id === "string" && item.node_id
+        ? item.node_id
+        : typeof item.full_name === "string" && item.full_name
+          ? `name:${item.full_name.toLowerCase()}`
+          : typeof item.id === "number"
+            ? `id:${item.id}`
+            : null;
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    result.push(item);
+  }
+}
+
 export async function fetchStarredRepositories(): Promise<
-  RestStarredRepository[]
+  PagedCollection<RestStarredRepository>
 > {
+  const assertOperationCurrent = captureCredentialGuard();
+
   const result: RestStarredRepository[] = [];
-  for (let page = 1; page <= 100; page += 1) {
-    const batch = await requestJson<RestStarredResponseItem[]>(
-      `/user/starred?per_page=100&page=${page}&sort=created&direction=desc`,
-      { headers: { Accept: "application/vnd.github.star+json" } },
+  const seen = new Set<string>();
+  for (let page = 1; page <= REST_PAGE_LIMIT; page += 1) {
+    const batch = await sessionAwait(
+      () =>
+        requestJson<RestStarredResponseItem[]>(
+          `/user/starred?per_page=100&page=${page}&sort=created&direction=desc`,
+          { headers: { Accept: "application/vnd.github.star+json" } },
+        ),
+      assertOperationCurrent,
     );
     if (!Array.isArray(batch))
       throw createGitHubError("invalid_response", "Stars 响应不是数组");
+    const unwrapped: RestStarredRepository[] = [];
     for (const item of batch) {
       if (isStarredEnvelope(item)) {
-        result.push({ ...item.repo, starred_at: item.starred_at });
+        unwrapped.push({ ...item.repo, starred_at: item.starred_at });
       } else {
-        result.push(item);
+        unwrapped.push(item);
       }
     }
-    if (batch.length < 100) return result;
+    appendUniqueRepositories(result, seen, unwrapped);
+    if (batch.length < 100) return { items: result, complete: true };
   }
-  return result;
+  return { items: result, complete: false };
 }
 
 export async function fetchViewer(): Promise<RestUser> {
@@ -331,14 +393,25 @@ function starredPath(fullName: string): string {
 }
 
 export async function unstarRepository(fullName: string): Promise<void> {
-  await request(starredPath(fullName), { method: "DELETE" });
+  const assertOperationCurrent = captureCredentialGuard();
+
+  await sessionAwait(
+    () => request(starredPath(fullName), { method: "DELETE" }),
+    assertOperationCurrent,
+  );
 }
 
 export async function starRepository(fullName: string): Promise<void> {
-  await request(starredPath(fullName), {
-    method: "PUT",
-    headers: { "Content-Length": "0" },
-  });
+  const assertOperationCurrent = captureCredentialGuard();
+
+  await sessionAwait(
+    () =>
+      request(starredPath(fullName), {
+        method: "PUT",
+        headers: { "Content-Length": "0" },
+      }),
+    assertOperationCurrent,
+  );
 }
 
 export type UpdateOwnedRepositoryInput = {
@@ -350,13 +423,18 @@ export type UpdateOwnedRepositoryInput = {
 
 export async function fetchOwnedRepositories(
   includePrivateRepositories: boolean,
-): Promise<RestStarredRepository[]> {
+): Promise<PagedCollection<RestStarredRepository>> {
+  const assertOperationCurrent = captureCredentialGuard();
+
   const result: RestStarredRepository[] = [];
+  const seen = new Set<string>();
   const visibility = includePrivateRepositories ? "all" : "public";
-  const { data, oauthScopes } = await requestJsonWithScopes<
-    RestStarredRepository[]
-  >(
-    `/user/repos?affiliation=owner&visibility=${visibility}&sort=pushed&direction=desc&per_page=100&page=1`,
+  const { data, oauthScopes } = await sessionAwait(
+    () =>
+      requestJsonWithScopes<RestStarredRepository[]>(
+        `/user/repos?affiliation=owner&visibility=${visibility}&sort=pushed&direction=desc&per_page=100&page=1`,
+      ),
+    assertOperationCurrent,
   );
   if (includePrivateRepositories) {
     const scopes = (oauthScopes ?? "")
@@ -374,19 +452,23 @@ export async function fetchOwnedRepositories(
   if (!Array.isArray(data)) {
     throw createGitHubError("invalid_response", "仓库响应不是数组");
   }
-  result.push(...data);
-  if (data.length < 100) return result;
-  for (let page = 2; page <= 100; page += 1) {
-    const batch = await requestJson<RestStarredRepository[]>(
-      `/user/repos?affiliation=owner&visibility=${visibility}&sort=pushed&direction=desc&per_page=100&page=${page}`,
+  appendUniqueRepositories(result, seen, data);
+  if (data.length < 100) return { items: result, complete: true };
+  for (let page = 2; page <= REST_PAGE_LIMIT; page += 1) {
+    const batch = await sessionAwait(
+      () =>
+        requestJson<RestStarredRepository[]>(
+          `/user/repos?affiliation=owner&visibility=${visibility}&sort=pushed&direction=desc&per_page=100&page=${page}`,
+        ),
+      assertOperationCurrent,
     );
     if (!Array.isArray(batch)) {
       throw createGitHubError("invalid_response", "仓库响应不是数组");
     }
-    result.push(...batch);
-    if (batch.length < 100) return result;
+    appendUniqueRepositories(result, seen, batch);
+    if (batch.length < 100) return { items: result, complete: true };
   }
-  return result;
+  return { items: result, complete: false };
 }
 
 function repositoryPath(fullName: string): string {
@@ -401,13 +483,16 @@ async function replaceOwnedRepositoryTopics(
   fullName: string,
   topics: string[],
 ): Promise<string[]> {
-  const result = await requestJson<{ names?: unknown }>(
-    `${repositoryPath(fullName)}/topics`,
-    {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ names: topics }),
-    },
+  const assertOperationCurrent = captureCredentialGuard();
+
+  const result = await sessionAwait(
+    () =>
+      requestJson<{ names?: unknown }>(`${repositoryPath(fullName)}/topics`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ names: topics }),
+      }),
+    assertOperationCurrent,
   );
   if (!Array.isArray(result.names)) return topics;
   return result.names.filter(
@@ -419,33 +504,45 @@ export async function updateOwnedRepository(
   fullName: string,
   input: UpdateOwnedRepositoryInput,
 ): Promise<RestStarredRepository> {
+  const assertOperationCurrent = captureCredentialGuard();
+
   const hasMetadata =
     input.description !== undefined ||
     input.homepage !== undefined ||
     input.hasIssues !== undefined;
   let updated: RestStarredRepository | null = null;
   if (hasMetadata) {
-    updated = await requestJson<RestStarredRepository>(
-      repositoryPath(fullName),
-      {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...(input.description !== undefined
-            ? { description: input.description }
-            : {}),
-          ...(input.homepage !== undefined ? { homepage: input.homepage } : {}),
-          ...(input.hasIssues !== undefined
-            ? { has_issues: input.hasIssues }
-            : {}),
+    updated = await sessionAwait(
+      () =>
+        requestJson<RestStarredRepository>(repositoryPath(fullName), {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ...(input.description !== undefined
+              ? { description: input.description }
+              : {}),
+            ...(input.homepage !== undefined
+              ? { homepage: input.homepage }
+              : {}),
+            ...(input.hasIssues !== undefined
+              ? { has_issues: input.hasIssues }
+              : {}),
+          }),
         }),
-      },
+      assertOperationCurrent,
     );
   }
   if (input.topics !== undefined) {
-    const names = await replaceOwnedRepositoryTopics(fullName, input.topics);
+    const topics = input.topics;
+    const names = await sessionAwait(
+      () => replaceOwnedRepositoryTopics(fullName, topics),
+      assertOperationCurrent,
+    );
     if (!updated) {
-      updated = await fetchRepository(fullName);
+      updated = await sessionAwait(
+        () => fetchRepository(fullName),
+        assertOperationCurrent,
+      );
     }
     updated = { ...updated, topics: names };
   }
@@ -533,34 +630,73 @@ function comparisonCount(value: unknown): number {
     : 0;
 }
 
-export async function fetchForkUpstreamComparison(
+type ForkParentInfo = {
+  upstreamFullName: string;
+  upstreamBranch: string;
+};
+
+const forkParentCache = new Map<string, ForkParentInfo>();
+
+export function clearForkParentCache(): void {
+  forkParentCache.clear();
+}
+
+async function resolveForkParent(
   forkFullName: string,
-  forkBranch: string,
-): Promise<ForkUpstreamComparison> {
-  const repository = await fetchRepository(forkFullName);
+  force = false,
+): Promise<ForkParentInfo> {
+  const assertOperationCurrent = captureCredentialGuard();
+
+  const cached = forkParentCache.get(forkFullName);
+  if (!force && cached) return cached;
+  const repository = await sessionAwait(
+    () => fetchRepository(forkFullName),
+    assertOperationCurrent,
+  );
   if (repository.fork !== true || !repository.parent) {
     throw createGitHubError(
       "invalid_response",
       "该仓库没有可用的 Fork 上游信息",
     );
   }
-  const upstreamFullName = requiredString(
-    repository.parent.full_name,
-    "Fork 上游仓库名称",
+  const parent: ForkParentInfo = {
+    upstreamFullName: requiredString(
+      repository.parent.full_name,
+      "Fork 上游仓库名称",
+    ),
+    upstreamBranch: requiredString(
+      repository.parent.default_branch,
+      "Fork 上游默认分支",
+    ),
+  };
+  forkParentCache.set(forkFullName, parent);
+  return parent;
+}
+
+export async function fetchForkUpstreamComparison(
+  forkFullName: string,
+  forkBranch: string,
+  options?: { refreshParent?: boolean },
+): Promise<ForkUpstreamComparison> {
+  const assertOperationCurrent = captureCredentialGuard();
+
+  const parent = await sessionAwait(
+    () => resolveForkParent(forkFullName, options?.refreshParent === true),
+    assertOperationCurrent,
   );
-  const upstreamBranch = requiredString(
-    repository.parent.default_branch,
-    "Fork 上游默认分支",
-  );
-  const comparison = await compareForkWithUpstream(
-    forkFullName,
-    upstreamFullName,
-    upstreamBranch,
-    forkBranch,
+  const comparison = await sessionAwait(
+    () =>
+      compareForkWithUpstream(
+        forkFullName,
+        parent.upstreamFullName,
+        parent.upstreamBranch,
+        forkBranch,
+      ),
+    assertOperationCurrent,
   );
   return {
-    upstreamFullName,
-    upstreamBranch,
+    upstreamFullName: parent.upstreamFullName,
+    upstreamBranch: parent.upstreamBranch,
     aheadBy: comparisonCount(comparison.ahead_by),
     behindBy: comparisonCount(comparison.behind_by),
   };

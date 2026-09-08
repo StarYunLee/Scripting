@@ -33,6 +33,16 @@ export function loadCache(): CacheEnvelope | null {
   return value;
 }
 
+export function cacheMatchesAccount(
+  cache: { accountLogin?: string | null } | null,
+  accountLogin: string | null,
+): boolean {
+  if (!cache) return false;
+  const cachedLogin = cache.accountLogin ?? null;
+  if (!accountLogin || !cachedLogin) return true;
+  return cachedLogin.toLowerCase() === accountLogin.toLowerCase();
+}
+
 export function saveCache(value: CacheEnvelope): void {
   Storage.set(CACHE_KEY, value);
 }

@@ -23,7 +23,8 @@ export function ListDetailPage(props: {
   const [managedRepository, setManagedRepository] =
     useState<GitHubRepository | null>(null);
   async function openListManager(repository: GitHubRepository) {
-    if (!store.getState().memberships) {
+    const snapshot = store.getState();
+    if (!snapshot.memberships) {
       try {
         await store.refreshMemberships();
       } catch (error) {
@@ -37,13 +38,20 @@ export function ListDetailPage(props: {
         return;
       }
     }
+    setState(store.getState());
     setManagedRepository(repository);
   }
 
   useEffect(() => {
-    const unsubscribe = store.subscribe(`detail:${list.id}`, setState);
+    const unsubscribers = [
+      store.subscribe(`detail:${list.id}`, setState),
+      store.subscribe("lists", setState),
+      store.subscribe("stars", setState),
+    ];
     void store.openListDetail(list.id);
-    return unsubscribe;
+    return () => {
+      for (const unsubscribe of unsubscribers) unsubscribe();
+    };
   }, [list.id]);
   const detail = state.listDetails[list.id];
   const error = displayError(state.detailErrors[list.id] ?? null);

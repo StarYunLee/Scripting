@@ -42,10 +42,26 @@ function formatLastSyncedAt(value: string | null): string | undefined {
   return `${date.toLocaleDateString([], { month: "numeric", day: "numeric" })} ${date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} 更新`;
 }
 
+const timestampCache = new Map<string, number>();
+const searchTextCache = new WeakMap<GitHubRepository, string>();
+
 function timestamp(value: string | null): number {
   if (!value) return 0;
+  const cached = timestampCache.get(value);
+  if (cached !== undefined) return cached;
   const time = new Date(value).getTime();
-  return Number.isFinite(time) ? time : 0;
+  const parsed = Number.isFinite(time) ? time : 0;
+  timestampCache.set(value, parsed);
+  return parsed;
+}
+
+function repositorySearchText(item: GitHubRepository): string {
+  const cached = searchTextCache.get(item);
+  if (cached !== undefined) return cached;
+  const text =
+    `${item.fullName} ${item.description ?? ""} ${item.language ?? ""}`.toLowerCase();
+  searchTextCache.set(item, text);
+  return text;
 }
 
 function collectLanguages(stars: readonly GitHubRepository[]): string[] {
@@ -92,9 +108,7 @@ function filterAndSortStars(
       }
     }
     if (!keyword) return true;
-    return `${item.fullName} ${item.description ?? ""} ${item.language ?? ""}`
-      .toLowerCase()
-      .includes(keyword);
+    return repositorySearchText(item).includes(keyword);
   });
   const sorted = filtered.slice();
   sorted.sort((a, b) => {
@@ -266,6 +280,7 @@ export function AllStarsPage(props: {
         return;
       }
     }
+    setState(store.getState());
     setManagedRepository(repository);
   }
 
