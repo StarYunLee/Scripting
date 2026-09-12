@@ -22,6 +22,7 @@ export type DashboardWidgetRefreshAccountPlan =
 
 export type DashboardWidgetRefreshPlanningResult = {
   accounts: DashboardWidgetRefreshAccountPlan[];
+  candidates: DashboardWidgetRefreshAccountPlan[];
   candidate: DashboardWidgetRefreshAccountPlan | null;
   pendingCount: number;
   nextFutureReloadAt: string | null;
@@ -116,6 +117,7 @@ export function planDashboardWidgetRefresh(input: {
 
   return {
     accounts,
+    candidates: fetchCandidates,
     candidate: fetchCandidates[0] || null,
     pendingCount: fetchCandidates.length,
     nextFutureReloadAt: futureReloads[0]?.reloadAt || null,

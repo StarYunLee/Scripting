@@ -1,3 +1,4 @@
+import { runWithConcurrency } from "./refresh-batches";
 import type { UsageCard } from "../models";
 import type { NormalizedUsageSnapshot } from "./usage-model";
 import type { WidgetRefreshMetadata } from "./widget-refresh-metadata";
@@ -39,6 +40,7 @@ type DashboardLoadedAccount = Pick<
 
 export type DashboardRefreshResult = {
   cards: UsageCard[];
+  candidateKeys: string[];
   candidateKey: string | null;
   pendingCount: number;
   reloadPolicy: DashboardReloadPolicy;
@@ -123,25 +125,34 @@ export async function executeDashboardWidgetRefresh(input: {
     if (index >= 0) cards[index] = errorCard(cards[index], message);
   }
 
-  const candidate: DashboardWidgetRefreshAccountPlan | null = initial.candidate;
-  let loaded: DashboardLoadedAccount | null = null;
-  if (candidate) {
-    loaded = await input.loadAccount({
-      provider: candidate.provider,
-      profileId: candidate.profileId,
-      reloadMinutes: input.reloadMinutes,
-    });
+  const candidates: DashboardWidgetRefreshAccountPlan[] =
+    initial.candidates.slice(0, 2);
+  const loadedByKey = new Map<string, DashboardLoadedAccount>();
+  const settled = await runWithConcurrency(
+    candidates,
+    2,
+    async (candidate) => ({
+      candidate,
+      loaded: await input.loadAccount({
+        provider: candidate.provider,
+        profileId: candidate.profileId,
+        reloadMinutes: input.reloadMinutes,
+      }),
+    }),
+  );
+  for (const item of settled) {
+    if (!item.ok) continue;
+    const { candidate, loaded } = item.value;
+    loadedByKey.set(candidate.key, loaded);
     const index = cards.findIndex((card) => card.key === candidate.key);
-    if (index >= 0) {
-      const previous = cards[index];
-      if (loaded.errorMessage) {
-        cards[index] = errorCard(previous, loaded.errorMessage);
-      } else if (loaded.snapshot) {
-        cards[index] = mergeDashboardSnapshot(previous, loaded.snapshot);
-      } else if (loaded.statusText) {
-        cards[index] = errorCard(previous, loaded.statusText);
-      }
-    }
+    if (index < 0) continue;
+    const previous = cards[index];
+    if (loaded.errorMessage)
+      cards[index] = errorCard(previous, loaded.errorMessage);
+    else if (loaded.snapshot)
+      cards[index] = mergeDashboardSnapshot(previous, loaded.snapshot);
+    else if (loaded.statusText)
+      cards[index] = errorCard(previous, loaded.statusText);
   }
 
   const finalAccounts = cards.map((card) => {
@@ -154,10 +165,7 @@ export async function executeDashboardWidgetRefresh(input: {
       provider: card.provider,
       profileId: card.accountId,
       fetchedAt: card.fetchedAt,
-      metadata:
-        card.key === candidate?.key && loaded
-          ? loaded.metadata
-          : initialMetadata,
+      metadata: loadedByKey.get(card.key)?.metadata || initialMetadata,
     };
   });
   const finalPlan = planDashboardWidgetRefresh({
@@ -177,7 +185,8 @@ export async function executeDashboardWidgetRefresh(input: {
 
   return {
     cards,
-    candidateKey: candidate?.key || null,
+    candidateKeys: candidates.map((candidate) => candidate.key),
+    candidateKey: candidates[0]?.key || null,
     pendingCount: finalPlan.pendingCount,
     reloadPolicy,
   };
