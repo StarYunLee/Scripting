@@ -65,6 +65,7 @@ export function StatusPage(props: {
   }, []);
   const [busy, setBusy] = useState(false);
   const [openedCard, setOpenedCard] = useState<UsageCard | null>(null);
+  const [filterProvider, setFilterProvider] = useState<ProviderId | null>(null);
   const displayMode = "remaining";
   const [feedbackTimers] = useState(
     () => new Map<string, ReturnType<typeof setTimeout>>(),
@@ -365,6 +366,9 @@ export function StatusPage(props: {
     // 无账号空态中心已有平台选择；已有账号即使全部隐藏也保留添加入口。
     showAdd: hasAccounts || Boolean(sheet),
     onAdd: startAuth,
+    showFilter: cards.length > 0,
+    filterProvider,
+    onFilter: setFilterProvider,
   });
 
   async function refreshAll() {
@@ -616,15 +620,34 @@ export function StatusPage(props: {
             没有可显示的账号。到设置页打开用量总览开关。
           </Text>
         ) : null}
-        {cards.map((card) => (
-          <UsageCardView
-            key={card.key}
-            card={card}
-            displayMode={displayMode}
-            onRefresh={() => refreshOne(card)}
-            onOpen={() => setOpenedCard(card)}
-          />
-        ))}
+        {(() => {
+          const visibleCards = filterProvider
+            ? cards.filter((card) => card.provider === filterProvider)
+            : cards;
+          if (cards.length > 0 && visibleCards.length === 0) {
+            return (
+              <Text
+                font={14}
+                foregroundStyle="secondaryLabel"
+                multilineTextAlignment="center"
+                frame={{ maxWidth: "infinity", minHeight: 120 }}
+                listRowBackground={<></>}
+                listRowSeparator="hidden"
+              >
+                当前筛选平台暂无可显示的账号
+              </Text>
+            );
+          }
+          return visibleCards.map((card) => (
+            <UsageCardView
+              key={card.key}
+              card={card}
+              displayMode={displayMode}
+              onRefresh={() => refreshOne(card)}
+              onOpen={() => setOpenedCard(card)}
+            />
+          ));
+        })()}
         {props.demoMode ? (
           <Text
             font={12}

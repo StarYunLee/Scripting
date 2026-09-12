@@ -12,7 +12,7 @@
       "homepage": "https://github.com/gamesme"
     }
   ],
-  "version": "1.6.0",
+  "version": "1.6.1",
   "intentInputTypes": [],
   "localizedNames": {
     "zh": "AI Usage",
@@ -20,7 +20,7 @@
   },
   "description": "Unified multi-account AI usage app for Codex, Grok, Claude, Antigravity, Cursor, Kimi Code, GitHub Copilot, Z.ai, and MiniMax, with configurable Small, Medium, and Large Home Screen widgets.",
   "remoteResource": {
-    "url": "https://raw.githubusercontent.com/St******ee/Scripting/main/AI-Usage.scripting",
+    "url": "https://raw.githubusercontent.com/StarYunLee/Scripting/main/AI-Usage.scripting",
     "autoUpdateInterval": 86400
   },
   "author": {

@@ -9,11 +9,8 @@ import { parseWidgetFamily } from "./family";
 import type { WidgetDataSource } from "./parameter";
 import {
   dashboardWidgetCandidateCards as dashboardWidgetCandidateCardsCore,
-  executeDashboardWidgetRefresh,
   type DashboardReloadPolicy,
 } from "../services/dashboard-widget-loader-core";
-import { getWidgetRefreshMetadata } from "../services/widget-refresh-metadata";
-import { loadWidgetAccountSnapshot } from "../services/widget-account-loader";
 import { resolveWidgetReloadPolicy } from "../services/widget-refresh-planner";
 
 export type DashboardWidgetData = {
@@ -54,17 +51,7 @@ export async function loadDashboardWidgetUsage(input: {
   const preferences = readDashboardWidgetPreferences(input.dataSource);
   const kind = parseWidgetFamily(input.family);
   const raw =
-    input.dataSource === "demo"
-      ? listDemoCards()
-      : listAuthorizedWidgetCards((accounts) => {
-          const ordered = applyDashboardWidgetPreferences(
-            accounts,
-            preferences,
-          );
-          return kind
-            ? dashboardWidgetCandidateCards(ordered, input.family)
-            : ordered;
-        });
+    input.dataSource === "demo" ? listDemoCards() : listAuthorizedWidgetCards();
   const selected = applyDashboardWidgetPreferences(raw, preferences);
   if (input.dataSource === "demo") {
     return {
@@ -82,21 +69,13 @@ export async function loadDashboardWidgetUsage(input: {
       reloadPolicy: { policy: "never" },
     };
   }
-  const candidates = dashboardWidgetCandidateCards(selected, input.family);
-  const result = await executeDashboardWidgetRefresh({
-    cards: candidates,
-    reloadMinutes: input.reloadMinutes,
-    now: Date.now(),
-    readMetadata: getWidgetRefreshMetadata,
-    loadAccount: loadWidgetAccountSnapshot,
-  });
-  const refreshedByKey = new Map(result.cards.map((card) => [card.key, card]));
-  const mergedRaw = raw.map((card) => refreshedByKey.get(card.key) || card);
-  const finalSelected = applyDashboardWidgetPreferences(mergedRaw, preferences);
+  // Dashboard 小组件切为纯本地快照模式（Zero-Network）：
+  // 保留全量可用卡片传递给视图，以便准确计算各尺寸的 hiddenAccountCount（“另有 x 个账号”）；
+  // 0ms 响应，改配置与样式秒级刷新；数据更新收口至 App 前台与桌面手动刷新按钮。
   return {
-    cards: finalSelected,
-    hasErrors: finalSelected.some((card) => card.source === "error"),
+    cards: selected,
+    hasErrors: selected.some((card) => card.source === "error"),
     display: preferences.display,
-    reloadPolicy: result.reloadPolicy,
+    reloadPolicy: fallbackReloadPolicy(input.reloadMinutes),
   };
 }

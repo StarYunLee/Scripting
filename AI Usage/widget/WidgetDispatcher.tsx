@@ -4,11 +4,10 @@ import { providerWatermarkPath } from "./watermarks";
 import {
   formatCompactRelativeResetAt,
   formatPercent,
-  formatRelativeFetchedAt,
   formatRelativeResetAt,
   formatSingleWindowResetAt,
   formatSmallDate,
-  formatSmallRelativeFetchedAt,
+  formatTimeOnly,
 } from "../services/usage-format";
 import { parseWidgetFamily, widgetDispatcherFallbackWidth } from "./family";
 import {
@@ -86,7 +85,8 @@ export function WidgetDispatcher(props: Props) {
   const width = displayWidth(props.family);
   const planLabel = props.planLabel || props.provider;
   const watermarkPath = providerWatermarkPath(props.provider);
-  const fetchedText = `${formatRelativeFetchedAt(props.fetchedAt)}刷新`;
+  const timeText = formatTimeOnly(props.fetchedAt);
+  const fetchedText = timeText === "—" ? "—" : `${timeText} 刷新`;
   const optionalMeta = resolveOptionalMeta(props.resetCredits);
 
   // 兜底一个空窗口避免无数据时崩溃
@@ -104,8 +104,7 @@ export function WidgetDispatcher(props: Props) {
         ];
 
   if (isSmall) {
-    const singleFetchedText =
-      props.errorText || formatSmallRelativeFetchedAt(props.fetchedAt);
+    const singleFetchedText = props.errorText || fetchedText;
     // Small 尺寸分支
     if (activeWindows.length <= 1) {
       const w = activeWindows[0];

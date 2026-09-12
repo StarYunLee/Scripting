@@ -1,5 +1,6 @@
-import { HStack, Image, Spacer, Text, VStack } from "scripting";
+import { Button, HStack, Image, Spacer, Text, VStack } from "scripting";
 import type { Color, DynamicShapeStyle } from "scripting";
+import { RefreshAIUsageAllIntent } from "../../app_intents";
 import { PlanBadge } from "../../components/PlanBadge";
 import { formatResetCountdown } from "../../services/usage-format";
 import { parseWidgetFamily } from "../family";
@@ -24,6 +25,7 @@ const C = {
   bg: "systemBackground" as Color,
   primary: "label" as Color,
   secondary: "secondaryLabel" as Color,
+  accent: "systemBlue" as Color,
   divider: dynamic("rgba(60,60,67,0.12)", "rgba(235,235,245,0.16)"),
   warn: "systemOrange" as Color,
 };
@@ -205,23 +207,32 @@ function DashboardFooter(props: {
   refreshText: string;
 }) {
   return (
-    <HStack frame={{ maxWidth: "infinity" }}>
+    <HStack alignment="center" frame={{ maxWidth: "infinity" }}>
       <Text font={9} foregroundStyle={C.secondary}>
         {props.hiddenAccountCount > 0
           ? `另有 ${props.hiddenAccountCount} 个账号`
           : ""}
       </Text>
       <Spacer minLength={0} />
-      {props.hasErrors ? (
-        <Image
-          systemName="exclamationmark.triangle.fill"
-          font={8}
-          foregroundStyle={C.warn}
-        />
-      ) : null}
-      <Text font={9} foregroundStyle={C.secondary}>
-        {props.refreshText}
-      </Text>
+      <HStack alignment="center" spacing={6}>
+        {props.hasErrors ? (
+          <Image
+            systemName="exclamationmark.triangle.fill"
+            font={8}
+            foregroundStyle={C.warn}
+          />
+        ) : null}
+        <Text font={9} foregroundStyle={C.secondary}>
+          {props.refreshText}
+        </Text>
+        <Button intent={RefreshAIUsageAllIntent(undefined)} buttonStyle="plain">
+          <Image
+            systemName="arrow.triangle.2.circlepath"
+            font={9}
+            foregroundStyle={C.accent}
+          />
+        </Button>
+      </HStack>
     </HStack>
   );
 }
@@ -239,8 +250,8 @@ function SmallDashboard(props: {
   return (
     <VStack
       alignment="leading"
-      spacing={4}
-      padding={{ horizontal: padding, vertical: 12 }}
+      spacing={3}
+      padding={{ horizontal: padding, top: 10, bottom: 9 }}
       frame={{ maxWidth: "infinity", maxHeight: "infinity" }}
       widgetBackground={C.bg}
     >
@@ -368,7 +379,7 @@ function LargeDashboard(props: {
           AI Usage
         </Text>
         <Spacer minLength={0} />
-        <Text font={9} foregroundStyle={C.secondary} monospacedDigit>
+        <Text font={10.5} foregroundStyle={C.secondary} monospacedDigit>
           {accountSummary}
         </Text>
       </HStack>
@@ -399,18 +410,30 @@ function LargeDashboard(props: {
           </HStack>
         </VStack>
       ))}
-      <HStack frame={{ maxWidth: "infinity" }}>
+      <HStack alignment="center" frame={{ maxWidth: "infinity" }}>
         <Spacer minLength={0} />
-        {props.hasErrors ? (
-          <Image
-            systemName="exclamationmark.triangle.fill"
-            font={8}
-            foregroundStyle={C.warn}
-          />
-        ) : null}
-        <Text font={9} foregroundStyle={C.secondary}>
-          {refreshText}
-        </Text>
+        <HStack alignment="center" spacing={7}>
+          {props.hasErrors ? (
+            <Image
+              systemName="exclamationmark.triangle.fill"
+              font={9}
+              foregroundStyle={C.warn}
+            />
+          ) : null}
+          <Text font={10.5} foregroundStyle={C.secondary}>
+            {refreshText}
+          </Text>
+          <Button
+            intent={RefreshAIUsageAllIntent(undefined)}
+            buttonStyle="plain"
+          >
+            <Image
+              systemName="arrow.triangle.2.circlepath"
+              font={10.5}
+              foregroundStyle={C.accent}
+            />
+          </Button>
+        </HStack>
       </HStack>
     </VStack>
   );
@@ -492,7 +515,7 @@ function SparseLargeDashboard(props: {
           AI Usage
         </Text>
         <Spacer minLength={0} />
-        <Text font={9} foregroundStyle={C.secondary} monospacedDigit>
+        <Text font={10.5} foregroundStyle={C.secondary} monospacedDigit>
           {accountSummary}
         </Text>
       </HStack>
@@ -534,18 +557,30 @@ function SparseLargeDashboard(props: {
           </HStack>
         </VStack>
       ))}
-      <HStack frame={{ maxWidth: "infinity" }}>
+      <HStack alignment="center" frame={{ maxWidth: "infinity" }}>
         <Spacer minLength={0} />
-        {props.hasErrors ? (
-          <Image
-            systemName="exclamationmark.triangle.fill"
-            font={8}
-            foregroundStyle={C.warn}
-          />
-        ) : null}
-        <Text font={9} foregroundStyle={C.secondary}>
-          {refreshText}
-        </Text>
+        <HStack alignment="center" spacing={7}>
+          {props.hasErrors ? (
+            <Image
+              systemName="exclamationmark.triangle.fill"
+              font={9}
+              foregroundStyle={C.warn}
+            />
+          ) : null}
+          <Text font={10.5} foregroundStyle={C.secondary}>
+            {refreshText}
+          </Text>
+          <Button
+            intent={RefreshAIUsageAllIntent(undefined)}
+            buttonStyle="plain"
+          >
+            <Image
+              systemName="arrow.triangle.2.circlepath"
+              font={10.5}
+              foregroundStyle={C.accent}
+            />
+          </Button>
+        </HStack>
       </HStack>
     </VStack>
   );
