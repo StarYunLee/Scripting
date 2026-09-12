@@ -32,6 +32,7 @@ import {
   RELOAD_MINUTE_LABELS,
   RELOAD_MINUTE_OPTIONS,
   setAppReloadMinutes,
+  setWidgetClearHomeScreen,
   snapReloadMinutes,
   type BackgroundThemeId,
 } from "../services/settings";
@@ -600,7 +601,7 @@ export function SettingsPage(props: {
 
         <Section
           listRowBackground={glassRowBackground}
-          header={<GlassSectionHeader title="外观与刷新" />}
+          header={<GlassSectionHeader title="外观" />}
         >
           <GlassGroup>
             <Picker
@@ -621,6 +622,32 @@ export function SettingsPage(props: {
               ))}
             </Picker>
             <GlassDivider />
+            <Toggle
+              title="小组件 Clear 风格"
+              value={settings.widgetClearHomeScreen}
+              onChanged={(value: boolean) => {
+                const result = setWidgetClearHomeScreen(value);
+                if (!result.ok) {
+                  void showSettingsSaveFailure();
+                  refresh();
+                  return;
+                }
+                requestWidgetReloadAfterStorage();
+                refresh();
+              }}
+              padding={{ vertical: true }}
+              frame={{ minHeight: 44, maxWidth: "infinity" }}
+            />
+            <GlassDivider />
+            <GlassNoteRow text="专为透明桌面准备的小组件风格：轻量徽章与空心进度条。普通桌面下则为简约样式，App 内彩色胶囊不受影响。" />
+          </GlassGroup>
+        </Section>
+
+        <Section
+          listRowBackground={glassRowBackground}
+          header={<GlassSectionHeader title="刷新" />}
+        >
+          <GlassGroup>
             <Picker
               title="刷新间隔"
               value={String(snapReloadMinutes(settings.reloadMinutes))}

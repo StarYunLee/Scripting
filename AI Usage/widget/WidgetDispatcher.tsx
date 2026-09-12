@@ -25,6 +25,7 @@ import {
   type MediumWindowItem,
 } from "./MediumLayouts";
 import type { NormalizedResetCredits } from "../services/usage-model";
+import type { WidgetChromeStyle } from "./chrome-style";
 
 type Props = {
   provider: ProviderId;
@@ -34,6 +35,7 @@ type Props = {
   fetchedAt?: string | null;
   family: string;
   errorText?: string;
+  chromeStyle?: WidgetChromeStyle;
 };
 
 function displayWidth(family: string): number {
@@ -121,6 +123,7 @@ export function WidgetDispatcher(props: Props) {
           fetchedText={singleFetchedText}
           resetText={formatSingleWindowResetAt(w.resetAt)}
           optionalMeta={optionalMeta.small}
+          chromeStyle={props.chromeStyle}
         />
       );
     }
@@ -145,6 +148,7 @@ export function WidgetDispatcher(props: Props) {
         second={toSmallWindow(w2)}
         fetchedText={singleFetchedText}
         optionalMeta={optionalMeta.small}
+        chromeStyle={props.chromeStyle}
       />
     );
   }
@@ -167,6 +171,7 @@ export function WidgetDispatcher(props: Props) {
         resetText={formatSingleWindowResetAt(w.resetAt)}
         optionalMeta={optionalMeta.medium}
         errorText={props.errorText}
+        chromeStyle={props.chromeStyle}
       />
     );
   }
@@ -192,6 +197,7 @@ export function WidgetDispatcher(props: Props) {
         fetchedText={fetchedText}
         optionalMeta={optionalMeta.medium}
         errorText={props.errorText}
+        chromeStyle={props.chromeStyle}
       />
     );
   }
@@ -215,6 +221,7 @@ export function WidgetDispatcher(props: Props) {
       fetchedText={fetchedText}
       optionalMeta={optionalMeta.medium}
       errorText={props.errorText}
+      chromeStyle={props.chromeStyle}
     />
   );
 }

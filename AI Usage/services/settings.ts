@@ -24,6 +24,11 @@ export type AppDisplaySettings = {
   /** 0 = 手动（App 启动不自动联网；小组件也不自动拉新） */
   reloadMinutes: number;
   backgroundTheme: BackgroundThemeId;
+  /**
+   * 小组件 Clear 风格：轻量徽章与空心进度条。
+   * Scripting 无法检测主屏幕 Clear，需用户手动打开；App 内彩色胶囊不受影响。
+   */
+  widgetClearHomeScreen: boolean;
 };
 
 export const BACKGROUND_THEMES: Array<{
@@ -63,6 +68,7 @@ const DEFAULT_SETTINGS: AppDisplaySettings = {
   // 贴近原先「打开几乎会刷一次」的体验，同时允许短时复用缓存秒开。
   reloadMinutes: 5,
   backgroundTheme: "system_default",
+  widgetClearHomeScreen: false,
 };
 
 /** 把任意遗留值吸附到最近档位，保证 Picker 有选中项。 */
@@ -123,6 +129,7 @@ export function getAppDisplaySettings(): AppDisplaySettings {
     return {
       reloadMinutes: clampMinutes(value.reloadMinutes),
       backgroundTheme: normalizeTheme(value.backgroundTheme),
+      widgetClearHomeScreen: value.widgetClearHomeScreen === true,
     };
   } catch {
     return { ...DEFAULT_SETTINGS };
@@ -157,6 +164,21 @@ export function setAppBackgroundTheme(
   const next = {
     ...getAppDisplaySettings(),
     backgroundTheme: normalizeTheme(backgroundTheme),
+  };
+  try {
+    if (!Storage.set(DISPLAY_KEY, next)) return { ok: false, value: next };
+    return { ok: true, value: next };
+  } catch {
+    return { ok: false, value: next };
+  }
+}
+
+export function setWidgetClearHomeScreen(
+  enabled: boolean,
+): StorageWriteResult<AppDisplaySettings> {
+  const next = {
+    ...getAppDisplaySettings(),
+    widgetClearHomeScreen: enabled === true,
   };
   try {
     if (!Storage.set(DISPLAY_KEY, next)) return { ok: false, value: next };

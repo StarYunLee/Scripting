@@ -1,8 +1,9 @@
 import { HStack, Image, Script, Spacer, Text, VStack, ZStack } from "scripting";
 import type { Color, DynamicShapeStyle } from "scripting";
 import type { ProviderId } from "../models";
+import type { WidgetChromeStyle } from "./chrome-style";
 import { PlanBadge } from "../components/PlanBadge";
-import { usageTint } from "../services/usage-colors";
+import { WidgetProgress } from "./WidgetProgress";
 
 const dynamic = (light: Color, dark: Color): DynamicShapeStyle => ({
   light,
@@ -13,8 +14,6 @@ const C = {
   bg: "systemBackground" as Color,
   primary: "label" as Color,
   secondary: "secondaryLabel" as Color,
-  track: dynamic("#C7C8CC", "#55565C"),
-  trackBorder: dynamic("rgba(0,0,0,0.07)", "rgba(255,255,255,0.10)"),
   watermark: dynamic("rgba(35,35,38,0.09)", "rgba(245,245,247,0.075)"),
   warn: "systemOrange" as Color,
 };
@@ -46,37 +45,6 @@ function Watermark(props: { path: string }) {
   );
 }
 
-function Progress(props: {
-  usedPercent: number | null | undefined;
-  remainingPercent: number | null | undefined;
-  width: number;
-  height?: number;
-}) {
-  const height = props.height ?? 6.5;
-  const shown =
-    props.remainingPercent == null
-      ? null
-      : Math.max(0, Math.min(100, props.remainingPercent));
-  const fill = shown == null ? 0 : (props.width * shown) / 100;
-  return (
-    <ZStack alignment="leading" frame={{ width: props.width, height }}>
-      <HStack
-        frame={{ width: props.width, height }}
-        background={C.track}
-        border={{ style: C.trackBorder, width: 0.5 }}
-        clipShape={{ type: "capsule", style: "continuous" }}
-      />
-      {fill > 0 ? (
-        <HStack
-          frame={{ width: Math.max(height, fill), height }}
-          background={usageTint(props.usedPercent, props.remainingPercent)}
-          clipShape={{ type: "capsule", style: "continuous" }}
-        />
-      ) : null}
-    </ZStack>
-  );
-}
-
 /** 分支 1：单窗口沉浸看板型 Medium 布局（全系统一 Header 与自适应双/单行网格） */
 export function ImmersiveSingleMediumLayout(props: {
   width: number;
@@ -92,6 +60,7 @@ export function ImmersiveSingleMediumLayout(props: {
   resetText: string;
   optionalMeta: MediumOptionalMeta;
   errorText?: string;
+  chromeStyle?: WidgetChromeStyle;
 }) {
   const contentWidth = Math.max(180, props.width - 40);
   const percent = props.remainingText;
@@ -147,6 +116,7 @@ export function ImmersiveSingleMediumLayout(props: {
           provider={props.provider}
           label={props.planLabel}
           size="widget"
+          chromeStyle={props.chromeStyle}
         />
         <Spacer />
         <Text font={10} fontWeight="medium" foregroundStyle={C.secondary}>
@@ -201,11 +171,12 @@ export function ImmersiveSingleMediumLayout(props: {
         }}
         padding={{ leading: 20, top: pos.progressTop }}
       >
-        <Progress
+        <WidgetProgress
           usedPercent={props.usedPercent}
           remainingPercent={props.remainingPercent}
           width={contentWidth}
           height={7}
+          chromeStyle={props.chromeStyle}
         />
       </HStack>
 
@@ -290,6 +261,7 @@ function DualWindowRow(props: {
   window: MediumWindowItem;
   width: number;
   top: number;
+  chromeStyle?: WidgetChromeStyle;
 }) {
   return (
     <>
@@ -343,11 +315,12 @@ function DualWindowRow(props: {
         }}
         padding={{ leading: 20, top: props.top + 40 }}
       >
-        <Progress
+        <WidgetProgress
           usedPercent={props.window.usedPercent}
           remainingPercent={props.window.remainingPercent}
           width={props.width}
           height={6.5}
+          chromeStyle={props.chromeStyle}
         />
       </HStack>
     </>
@@ -365,6 +338,7 @@ export function StandardDualMediumLayout(props: {
   second: MediumWindowItem;
   optionalMeta?: MediumOptionalMeta;
   errorText?: string;
+  chromeStyle?: WidgetChromeStyle;
 }) {
   const contentWidth = Math.max(220, props.width - 40);
   const optionalMeta = props.optionalMeta;
@@ -413,6 +387,7 @@ export function StandardDualMediumLayout(props: {
           provider={props.provider}
           label={props.planLabel}
           size="widget"
+          chromeStyle={props.chromeStyle}
         />
         <Spacer />
         <Text font={10} fontWeight="medium" foregroundStyle={C.secondary}>
@@ -423,11 +398,13 @@ export function StandardDualMediumLayout(props: {
         window={props.first}
         width={contentWidth}
         top={pos.firstTop}
+        chromeStyle={props.chromeStyle}
       />
       <DualWindowRow
         window={props.second}
         width={contentWidth}
         top={pos.secondTop}
+        chromeStyle={props.chromeStyle}
       />
       {/* 底部可选元信息行：两端对齐格式 */}
       {hasOptional ? (
@@ -480,6 +457,7 @@ function TripleWindowRow(props: {
   window: MediumWindowItem;
   width: number;
   top: number;
+  chromeStyle?: WidgetChromeStyle;
 }) {
   const barOffset = 19;
   const barHeight = 5.5;
@@ -526,11 +504,12 @@ function TripleWindowRow(props: {
         }}
         padding={{ leading: 20, top: props.top + barOffset }}
       >
-        <Progress
+        <WidgetProgress
           usedPercent={props.window.usedPercent}
           remainingPercent={props.window.remainingPercent}
           width={props.width}
           height={barHeight}
+          chromeStyle={props.chromeStyle}
         />
       </HStack>
     </>
@@ -547,6 +526,7 @@ export function PanoramicTripleMediumLayout(props: {
   windows: MediumWindowItem[];
   optionalMeta?: MediumOptionalMeta;
   errorText?: string;
+  chromeStyle?: WidgetChromeStyle;
 }) {
   const contentWidth = Math.max(220, props.width - 40);
   const stacked = props.windows.slice(0, 4);
@@ -587,6 +567,7 @@ export function PanoramicTripleMediumLayout(props: {
           provider={props.provider}
           label={props.planLabel}
           size="widget"
+          chromeStyle={props.chromeStyle}
         />
         <Spacer />
         <Text font={9} fontWeight="medium" foregroundStyle={C.secondary}>
@@ -599,6 +580,7 @@ export function PanoramicTripleMediumLayout(props: {
           window={window}
           width={contentWidth}
           top={rowTops[index] ?? 24}
+          chromeStyle={props.chromeStyle}
         />
       ))}
       {hasOptional ? (

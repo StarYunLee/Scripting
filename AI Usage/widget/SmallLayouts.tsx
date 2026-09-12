@@ -10,8 +10,9 @@ import {
 } from "scripting";
 import type { Color, DynamicShapeStyle } from "scripting";
 import type { ProviderId } from "../models";
+import type { WidgetChromeStyle } from "./chrome-style";
 import { PlanBadge } from "../components/PlanBadge";
-import { usageTint } from "../services/usage-colors";
+import { WidgetProgress } from "./WidgetProgress";
 
 const dynamic = (light: Color, dark: Color): DynamicShapeStyle => ({
   light,
@@ -22,8 +23,6 @@ const C = {
   bg: "systemBackground" as Color,
   primary: "label" as Color,
   secondary: "secondaryLabel" as Color,
-  track: dynamic("#C7C8CC", "#55565C"),
-  trackBorder: dynamic("rgba(0,0,0,0.07)", "rgba(255,255,255,0.10)"),
   watermark: dynamic("rgba(35,35,38,0.09)", "rgba(245,245,247,0.075)"),
 };
 
@@ -54,37 +53,6 @@ function Watermark(props: { path: string }) {
   );
 }
 
-function Progress(props: {
-  usedPercent: number | null | undefined;
-  remainingPercent: number | null | undefined;
-  width: number;
-  height?: number;
-}) {
-  const height = props.height ?? 7;
-  const shown =
-    props.remainingPercent == null
-      ? null
-      : Math.max(0, Math.min(100, props.remainingPercent));
-  const fill = shown == null ? 0 : (props.width * shown) / 100;
-  return (
-    <ZStack alignment="leading" frame={{ width: props.width, height }}>
-      <HStack
-        frame={{ width: props.width, height }}
-        background={C.track}
-        border={{ style: C.trackBorder, width: 0.5 }}
-        clipShape={{ type: "capsule", style: "continuous" }}
-      />
-      {fill > 0 ? (
-        <HStack
-          frame={{ width: Math.max(height, fill), height }}
-          background={usageTint(props.usedPercent, props.remainingPercent)}
-          clipShape={{ type: "capsule", style: "continuous" }}
-        />
-      ) : null}
-    </ZStack>
-  );
-}
-
 /** 分支 1：单窗口焦点型 Small 布局（工整饱满双/三行网格） */
 export function FocusSingleSmallLayout(props: {
   width: number;
@@ -99,6 +67,7 @@ export function FocusSingleSmallLayout(props: {
   fetchedText: string;
   resetText: string;
   optionalMeta: SmallOptionalMeta;
+  chromeStyle?: WidgetChromeStyle;
 }) {
   const contentWidth = Math.max(90, props.width - 24);
   const verticalOffset = Math.max(0, (displayHeight() - 158) / 2);
@@ -157,6 +126,7 @@ export function FocusSingleSmallLayout(props: {
           provider={props.provider}
           label={props.planLabel}
           size="widget-small"
+          chromeStyle={props.chromeStyle}
         />
       </HStack>
 
@@ -229,11 +199,12 @@ export function FocusSingleSmallLayout(props: {
           top: pos.progressTop + verticalOffset,
         }}
       >
-        <Progress
+        <WidgetProgress
           usedPercent={props.usedPercent}
           remainingPercent={props.remainingPercent}
           width={contentWidth}
           height={7}
+          chromeStyle={props.chromeStyle}
         />
       </HStack>
 
@@ -325,6 +296,7 @@ function DualWindowRow(props: {
   window: SmallWindowItem;
   width: number;
   top: number;
+  chromeStyle?: WidgetChromeStyle;
 }) {
   return (
     <>
@@ -384,11 +356,12 @@ function DualWindowRow(props: {
         }}
         padding={{ leading: 12, top: props.top + 35 }}
       >
-        <Progress
+        <WidgetProgress
           usedPercent={props.window.usedPercent}
           remainingPercent={props.window.remainingPercent}
           width={props.width}
           height={6}
+          chromeStyle={props.chromeStyle}
         />
       </HStack>
     </>
@@ -416,6 +389,7 @@ export function CompactDualSmallLayout(props: {
   second: SmallWindowItem;
   fetchedText: string;
   optionalMeta?: SmallOptionalMeta;
+  chromeStyle?: WidgetChromeStyle;
 }) {
   const contentWidth = Math.max(90, props.width - 24);
   const verticalOffset = Math.max(0, (displayHeight() - 158) / 2);
@@ -467,17 +441,20 @@ export function CompactDualSmallLayout(props: {
           provider={props.provider}
           label={props.planLabel}
           size="widget-small"
+          chromeStyle={props.chromeStyle}
         />
       </HStack>
       <DualWindowRow
         window={props.first}
         width={contentWidth}
         top={pos.firstTop + verticalOffset}
+        chromeStyle={props.chromeStyle}
       />
       <DualWindowRow
         window={props.second}
         width={contentWidth}
         top={pos.secondTop + verticalOffset}
+        chromeStyle={props.chromeStyle}
       />
       {hasOptional ? (
         <HStack

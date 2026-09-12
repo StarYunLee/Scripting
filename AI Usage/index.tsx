@@ -95,7 +95,7 @@ function App() {
 async function run() {
   await Navigation.present({
     element: <App />,
-    modalPresentationStyle: "fullScreen",
+    modalPresentationStyle: "overFullScreen",
   });
   Script.exit();
 }

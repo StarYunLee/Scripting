@@ -1,6 +1,7 @@
 import { HStack, Text } from "scripting";
 import type { ProviderId } from "../models";
 import { resolvePlanBadge } from "../providers/badge-registry";
+import type { WidgetChromeStyle } from "../widget/chrome-style";
 import { ProviderLogo } from "./ProviderLogo";
 
 const BADGE_SIZES = {
@@ -48,50 +49,77 @@ export function PlanBadge(props: {
   provider: ProviderId;
   label: string;
   size?: PlanBadgeSize;
+  chromeStyle?: WidgetChromeStyle;
 }) {
+  const size = props.size ?? "regular";
   const recipe = resolvePlanBadge(props.provider, props.label);
-  const layout = BADGE_SIZES[props.size ?? "regular"];
+  const layout = BADGE_SIZES[size];
   const text = recipe.text;
+  const clearHomeScreen = size !== "regular" && props.chromeStyle === "clear";
 
   // 如果无文字且不展示 Logo，则不渲染
   if (!text && !layout.showLogo) {
     return null;
   }
 
+  const keepOriginalLogo = clearHomeScreen || recipe.preserveLogoColor;
+  const logo = !layout.showLogo ? null : keepOriginalLogo ? (
+    <ProviderLogo provider={props.provider} size={layout.logo} />
+  ) : (
+    <ProviderLogo
+      provider={props.provider}
+      size={layout.logo}
+      tint={recipe.foreground}
+    />
+  );
+  const label = text ? (
+    <Text
+      fontDesign="default"
+      fontWidth="standard"
+      font={layout.text}
+      fontWeight="bold"
+      foregroundStyle={clearHomeScreen ? "label" : recipe.foreground}
+      lineLimit={1}
+      minScaleFactor={
+        size === "widget-dense" ? 0.7 : layout.showLogo ? 0.75 : 1
+      }
+    >
+      {text}
+    </Text>
+  ) : null;
+
+  const spacing = layout.showLogo && text ? layout.spacing : 0;
+  const padding = {
+    horizontal: layout.horizontalPadding,
+    vertical: layout.verticalPadding,
+  };
+  const clipShape = { type: "capsule" as const, style: "continuous" as const };
+
+  if (clearHomeScreen) {
+    return (
+      <HStack
+        spacing={spacing}
+        padding={padding}
+        layoutPriority={1}
+        fixedSize={true}
+      >
+        {logo}
+        {label}
+      </HStack>
+    );
+  }
+
   return (
     <HStack
-      spacing={layout.showLogo && text ? layout.spacing : 0}
-      padding={{
-        horizontal: layout.horizontalPadding,
-        vertical: layout.verticalPadding,
-      }}
+      spacing={spacing}
+      padding={padding}
       background={recipe.background}
-      clipShape={{ type: "capsule", style: "continuous" }}
+      clipShape={clipShape}
       layoutPriority={1}
       fixedSize={true}
     >
-      {layout.showLogo ? (
-        <ProviderLogo
-          provider={props.provider}
-          size={layout.logo}
-          tint={recipe.preserveLogoColor ? undefined : recipe.foreground}
-        />
-      ) : null}
-      {text ? (
-        <Text
-          fontDesign="default"
-          fontWidth="standard"
-          font={layout.text}
-          fontWeight="bold"
-          foregroundStyle={recipe.foreground}
-          lineLimit={1}
-          minScaleFactor={
-            props.size === "widget-dense" ? 0.7 : layout.showLogo ? 0.75 : 1
-          }
-        >
-          {text}
-        </Text>
-      ) : null}
+      {logo}
+      {label}
     </HStack>
   );
 }

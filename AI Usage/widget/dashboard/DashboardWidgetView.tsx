@@ -1,10 +1,11 @@
-import { HStack, Image, Spacer, Text, VStack, ZStack } from "scripting";
+import { HStack, Image, Spacer, Text, VStack } from "scripting";
 import type { Color, DynamicShapeStyle } from "scripting";
 import { PlanBadge } from "../../components/PlanBadge";
 import { formatResetCountdown } from "../../services/usage-format";
 import { parseWidgetFamily } from "../family";
 import { providerMeta, type UsageWindowView } from "../../models";
-import { usageTint } from "../../services/usage-colors";
+import { WidgetProgress } from "../WidgetProgress";
+import type { WidgetChromeStyle } from "../chrome-style";
 import {
   readDashboardWidgetPreferences,
   type DashboardWidgetDisplayPreferences,
@@ -24,7 +25,6 @@ const C = {
   primary: "label" as Color,
   secondary: "secondaryLabel" as Color,
   divider: dynamic("rgba(60,60,67,0.12)", "rgba(235,235,245,0.16)"),
-  track: dynamic("#C7C8CC", "#55565C"),
   warn: "systemOrange" as Color,
 };
 
@@ -34,30 +34,19 @@ function percent(value: number | null): string {
     : `${Math.round(value)}%`;
 }
 
-function Progress(props: { window: UsageWindowView; width: number }) {
-  const value =
-    props.window.remainingPercent == null
-      ? 0
-      : Math.max(0, Math.min(100, props.window.remainingPercent));
-  const fill = (props.width * value) / 100;
+function Progress(props: {
+  window: UsageWindowView;
+  width: number;
+  chromeStyle?: WidgetChromeStyle;
+}) {
   return (
-    <ZStack alignment="leading" frame={{ width: props.width, height: 4 }}>
-      <HStack
-        frame={{ width: props.width, height: 4 }}
-        background={C.track}
-        clipShape={{ type: "capsule", style: "continuous" }}
-      />
-      {fill > 0 ? (
-        <HStack
-          frame={{ width: Math.max(4, fill), height: 4 }}
-          background={usageTint(
-            props.window.usedPercent,
-            props.window.remainingPercent,
-          )}
-          clipShape={{ type: "capsule", style: "continuous" }}
-        />
-      ) : null}
-    </ZStack>
+    <WidgetProgress
+      usedPercent={props.window.usedPercent}
+      remainingPercent={props.window.remainingPercent}
+      width={props.width}
+      height={4}
+      chromeStyle={props.chromeStyle}
+    />
   );
 }
 
@@ -65,6 +54,7 @@ function WindowRow(props: {
   window: UsageWindowView;
   width: number;
   compact: boolean;
+  chromeStyle?: WidgetChromeStyle;
 }) {
   const countdown = formatResetCountdown(props.window.resetAt);
   return (
@@ -101,7 +91,11 @@ function WindowRow(props: {
           {percent(props.window.remainingPercent)}
         </Text>
       </HStack>
-      <Progress window={props.window} width={props.width} />
+      <Progress
+        window={props.window}
+        width={props.width}
+        chromeStyle={props.chromeStyle}
+      />
     </VStack>
   );
 }
@@ -111,6 +105,7 @@ function AccountCell(props: {
   width: number;
   compact: boolean;
   display: DashboardWidgetDisplayPreferences;
+  chromeStyle?: WidgetChromeStyle;
 }) {
   const meta = providerMeta(props.account.provider);
   const windows = props.account.windows.slice(0, 2);
@@ -125,6 +120,7 @@ function AccountCell(props: {
           provider={props.account.provider}
           label={props.account.planLabel || meta.title}
           size="widget-dense"
+          chromeStyle={props.chromeStyle}
         />
         <Spacer minLength={0} />
         {props.display.showAccountLabel ? (
@@ -154,6 +150,7 @@ function AccountCell(props: {
           window={window}
           width={props.width}
           compact={props.compact}
+          chromeStyle={props.chromeStyle}
         />
       ))}
     </VStack>
@@ -234,6 +231,7 @@ function SmallDashboard(props: {
   width: number;
   hasErrors?: boolean;
   display: DashboardWidgetDisplayPreferences;
+  chromeStyle?: WidgetChromeStyle;
 }) {
   const padding = 12;
   const contentWidth = props.width - padding * 2;
@@ -259,6 +257,7 @@ function SmallDashboard(props: {
             width={contentWidth}
             compact={true}
             display={props.display}
+            chromeStyle={props.chromeStyle}
           />
         </VStack>
       ))}
@@ -278,6 +277,7 @@ function MediumDashboard(props: {
   width: number;
   hasErrors?: boolean;
   display: DashboardWidgetDisplayPreferences;
+  chromeStyle?: WidgetChromeStyle;
 }) {
   const padding = 14;
   const columnGap = 18;
@@ -301,6 +301,7 @@ function MediumDashboard(props: {
           width={cellWidth}
           compact={compact}
           display={props.display}
+          chromeStyle={props.chromeStyle}
         />
       ))}
       {accounts.length < props.plan.columns ? <Spacer minLength={0} /> : null}
@@ -337,6 +338,7 @@ function LargeDashboard(props: {
   width: number;
   hasErrors?: boolean;
   display: DashboardWidgetDisplayPreferences;
+  chromeStyle?: WidgetChromeStyle;
 }) {
   const padding = 16;
   const columnGap = 20;
@@ -390,6 +392,7 @@ function LargeDashboard(props: {
                 width={cellWidth}
                 compact={true}
                 display={props.display}
+                chromeStyle={props.chromeStyle}
               />
             ))}
             {accounts.length < 2 ? <Spacer minLength={0} /> : null}
@@ -451,6 +454,7 @@ function SparseLargeDashboard(props: {
   width: number;
   hasErrors?: boolean;
   display: DashboardWidgetDisplayPreferences;
+  chromeStyle?: WidgetChromeStyle;
 }) {
   const padding = 16;
   const columnGap = 20;
@@ -513,6 +517,7 @@ function SparseLargeDashboard(props: {
                     width={cellWidth}
                     compact={true}
                     display={props.display}
+                    chromeStyle={props.chromeStyle}
                   />
                 </VStack>
               ) : (
@@ -522,6 +527,7 @@ function SparseLargeDashboard(props: {
                   width={cellWidth}
                   compact={true}
                   display={props.display}
+                  chromeStyle={props.chromeStyle}
                 />
               ),
             )}
@@ -551,6 +557,7 @@ export function DashboardWidgetView(props: {
   width: number;
   hasErrors?: boolean;
   display?: DashboardWidgetDisplayPreferences;
+  chromeStyle?: WidgetChromeStyle;
 }) {
   const family = parseWidgetFamily(props.family);
   const display = props.display || readDashboardWidgetPreferences().display;
@@ -576,6 +583,7 @@ export function DashboardWidgetView(props: {
         width={props.width}
         hasErrors={props.hasErrors}
         display={display}
+        chromeStyle={props.chromeStyle}
       />
     );
   }
@@ -586,6 +594,7 @@ export function DashboardWidgetView(props: {
         width={props.width}
         hasErrors={props.hasErrors}
         display={display}
+        chromeStyle={props.chromeStyle}
       />
     );
   }
@@ -596,6 +605,7 @@ export function DashboardWidgetView(props: {
         width={props.width}
         hasErrors={props.hasErrors}
         display={display}
+        chromeStyle={props.chromeStyle}
       />
     );
   }
@@ -605,6 +615,7 @@ export function DashboardWidgetView(props: {
       width={props.width}
       hasErrors={props.hasErrors}
       display={display}
+      chromeStyle={props.chromeStyle}
     />
   );
 }
