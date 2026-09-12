@@ -1,3 +1,8 @@
+import {
+  createAuthorizationGuard,
+  throwIfAuthorizationCancelled,
+  type AuthorizationSignal,
+} from "../../services/auth-errors";
 import { activePendingAuthorization } from "../../services/oauth-pending";
 import { fetch } from "scripting";
 import {
@@ -115,9 +120,14 @@ async function probeRegion(
   }
 }
 
-export async function completeZaiLogin(input?: string): Promise<void> {
+export async function completeZaiLogin(
+  input?: string,
+  signal?: AuthorizationSignal,
+): Promise<void> {
+  throwIfAuthorizationCancelled(signal);
   const pending = readPending();
   if (!pending) throw new Error("未找到待完成的 Z.ai 授权，请重新开始");
+  const assertCurrent = createAuthorizationGuard(pending, readPending, signal);
   if (Date.now() - pending.createdAt > PENDING_TTL_MS) {
     clearPending();
     throw new Error("授权会话已超过 15 分钟，请重新开始");
@@ -127,10 +137,14 @@ export async function completeZaiLogin(input?: string): Promise<void> {
     const apiKey = normalizeApiKey(input);
     let region: ZaiRegion | null = null;
     if (await probeRegion(apiKey, "intl")) region = "intl";
-    else if (await probeRegion(apiKey, "cn")) region = "cn";
-    else throw new Error("API Key 无效，或国际站 / 国内站均无法访问");
+    else {
+      assertCurrent();
+      if (await probeRegion(apiKey, "cn")) region = "cn";
+      else throw new Error("API Key 无效，或国际站 / 国内站均无法访问");
+    }
 
     const masked = `${apiKey.slice(0, 4)}…${apiKey.slice(-4)}`;
+    assertCurrent();
     const saved = saveProfileCredentials(pending.profileId, {
       accessToken: apiKey,
       region,
@@ -140,6 +154,7 @@ export async function completeZaiLogin(input?: string): Promise<void> {
     if (!saved) throw new Error("API Key 已验证，但本机 Keychain 保存失败");
     clearPending();
   } catch (error) {
+    assertCurrent();
     clearPending();
     throw error;
   }

@@ -1,5 +1,6 @@
 import type { AccountRemovalResult } from "../services/account-store";
 import type { ProviderId } from "../models";
+import type { AuthorizationSignal } from "../services/auth-errors";
 import type { NormalizedUsageSnapshot } from "../services/usage-model";
 
 export type ProviderAccount = {
@@ -47,7 +48,7 @@ export type ProviderCore = AccountLookupProvider & {
   remove(profileId: string): AccountRemovalResult;
   auth: {
     start(profileId: string, input?: string): Promise<string>;
-    complete(input: string): Promise<void>;
+    complete(input: string, signal?: AuthorizationSignal): Promise<void>;
     clearPending(): void;
     pendingId(): string | null;
     hasPending(): boolean;

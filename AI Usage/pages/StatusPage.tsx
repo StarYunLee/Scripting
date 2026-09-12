@@ -1,4 +1,6 @@
+import { AuthorizationCheckDeferred } from "../services/auth-single-check";
 import { List, NavigationStack, Text, useEffect, useState } from "scripting";
+import { isAuthorizationCancelledError } from "../services/auth-errors";
 import { captureAccountWork } from "../services/account-work-guard";
 import { observeUsageProgress } from "../services/usage-progress";
 import { AccountDetailPage } from "./AccountDetailPage";
@@ -49,6 +51,18 @@ export function StatusPage(props: {
   const [hasAccounts, setHasAccounts] = useState(false);
   const [accountsLoaded, setAccountsLoaded] = useState(false);
   const [sheet, setSheet] = useState<AuthSheet | null>(null);
+  const [authView] = useState(() => ({
+    revision: 0,
+    active: true,
+    running: false,
+  }));
+  useEffect(() => {
+    authView.active = true;
+    return () => {
+      authView.active = false;
+      authView.revision += 1;
+    };
+  }, []);
   const [busy, setBusy] = useState(false);
   const [openedCard, setOpenedCard] = useState<UsageCard | null>(null);
   const displayMode = "remaining";
@@ -190,14 +204,73 @@ export function StatusPage(props: {
     };
   }, [props.demoMode]);
 
-  async function startAuth(target: ProviderId, profileId?: string) {
-    if (busy) return;
+  async function finishAuth(target: AuthSheet) {
+    const revision = ++authView.revision;
+    authView.running = true;
+    const current = () =>
+      authView.active &&
+      revision === authView.revision &&
+      authCoordinator.isCurrent(target);
+    setBusy(true);
+    setSheet({ ...target, status: "正在完成连接…" });
+    try {
+      await authCoordinator.complete(target);
+      if (!current()) return;
+      setSheet(null);
+      reloadCards();
+      const next = await refreshCard(target.provider, target.profileId, true);
+      if (!current()) return;
+      setCards((current) => {
+        if (!isAccountShownInOverview(next.provider, next.accountId)) {
+          return current;
+        }
+        const [visibleNext] = applyOverviewPreferences([next]);
+        if (!visibleNext) return current;
+        const exists = current.some((item) => item.key === visibleNext.key);
+        return exists
+          ? current.map((item) =>
+              item.key === visibleNext.key ? visibleNext : item,
+            )
+          : [...current, visibleNext];
+      });
+      requestWidgetReload();
+    } catch (error) {
+      if (!current() || isAuthorizationCancelledError(error)) return;
+      setSheet({
+        ...target,
+        authorizationInput: "",
+        status:
+          error instanceof AuthorizationCheckDeferred
+            ? "授权待继续：" + error.message
+            : "授权失败：" + errorText(error),
+      });
+    } finally {
+      if (authView.active && revision === authView.revision) {
+        authView.running = false;
+        setBusy(false);
+      }
+    }
+  }
+
+  async function startAuth(
+    target: ProviderId,
+    profileId?: string,
+    restartSheet?: AuthSheet,
+  ) {
+    if (busy || authView.running) return;
+    const revision = ++authView.revision;
+    authView.running = true;
+    const current = () => authView.active && revision === authView.revision;
     setBusy(true);
     try {
-      const pendingSheet = authCoordinator.resume();
+      const pendingSheet = restartSheet ? null : authCoordinator.resume();
       if (pendingSheet) {
         setProvider(pendingSheet.provider);
         setSheet(pendingSheet);
+        if (pendingSheet.autoComplete && !pendingSheet.deviceCode) {
+          await finishAuth(pendingSheet);
+          return;
+        }
         return;
       }
       const minimaxRegion =
@@ -215,15 +288,29 @@ export function StatusPage(props: {
               })) ?? -1,
             )
           : null;
+      if (!current()) return;
       if (target === "minimax" && !minimaxRegion) return;
-      const result = await authCoordinator.start({
-        provider: target,
-        profileId,
-        providerInput: minimaxRegion || undefined,
-      });
+      const result = restartSheet
+        ? await authCoordinator.restart(
+            restartSheet,
+            minimaxRegion || undefined,
+          )
+        : await authCoordinator.start({
+            provider: target,
+            profileId,
+            providerInput: minimaxRegion || undefined,
+          });
+      if (!current()) {
+        if (result.ok) authCoordinator.cancel(result.sheet);
+        return;
+      }
       if (result.ok) {
         setProvider(result.sheet.provider);
         setSheet(result.sheet);
+        if (result.sheet.autoComplete && !result.sheet.deviceCode) {
+          await finishAuth(result.sheet);
+          return;
+        }
         return;
       }
       if (result.sheet) setSheet(result.sheet);
@@ -235,55 +322,38 @@ export function StatusPage(props: {
         });
       }
     } finally {
-      setBusy(false);
+      if (authView.active && revision === authView.revision) {
+        authView.running = false;
+        setBusy(false);
+      }
     }
   }
 
-  async function submitAuth() {
-    if (!sheet || busy) return;
-    setBusy(true);
-    try {
-      setSheet({ ...sheet, status: "正在验证授权…" });
-      await authCoordinator.complete(sheet);
-      setSheet(null);
-      reloadCards();
-      const next = await refreshCard(sheet.provider, sheet.profileId, true);
-      setCards((current) => {
-        if (!isAccountShownInOverview(next.provider, next.accountId)) {
-          return current;
-        }
-        const [visibleNext] = applyOverviewPreferences([next]);
-        if (!visibleNext) return current;
-        const exists = current.some((item) => item.key === visibleNext.key);
-        return exists
-          ? current.map((item) =>
-              item.key === visibleNext.key ? visibleNext : item,
-            )
-          : [...current, visibleNext];
-      });
-      requestWidgetReload();
-    } catch (error) {
-      setSheet((current) =>
-        current
-          ? {
-              ...current,
-              authorizationInput: "",
-              status: "授权失败：" + errorText(error),
-            }
-          : current,
-      );
-    } finally {
-      setBusy(false);
-    }
+  async function submitAuth(authorizationInput?: string) {
+    if (!sheet || busy || authView.running) return;
+    const target =
+      authorizationInput === undefined
+        ? sheet
+        : { ...sheet, authorizationInput };
+    if (authorizationInput !== undefined) setSheet(target);
+    await finishAuth(target);
   }
 
   function cancelAuth() {
     if (!sheet) return;
+    authView.revision += 1;
+    authView.running = false;
+    setBusy(false);
     try {
       authCoordinator.cancel(sheet);
       setSheet(null);
       reloadCards();
     } catch (error) {
+      if (isAuthorizationCancelledError(error)) {
+        setSheet(null);
+        reloadCards();
+        return;
+      }
       setSheet({
         ...sheet,
         status: "取消授权失败：" + errorText(error),
@@ -433,11 +503,15 @@ export function StatusPage(props: {
       <AuthSheetView
         authSheet={sheet}
         backgroundTheme={props.backgroundTheme}
+        completing={busy}
         onChangeInput={(value) =>
           setSheet((current) =>
             current ? { ...current, authorizationInput: value } : current,
           )
         }
+        onRestart={() => {
+          void startAuth(sheet.provider, sheet.profileId, sheet);
+        }}
         onSubmit={submitAuth}
         onCancel={cancelAuth}
       />

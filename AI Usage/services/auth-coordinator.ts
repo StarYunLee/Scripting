@@ -1,5 +1,14 @@
+import { AuthorizationCheckDeferred } from "./auth-single-check";
 import { retireAccountWork } from "./account-work-guard";
 import type { AuthSheet, ProviderId } from "../models";
+import {
+  createAuthorizationAbort,
+  AuthorizationCancelledError,
+  throwIfAuthorizationCancelled,
+  isAuthorizationCancelledError,
+  type AuthorizationAbort,
+  type AuthorizationSignal,
+} from "./auth-errors";
 import {
   clearWidgetRefreshMetadata,
   recordWidgetRefreshSuccess,
@@ -48,12 +57,18 @@ function errorText(error: unknown): string {
   return String(error);
 }
 
+function isPollingProvider(provider: ProviderId): boolean {
+  return provider === "cursor" || provider === "kimi" || provider === "copilot";
+}
+
 function pendingStatus(provider: ProviderId): string {
   if (provider === "minimax")
     return "存在未完成的 MiniMax 授权，请粘贴 Subscription Key";
   if (provider === "zai") return "存在未完成的 Z.ai 授权，请粘贴 API Key";
   if (provider === "cursor" || provider === "kimi")
-    return "存在未完成的设备授权；完成浏览器登录后直接提交";
+    return "存在未完成的设备授权；完成浏览器登录后将自动连接";
+  if (provider === "copilot")
+    return "存在未完成的 GitHub 设备授权；请先复制设备码，再打开授权页";
   return "存在未完成的授权，请粘贴回调地址或授权码";
 }
 
@@ -74,8 +89,8 @@ function startedStatus(
       : "已打开 API Key 控制台，复制 Key 后粘贴到下方并提交";
   if (provider === "cursor" || provider === "kimi")
     return mode === "present"
-      ? "关闭授权页后，直接提交并完成授权"
-      : "已在系统 Safari 打开授权页，完成登录后直接提交";
+      ? "关闭授权页后将自动完成连接"
+      : "已在系统 Safari 打开授权页，完成后返回即可自动连接";
   return mode === "present"
     ? "关闭授权页后，把回调地址或授权码粘贴到下方"
     : "已在系统 Safari 打开授权页，完成后把回调地址或授权码粘贴到下方";
@@ -94,7 +109,12 @@ function copilotSheet(
     status: resumed
       ? "存在未完成的 GitHub 设备授权；请先复制设备码，再打开授权页"
       : "设备码已生成；请先复制，再打开 GitHub 授权页",
+    autoComplete: true,
   };
+}
+
+function withAutoComplete(sheet: AuthSheet, provider: ProviderId): AuthSheet {
+  return isPollingProvider(provider) ? { ...sheet, autoComplete: true } : sheet;
 }
 
 export function createAuthCoordinator(
@@ -102,6 +122,23 @@ export function createAuthCoordinator(
 ) {
   let startInFlight: Promise<AuthStartResult> | null = null;
   let completeInFlight: Promise<AuthCompletion> | null = null;
+  let completeAbort: AuthorizationAbort | null = null;
+  let completingAccount: { provider: ProviderId; profileId: string } | null =
+    null;
+  let sessionId = 0;
+  let startingAccount: {
+    provider: ProviderId;
+    profileId: string;
+    previousSessionId: number;
+  } | null = null;
+
+  function isCurrent(sheet: AuthSheet): boolean {
+    return sheet.sessionId === undefined || sheet.sessionId === sessionId;
+  }
+
+  function stamp(sheet: AuthSheet): AuthSheet {
+    return { ...sheet, sessionId };
+  }
 
   function findPending(): { provider: ProviderId; profileId: string } | null {
     for (const provider of dependencies.providerIds) {
@@ -118,14 +155,51 @@ export function createAuthCoordinator(
     if (!pending) return null;
     if (pending.provider === "copilot") {
       const state = dependencies.getCopilotAuthorizationState();
-      if (state) return copilotSheet(state, true);
+      if (state) return stamp(copilotSheet(state, true));
     }
-    return {
-      provider: pending.provider,
-      profileId: pending.profileId,
-      authorizationInput: "",
-      status: pendingStatus(pending.provider),
-    };
+    return stamp(
+      withAutoComplete(
+        {
+          provider: pending.provider,
+          profileId: pending.profileId,
+          authorizationInput: "",
+          status: pendingStatus(pending.provider),
+        },
+        pending.provider,
+      ),
+    );
+  }
+
+  async function openSheet(
+    provider: ProviderId,
+    accountId: string,
+    url: string,
+    providerInput?: string,
+  ): Promise<AuthSheet> {
+    try {
+      const mode = await dependencies.openAuthorizationPage(url);
+      return withAutoComplete(
+        {
+          provider,
+          profileId: accountId,
+          authorizationInput: "",
+          authorizationUrl: url,
+          status: startedStatus(provider, mode, providerInput),
+        },
+        provider,
+      );
+    } catch (error) {
+      return withAutoComplete(
+        {
+          provider,
+          profileId: accountId,
+          authorizationInput: "",
+          authorizationUrl: url,
+          status: `无法打开授权页：${errorText(error)}。可点击下方按钮重试。`,
+        },
+        provider,
+      );
+    }
   }
 
   async function performStart(options: {
@@ -139,6 +213,7 @@ export function createAuthCoordinator(
     const existing = resume();
     if (existing) return { ok: true, sheet: existing, resumed: true };
 
+    const attemptSession = ++sessionId;
     const api = dependencies.getProvider(options.provider);
     const existingAccount = options.profileId
       ? api.list().find((account) => account.id === options.profileId) || null
@@ -154,8 +229,17 @@ export function createAuthCoordinator(
         account = api.create();
         createdHere = true;
       }
+      startingAccount = {
+        provider: options.provider,
+        profileId: account.id,
+        previousSessionId: attemptSession - 1,
+      };
       retireAccountWork(options.provider, account.id);
       const url = await api.auth.start(account.id, options.providerInput);
+      if (attemptSession !== sessionId) {
+        api.auth.clearPending();
+        throw new AuthorizationCancelledError();
+      }
       dependencies.writeLog({
         level: "info",
         source: "app",
@@ -173,6 +257,7 @@ export function createAuthCoordinator(
             ok: false,
             message: "GitHub 设备码生成失败，请取消后重新开始",
             sheet: {
+              sessionId: attemptSession,
               provider: options.provider,
               profileId: account.id,
               authorizationInput: "",
@@ -181,39 +266,21 @@ export function createAuthCoordinator(
             },
           };
         }
-        return { ok: true, sheet: copilotSheet(state, false), resumed: false };
+        return {
+          ok: true,
+          sheet: stamp(copilotSheet(state, false)),
+          resumed: false,
+        };
       }
 
-      try {
-        const mode = await dependencies.openAuthorizationPage(url);
-        return {
-          ok: true,
-          resumed: false,
-          sheet: {
-            provider: options.provider,
-            profileId: account.id,
-            authorizationInput: "",
-            authorizationUrl: url,
-            status: startedStatus(
-              options.provider,
-              mode,
-              options.providerInput,
-            ),
-          },
-        };
-      } catch (error) {
-        return {
-          ok: true,
-          resumed: false,
-          sheet: {
-            provider: options.provider,
-            profileId: account.id,
-            authorizationInput: "",
-            authorizationUrl: url,
-            status: `无法打开授权页：${errorText(error)}。可点击下方按钮重试。`,
-          },
-        };
-      }
+      const sheet = await openSheet(
+        options.provider,
+        account.id,
+        url,
+        options.providerInput,
+      );
+      if (attemptSession !== sessionId) throw new AuthorizationCancelledError();
+      return { ok: true, resumed: false, sheet: stamp(sheet) };
     } catch (error) {
       let cleanupFailed = false;
       if (
@@ -262,21 +329,31 @@ export function createAuthCoordinator(
     startInFlight = running;
     running.then(
       () => {
-        if (startInFlight === running) startInFlight = null;
+        if (startInFlight === running) {
+          startInFlight = null;
+          startingAccount = null;
+        }
       },
       () => {
-        if (startInFlight === running) startInFlight = null;
+        if (startInFlight === running) {
+          startInFlight = null;
+          startingAccount = null;
+        }
       },
     );
     return running;
   }
 
-  async function performComplete(sheet: AuthSheet): Promise<AuthCompletion> {
+  async function performComplete(
+    sheet: AuthSheet,
+    signal: AuthorizationSignal,
+  ): Promise<AuthCompletion> {
     if (dependencies.isDemoMode()) throw new Error("演示模式不会完成真实授权");
     try {
       await dependencies
         .getProvider(sheet.provider)
-        .auth.complete(sheet.authorizationInput);
+        .auth.complete(sheet.authorizationInput, signal);
+      throwIfAuthorizationCancelled(signal);
       const authorizedAt = new Date().toISOString();
       recordWidgetRefreshSuccess(sheet.provider, sheet.profileId, authorizedAt);
       dependencies.writeLog({
@@ -290,6 +367,12 @@ export function createAuthCoordinator(
       });
       return { provider: sheet.provider, profileId: sheet.profileId };
     } catch (error) {
+      if (signal.aborted) throw new AuthorizationCancelledError();
+      if (
+        isAuthorizationCancelledError(error) ||
+        error instanceof AuthorizationCheckDeferred
+      )
+        throw error;
       dependencies.writeLog({
         level: "error",
         source: "app",
@@ -305,24 +388,49 @@ export function createAuthCoordinator(
   }
 
   function complete(sheet: AuthSheet): Promise<AuthCompletion> {
-    if (completeInFlight) return completeInFlight;
-    const running = performComplete(sheet);
+    if (!isCurrent(sheet))
+      return Promise.reject(new AuthorizationCancelledError());
+    if (completeInFlight) {
+      return completingAccount?.provider === sheet.provider &&
+        completingAccount.profileId === sheet.profileId
+        ? completeInFlight
+        : Promise.reject(new Error("其他账号正在完成授权"));
+    }
+    const pendingId = dependencies.getProvider(sheet.provider).auth.pendingId();
+    if (pendingId !== sheet.profileId)
+      return Promise.reject(new Error("未找到匹配的待完成授权，请重新授权"));
+    completingAccount = {
+      provider: sheet.provider,
+      profileId: sheet.profileId,
+    };
+    const abort = createAuthorizationAbort();
+    completeAbort = abort;
+    const running = performComplete(sheet, abort).finally(() => {
+      if (completeInFlight === running) {
+        completeInFlight = null;
+        completingAccount = null;
+      }
+      if (completeAbort === abort) completeAbort = null;
+    });
     completeInFlight = running;
-    running.then(
-      () => {
-        if (completeInFlight === running) completeInFlight = null;
-      },
-      () => {
-        if (completeInFlight === running) completeInFlight = null;
-      },
-    );
     return running;
   }
 
   function cancel(sheet: AuthSheet): void {
-    if (completeInFlight) throw new Error("授权正在验证，请稍候");
+    const cancellingStart =
+      startingAccount?.provider === sheet.provider &&
+      startingAccount.profileId === sheet.profileId &&
+      startingAccount.previousSessionId === sheet.sessionId;
+    if (!isCurrent(sheet) && !cancellingStart) return;
+    sessionId += 1;
+    retireAccountWork(sheet.provider, sheet.profileId);
+    const abort = completeAbort;
+    completeAbort = null;
+    completeInFlight = null;
+    completingAccount = null;
+    abort?.abort();
     const api = dependencies.getProvider(sheet.provider);
-    api.auth.clearPending();
+    if (api.auth.pendingId() === sheet.profileId) api.auth.clearPending();
     if (api.token(sheet.profileId)) return;
     const removed = api.remove(sheet.profileId);
     if (!removed.ok) throw new Error("授权已取消，但未授权账号清理失败");
@@ -331,7 +439,57 @@ export function createAuthCoordinator(
     api.clearSettings(sheet.profileId);
   }
 
-  return { findPending, resume, start, complete, cancel };
+  function restart(
+    sheet: AuthSheet,
+    providerInput?: string,
+  ): Promise<AuthStartResult> {
+    if (!isCurrent(sheet) || startInFlight || completeInFlight) {
+      return Promise.resolve({
+        ok: false,
+        message: "授权会话已变化或仍在处理中，请稍后重试",
+      });
+    }
+    const pending = findPending();
+    if (
+      pending &&
+      (pending.provider !== sheet.provider ||
+        pending.profileId !== sheet.profileId)
+    ) {
+      return Promise.resolve({
+        ok: false,
+        message: "存在其他未完成授权，请先处理",
+      });
+    }
+    dependencies.getProvider(sheet.provider).auth.clearPending();
+    return start({
+      provider: sheet.provider,
+      profileId: sheet.profileId,
+      providerInput,
+    }).then((result) => {
+      if (
+        !result.ok &&
+        !result.sheet &&
+        dependencies
+          .getProvider(sheet.provider)
+          .list()
+          .some((account) => account.id === sheet.profileId)
+      ) {
+        return {
+          ...result,
+          sheet: stamp({
+            ...sheet,
+            authorizationInput: "",
+            authorizationUrl: undefined,
+            deviceCode: undefined,
+            status: `授权失败：${result.message}`,
+          }),
+        };
+      }
+      return result;
+    });
+  }
+
+  return { findPending, resume, start, complete, cancel, restart, isCurrent };
 }
 
 export type AuthCoordinator = ReturnType<typeof createAuthCoordinator>;

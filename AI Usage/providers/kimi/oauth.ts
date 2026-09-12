@@ -1,7 +1,17 @@
+import {
+  AuthorizationCheckDeferred,
+  checkAuthorizationOnce,
+} from "../../services/auth-single-check";
 import { captureAccountWork } from "../../services/account-work-guard";
 import { createAccountOperationFlight } from "../../services/runtime-consistency";
 import { activePendingAuthorization } from "../../services/oauth-pending";
 import { CredentialPersistenceError } from "../../services/credential-errors";
+import {
+  createAuthorizationGuard,
+  throwIfAuthorizationCancelled,
+  type AuthorizationSignal,
+} from "../../services/auth-errors";
+
 import { fetch, Response } from "scripting";
 import { formEncode } from "../../services/form-encoding";
 import {
@@ -20,7 +30,6 @@ const DEVICE_GRANT = "urn:ietf:params:oauth:grant-type:device_code";
 const PENDING_KEY = "ai_usage_kimi_oauth_pending_v1";
 const PENDING_TTL_MS = 15 * 60_000;
 const DEFAULT_POLL_INTERVAL_MS = 5_000;
-const POLL_MAX_ATTEMPTS = 180;
 
 type PendingOAuth = {
   deviceCode: string;
@@ -86,10 +95,6 @@ function clearPending(): void {
   } catch {
     /* ignore */
   }
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 async function jsonObject(
@@ -191,49 +196,72 @@ export async function startKimiLogin(profileId: string): Promise<string> {
   return verificationUriComplete;
 }
 
-async function pollForToken(pending: PendingOAuth): Promise<TokenPayload> {
-  let intervalMs = pending.intervalMs;
-  for (let attempt = 0; attempt < POLL_MAX_ATTEMPTS; attempt++) {
-    await sleep(intervalMs);
-    if (Date.now() - pending.createdAt > PENDING_TTL_MS)
-      throw new Error("Kimi 授权会话已超时，请重新开始");
-    const body = formEncode({
-      client_id: CLIENT_ID,
-      device_code: pending.deviceCode,
-      grant_type: DEVICE_GRANT,
-    });
+let lastCheck: { deviceCode: string; nextAt: number; interval: number } | null =
+  null;
+async function pollForToken(
+  pending: PendingOAuth,
+  signal?: AuthorizationSignal,
+): Promise<TokenPayload> {
+  if (Date.now() - pending.createdAt > PENDING_TTL_MS)
+    throw new Error("Kimi 授权会话已过期，请重新授权");
+  if (!lastCheck || lastCheck.deviceCode !== pending.deviceCode)
+    lastCheck = {
+      deviceCode: pending.deviceCode,
+      nextAt: pending.createdAt + pending.intervalMs,
+      interval: pending.intervalMs,
+    };
+  const check = lastCheck;
+  if (Date.now() < check.nextAt)
+    throw new AuthorizationCheckDeferred(
+      "尚未到允许的检查时间，请稍后继续授权",
+    );
+  check.nextAt = Date.now() + check.interval;
+  return checkAuthorizationOnce(async (checkSignal) => {
     const response = await fetch(TOKEN_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
         Accept: "application/json",
       },
-      body,
-      timeout: 20,
+      body: formEncode({
+        client_id: CLIENT_ID,
+        device_code: pending.deviceCode,
+        grant_type: DEVICE_GRANT,
+      }),
+      timeout: 5,
       debugLabel: "KimiTokenPoll",
     });
+    throwIfAuthorizationCancelled(checkSignal);
     const data = (await jsonObject(response)) as TokenPayload;
+    throwIfAuthorizationCancelled(checkSignal);
     if (response.ok && data.access_token && data.refresh_token) return data;
-    if (data.error === "authorization_pending") continue;
     if (data.error === "slow_down") {
-      const next =
-        typeof data.interval === "number" && data.interval > 0
-          ? data.interval * 1000
-          : intervalMs + 1000;
-      intervalMs = Math.max(intervalMs, next);
-      continue;
+      check.interval = Math.max(
+        check.interval + 5000,
+        typeof data.interval === "number" ? data.interval * 1000 : 0,
+      );
+      check.nextAt = Date.now() + check.interval;
+      throw new AuthorizationCheckDeferred("检查间隔已延长，请稍后继续授权");
     }
-    if (data.error === "expired_token")
-      throw new Error("Kimi 设备授权码已过期，请重新开始");
-    if (data.error === "access_denied") throw new Error("Kimi 登录被拒绝");
-    if (response.status >= 500) continue;
-    throw new Error(
-      data.error_description ||
-        data.error ||
-        `Kimi Token 轮询失败（HTTP ${response.status}）`,
+    if (data.error === "authorization_pending")
+      throw new AuthorizationCheckDeferred();
+    if (data.error === "expired_token" || data.error === "access_denied")
+      throw new Error("Kimi 授权已过期或被拒绝，请重新授权");
+    throw new AuthorizationCheckDeferred(
+      "暂时无法确认授权结果，请稍后继续授权",
     );
-  }
-  throw new Error("等待 Kimi 授权超时，请确认已在浏览器完成登录后重试");
+  }, signal).catch((error) => {
+    if (
+      error instanceof AuthorizationCheckDeferred ||
+      (error instanceof Error &&
+        (error.name === "AuthorizationCancelledError" ||
+          error.message.includes("被拒绝")))
+    )
+      throw error;
+    throw new AuthorizationCheckDeferred(
+      "暂时无法确认授权结果，请稍后继续授权",
+    );
+  });
 }
 
 async function fetchIdentity(token: string): Promise<{
@@ -270,16 +298,24 @@ async function fetchIdentity(token: string): Promise<{
   }
 }
 
-export async function completeKimiLogin(_input?: string): Promise<void> {
+export async function completeKimiLogin(
+  _input?: string,
+  signal?: AuthorizationSignal,
+): Promise<void> {
+  throwIfAuthorizationCancelled(signal);
   const pending = readPending();
   if (!pending) throw new Error("未找到待完成的 Kimi 授权，请重新开始");
+  const assertCurrent = createAuthorizationGuard(pending, readPending, signal);
   if (Date.now() - pending.createdAt > PENDING_TTL_MS) {
     clearPending();
     throw new Error("OAuth 会话已超过 15 分钟，请重新授权");
   }
   try {
-    const tokens = await pollForToken(pending);
+    const tokens = await pollForToken(pending, signal);
+    throwIfAuthorizationCancelled(signal);
+    assertCurrent();
     const identity = await fetchIdentity(tokens.access_token!);
+    assertCurrent();
     const saved = saveProfileCredentials(pending.profileId, {
       accessToken: tokens.access_token!,
       refreshToken: tokens.refresh_token,
@@ -292,6 +328,8 @@ export async function completeKimiLogin(_input?: string): Promise<void> {
     if (!saved) throw new Error("Token 已获取，但本机 Keychain 保存失败");
     clearPending();
   } catch (error) {
+    assertCurrent();
+    if (error instanceof AuthorizationCheckDeferred) throw error;
     clearPending();
     throw error;
   }

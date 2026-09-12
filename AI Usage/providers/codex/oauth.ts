@@ -1,3 +1,8 @@
+import {
+  createAuthorizationGuard,
+  throwIfAuthorizationCancelled,
+  type AuthorizationSignal,
+} from "../../services/auth-errors";
 import { captureAccountWork } from "../../services/account-work-guard";
 import { createAccountOperationFlight } from "../../services/runtime-consistency";
 import { activePendingAuthorization } from "../../services/oauth-pending";
@@ -189,7 +194,11 @@ export async function startOpenAILogin(profileId: string): Promise<string> {
 }
 
 /** 校验用户粘贴的 localhost 回调 URL，交换 Token 并清理一次性状态。 */
-export async function completeOpenAILogin(callbackText: string): Promise<void> {
+export async function completeOpenAILogin(
+  callbackText: string,
+  signal?: AuthorizationSignal,
+): Promise<void> {
+  throwIfAuthorizationCancelled(signal);
   let raw = callbackText.trim();
   if (!raw) throw new Error("请粘贴浏览器地址栏中的完整回调 URL");
   // 兼容 Safari 地址栏复制时省略 scheme，例如 localhost:1455/auth/callback?...
@@ -213,6 +222,7 @@ export async function completeOpenAILogin(callbackText: string): Promise<void> {
   }
   const pending = readPending();
   if (!pending) throw new Error("未找到待完成的登录，请重新点击“开始官方授权”");
+  const assertCurrent = createAuthorizationGuard(pending, readPending, signal);
   if (Date.now() - pending.createdAt > PENDING_TTL_MS) {
     clearPending();
     throw new Error("OAuth 会话已超过 10 分钟，请重新授权");
@@ -237,6 +247,7 @@ export async function completeOpenAILogin(callbackText: string): Promise<void> {
     const identityToken = tokens.id_token || tokens.access_token || null;
     const accountId = accountIdFromToken(identityToken);
     const email = emailFromToken(identityToken);
+    assertCurrent();
     const saved = saveProfileCredentials(pending.profileId, {
       accessToken: tokens.access_token!,
       refreshToken: tokens.refresh_token,
@@ -249,6 +260,7 @@ export async function completeOpenAILogin(callbackText: string): Promise<void> {
     if (!saved) throw new Error("Token 已获取，但本机 Keychain 保存失败");
     clearPending();
   } catch (e) {
+    assertCurrent();
     // authorization code 通常只能使用一次；失败后要求重新授权，避免状态含糊。
     clearPending();
     throw e;

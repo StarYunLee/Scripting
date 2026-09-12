@@ -1,7 +1,16 @@
+import {
+  AuthorizationCheckDeferred,
+  checkAuthorizationOnce,
+} from "../../services/auth-single-check";
 import { captureAccountWork } from "../../services/account-work-guard";
 import { createAccountOperationFlight } from "../../services/runtime-consistency";
 import { activePendingAuthorization } from "../../services/oauth-pending";
 import { CredentialPersistenceError } from "../../services/credential-errors";
+import {
+  createAuthorizationGuard,
+  throwIfAuthorizationCancelled,
+  type AuthorizationSignal,
+} from "../../services/auth-errors";
 import { fetch, Response } from "scripting";
 import { parseJwtPayload } from "../../services/jwt-payload";
 import {
@@ -16,10 +25,6 @@ const CURSOR_POLL_URL = "https://api2.cursor.sh/auth/poll";
 const CURSOR_REFRESH_URL = "https://api2.cursor.sh/auth/exchange_user_api_key";
 const PENDING_KEY = "ai_usage_cursor_oauth_pending_v1";
 const PENDING_TTL_MS = 10 * 60_000;
-const POLL_MAX_ATTEMPTS = 150;
-const POLL_BASE_DELAY_MS = 1000;
-const POLL_MAX_DELAY_MS = 10_000;
-const POLL_BACKOFF = 1.2;
 const EXPIRY_SKEW_MS = 5 * 60_000;
 const FALLBACK_TTL_MS = 60 * 60_000;
 
@@ -268,63 +273,46 @@ async function jsonObject(
   }
 }
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
 async function pollForTokens(
   uuid: string,
   verifier: string,
   createdAt: number,
+  signal?: AuthorizationSignal,
 ): Promise<TokenPayload & Record<string, unknown>> {
-  let delay = POLL_BASE_DELAY_MS;
-  let consecutiveErrors = 0;
-
-  for (let attempt = 0; attempt < POLL_MAX_ATTEMPTS; attempt++) {
-    if (Date.now() - createdAt > PENDING_TTL_MS)
-      throw new Error("Cursor 授权已过期（超过 10 分钟），请重新发起授权");
-    await sleep(delay);
-    try {
-      const url = `${CURSOR_POLL_URL}?uuid=${encodeURIComponent(uuid)}&verifier=${encodeURIComponent(verifier)}`;
-      const response = await fetch(url, {
-        timeout: 20,
-        debugLabel: "CursorAuthPoll",
-      });
-
-      if (response.status === 404) {
-        consecutiveErrors = 0;
-        delay = Math.min(delay * POLL_BACKOFF, POLL_MAX_DELAY_MS);
-        continue;
-      }
-
-      if (response.ok) {
-        const data = await jsonObject(response);
-        if (!data.accessToken || !data.refreshToken)
-          throw new Error("Cursor 授权响应缺少 Token");
-        return data as TokenPayload & Record<string, unknown>;
-      }
-
-      if ([400, 401, 403, 410].includes(response.status))
-        throw new Error(
-          `Cursor 授权被拒绝（HTTP ${response.status}），请重新开始`,
-        );
-
-      throw new Error(`Cursor 授权轮询失败（HTTP ${response.status}）`);
-    } catch (error) {
-      if (
-        error instanceof Error &&
-        (error.message.includes("授权被拒绝") ||
-          error.message.includes("授权响应缺少"))
-      )
-        throw error;
-      consecutiveErrors++;
-      if (consecutiveErrors >= 3)
-        throw new Error("Cursor 授权轮询连续失败，请稍后重试");
-      delay = Math.min(delay * POLL_BACKOFF, POLL_MAX_DELAY_MS);
+  if (Date.now() - createdAt > PENDING_TTL_MS)
+    throw new Error("Cursor 授权已过期，请重新授权");
+  return checkAuthorizationOnce(async (checkSignal) => {
+    const response = await fetch(
+      `${CURSOR_POLL_URL}?uuid=${encodeURIComponent(uuid)}&verifier=${encodeURIComponent(verifier)}`,
+      { timeout: 5, debugLabel: "CursorAuthPoll" },
+    );
+    throwIfAuthorizationCancelled(checkSignal);
+    if (response.status === 404) throw new AuthorizationCheckDeferred();
+    if (response.ok) {
+      const data = await jsonObject(response);
+      throwIfAuthorizationCancelled(checkSignal);
+      if (!data.accessToken || !data.refreshToken)
+        throw new Error("Cursor 授权响应缺少 Token");
+      return data as TokenPayload & Record<string, unknown>;
     }
-  }
-
-  throw new Error("Cursor 授权等待超时，请确认已在浏览器完成登录后重试");
+    if ([400, 401, 403, 410].includes(response.status))
+      throw new Error("Cursor 授权已失效或被拒绝，请重新授权");
+    throw new AuthorizationCheckDeferred(
+      "暂时无法确认授权结果，请稍后继续授权",
+    );
+  }, signal).catch((error) => {
+    if (
+      error instanceof AuthorizationCheckDeferred ||
+      (error instanceof Error &&
+        error.name === "AuthorizationCancelledError") ||
+      (error instanceof Error &&
+        (error.message.includes("失效") || error.message.includes("缺少")))
+    )
+      throw error;
+    throw new AuthorizationCheckDeferred(
+      "暂时无法确认授权结果，请稍后继续授权",
+    );
+  });
 }
 
 export function hasPendingOAuth(): boolean {
@@ -368,9 +356,14 @@ export async function startCursorLogin(profileId: string): Promise<string> {
   return `${CURSOR_LOGIN_URL}?${params}`;
 }
 
-export async function completeCursorLogin(_input?: string): Promise<void> {
+export async function completeCursorLogin(
+  _input?: string,
+  signal?: AuthorizationSignal,
+): Promise<void> {
+  throwIfAuthorizationCancelled(signal);
   const pending = readPending();
   if (!pending) throw new Error("未找到待完成的 Cursor 授权，请重新开始");
+  const assertCurrent = createAuthorizationGuard(pending, readPending, signal);
   if (Date.now() - pending.createdAt > PENDING_TTL_MS) {
     clearPending();
     throw new Error("OAuth 会话已超过 10 分钟，请重新授权");
@@ -380,8 +373,12 @@ export async function completeCursorLogin(_input?: string): Promise<void> {
       pending.uuid,
       pending.verifier,
       pending.createdAt,
+      signal,
     );
+    throwIfAuthorizationCancelled(signal);
+    assertCurrent();
     const identity = await resolveIdentity(tokens.accessToken!, tokens);
+    assertCurrent();
     const saved = saveProfileCredentials(pending.profileId, {
       accessToken: tokens.accessToken!,
       refreshToken: tokens.refreshToken,
@@ -392,6 +389,8 @@ export async function completeCursorLogin(_input?: string): Promise<void> {
     if (!saved) throw new Error("Token 已获取，但本机 Keychain 保存失败");
     clearPending();
   } catch (error) {
+    assertCurrent();
+    if (error instanceof AuthorizationCheckDeferred) throw error;
     clearPending();
     throw error;
   }

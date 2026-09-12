@@ -1,5 +1,12 @@
 import { activePendingAuthorization } from "../../services/oauth-pending";
+import {
+  createAuthorizationGuard,
+  throwIfAuthorizationCancelled,
+  waitForAuthorization,
+  type AuthorizationSignal,
+} from "../../services/auth-errors";
 import { fetch, Response } from "scripting";
+
 import {
   getProfileAccessToken,
   resolveProfile,
@@ -83,10 +90,6 @@ function clearPending(): void {
   } catch {
     /* ignore */
   }
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 async function jsonObject(
@@ -184,10 +187,14 @@ export async function startCopilotLogin(profileId: string): Promise<string> {
   return verificationUri;
 }
 
-async function pollForToken(pending: PendingOAuth): Promise<TokenPayload> {
+async function pollForToken(
+  pending: PendingOAuth,
+  signal?: AuthorizationSignal,
+): Promise<TokenPayload> {
   let intervalMs = pending.intervalMs;
   for (let attempt = 0; attempt < POLL_MAX_ATTEMPTS; attempt++) {
-    await sleep(intervalMs);
+    await waitForAuthorization(intervalMs, signal);
+    throwIfAuthorizationCancelled(signal);
     if (Date.now() - pending.createdAt > PENDING_TTL_MS)
       throw new Error("GitHub 授权会话已超时，请重新开始");
     const response = await fetch(TOKEN_URL, {
@@ -204,6 +211,7 @@ async function pollForToken(pending: PendingOAuth): Promise<TokenPayload> {
       timeout: 20,
       debugLabel: "CopilotTokenPoll",
     });
+    throwIfAuthorizationCancelled(signal);
     const data = (await jsonObject(response)) as TokenPayload;
     if (response.ok && data.access_token) return data;
     if (data.error === "authorization_pending") continue;
@@ -305,16 +313,24 @@ export async function ensureAccountEmail(profileId: string): Promise<void> {
   }
 }
 
-export async function completeCopilotLogin(_input?: string): Promise<void> {
+export async function completeCopilotLogin(
+  _input?: string,
+  signal?: AuthorizationSignal,
+): Promise<void> {
+  throwIfAuthorizationCancelled(signal);
   const pending = readPending();
   if (!pending) throw new Error("未找到待完成的 GitHub 授权，请重新开始");
+  const assertCurrent = createAuthorizationGuard(pending, readPending, signal);
   if (Date.now() - pending.createdAt > PENDING_TTL_MS) {
     clearPending();
     throw new Error("OAuth 会话已超过 15 分钟，请重新授权");
   }
   try {
-    const tokens = await pollForToken(pending);
+    const tokens = await pollForToken(pending, signal);
+    throwIfAuthorizationCancelled(signal);
+    assertCurrent();
     const identity = await fetchIdentity(tokens.access_token!);
+    assertCurrent();
     const saved = saveProfileCredentials(pending.profileId, {
       accessToken: tokens.access_token!,
       accountId: identity.accountId,
@@ -324,6 +340,7 @@ export async function completeCopilotLogin(_input?: string): Promise<void> {
     if (!saved) throw new Error("Token 已获取，但本机 Keychain 保存失败");
     clearPending();
   } catch (error) {
+    assertCurrent();
     clearPending();
     throw error;
   }

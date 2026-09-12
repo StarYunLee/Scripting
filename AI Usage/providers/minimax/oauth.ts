@@ -1,3 +1,8 @@
+import {
+  createAuthorizationGuard,
+  throwIfAuthorizationCancelled,
+  type AuthorizationSignal,
+} from "../../services/auth-errors";
 import { activePendingAuthorization } from "../../services/oauth-pending";
 import { fetch } from "scripting";
 import { parseJwtPayload } from "../../services/jwt-payload";
@@ -258,9 +263,14 @@ async function probeRegionPayload(
   return null;
 }
 
-export async function completeMinimaxLogin(input?: string): Promise<void> {
+export async function completeMinimaxLogin(
+  input?: string,
+  signal?: AuthorizationSignal,
+): Promise<void> {
+  throwIfAuthorizationCancelled(signal);
   const pending = readPending();
   if (!pending) throw new Error("未找到待完成的 MiniMax 授权，请重新开始");
+  const assertCurrent = createAuthorizationGuard(pending, readPending, signal);
   if (Date.now() - pending.createdAt > PENDING_TTL_MS) {
     clearPending();
     throw new Error("授权会话已超过 15 分钟，请重新开始");
@@ -279,7 +289,9 @@ export async function completeMinimaxLogin(input?: string): Promise<void> {
 
     const masked = `${apiKey.slice(0, 4)}…${apiKey.slice(-4)}`;
     const fallbackName = `MiniMax ${regionDisplayName(region)} ${masked}`;
+    assertCurrent();
     const identity = await fetchUserInfo(apiKey, region);
+    assertCurrent();
     const saved = saveProfileCredentials(pending.profileId, {
       accessToken: apiKey,
       region,
@@ -291,6 +303,7 @@ export async function completeMinimaxLogin(input?: string): Promise<void> {
       throw new Error("Subscription Key 已验证，但本机 Keychain 保存失败");
     clearPending();
   } catch (error) {
+    assertCurrent();
     clearPending();
     throw error;
   }

@@ -23,6 +23,8 @@ export type AuthSheet = {
   authorizationUrl?: string;
   status: string;
   deviceCode?: string;
+  autoComplete?: boolean;
+  sessionId?: number;
 };
 
 export type UsageWindowView = {
@@ -116,9 +118,8 @@ export const PROVIDER_META: Record<ProviderId, ProviderMeta> = {
     connectTitle: "连接 Cursor 账户",
     subtitle: "连接 Cursor 账户，查看 Auto、所有、第三方模型和 Grok Bot 用量。",
     accent: "#111827",
-    pasteHint:
-      "在浏览器完成 Cursor 登录后返回应用，无需粘贴内容，直接点击“提交并完成授权”。",
-    pastePlaceholder: "无需填写，完成浏览器登录后提交",
+    pasteHint: "在浏览器完成 Cursor 登录后返回应用，连接会自动完成。",
+    pastePlaceholder: "无需填写，完成浏览器登录后会自动连接",
     capabilities: { widget: true },
   },
   kimi: {
@@ -127,9 +128,8 @@ export const PROVIDER_META: Record<ProviderId, ProviderMeta> = {
     connectTitle: "连接 Kimi Code 账户",
     subtitle: "连接 Kimi Code 账户，查看滚动额度与每周额度。",
     accent: "#111827",
-    pasteHint:
-      "设备码会自动包含在授权页中。完成浏览器登录后返回应用，直接点击“提交并完成授权”。",
-    pastePlaceholder: "无需填写，完成浏览器登录后提交",
+    pasteHint: "授权页已包含设备码。完成浏览器登录后返回应用，连接会自动完成。",
+    pastePlaceholder: "无需填写，完成浏览器登录后会自动连接",
     capabilities: { widget: true },
   },
   copilot: {
@@ -139,8 +139,8 @@ export const PROVIDER_META: Record<ProviderId, ProviderMeta> = {
     subtitle: "使用 GitHub 设备授权查看高级请求、聊天和代码补全额度。",
     accent: "#24292F",
     pasteHint:
-      "记下设备码，在 GitHub 授权页输入并完成登录；返回应用后直接点击“提交并完成授权”。",
-    pastePlaceholder: "无需填写，完成设备授权后提交",
+      "记下设备码，打开 GitHub 授权页输入并完成登录。关闭授权页后将自动连接。",
+    pastePlaceholder: "无需填写，关闭授权页后会自动连接",
     capabilities: { widget: true },
   },
   zai: {

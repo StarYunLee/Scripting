@@ -1,3 +1,8 @@
+import {
+  createAuthorizationGuard,
+  throwIfAuthorizationCancelled,
+  type AuthorizationSignal,
+} from "../../services/auth-errors";
 import { captureAccountWork } from "../../services/account-work-guard";
 import { createAccountOperationFlight } from "../../services/runtime-consistency";
 import { activePendingAuthorization } from "../../services/oauth-pending";
@@ -268,9 +273,12 @@ export async function startClaudeLogin(profileId: string): Promise<string> {
 /** 接受 Anthropic hosted callback 页面显示的授权码（通常为 code#state）。 */
 export async function completeClaudeLogin(
   callbackOrCode: string,
+  signal?: AuthorizationSignal,
 ): Promise<void> {
+  throwIfAuthorizationCancelled(signal);
   const pending = readPending();
   if (!pending) throw new Error("未找到待完成的 Claude 授权，请重新开始");
+  const assertCurrent = createAuthorizationGuard(pending, readPending, signal);
   if (Date.now() - pending.createdAt > PENDING_TTL_MS) {
     clearPending();
     throw new Error("OAuth 会话已超过 10 分钟，请重新授权");
@@ -286,6 +294,7 @@ export async function completeClaudeLogin(
       code_verifier: pending.verifier,
     });
     const identity = identityFromTokens(tokens);
+    assertCurrent();
     const saved = saveProfileCredentials(pending.profileId, {
       accessToken: tokens.access_token!,
       refreshToken: tokens.refresh_token,
@@ -297,6 +306,7 @@ export async function completeClaudeLogin(
     if (!saved) throw new Error("Token 已获取，但本机 Keychain 保存失败");
     clearPending();
   } catch (e) {
+    assertCurrent();
     clearPending();
     throw e;
   }

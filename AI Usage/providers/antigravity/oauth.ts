@@ -1,3 +1,8 @@
+import {
+  createAuthorizationGuard,
+  throwIfAuthorizationCancelled,
+  type AuthorizationSignal,
+} from "../../services/auth-errors";
 import { captureAccountWork } from "../../services/account-work-guard";
 import { createAccountOperationFlight } from "../../services/runtime-consistency";
 import type { RequestBudget } from "../../services/request-budget";
@@ -229,16 +234,23 @@ export async function startAntigravityLogin(
   return `${AUTHORIZATION_URL}?${params.toString()}`;
 }
 
-export async function completeAntigravityLogin(input: string): Promise<void> {
+export async function completeAntigravityLogin(
+  input: string,
+  signal?: AuthorizationSignal,
+): Promise<void> {
+  throwIfAuthorizationCancelled(signal);
   const pending = readPending();
   if (!pending) throw new Error("未找到待完成的 Antigravity 授权，请重新开始");
+  const assertCurrent = createAuthorizationGuard(pending, readPending, signal);
   if (Date.now() - pending.createdAt > PENDING_TTL_MS) {
     clearPending();
     throw new Error("OAuth 会话已超过 10 分钟，请重新授权");
   }
   try {
     const tokens = await exchangeCode(parseOAuthCallback(input, pending.state));
+    assertCurrent();
     const identity = await fetchIdentity(tokens.access_token!);
+    assertCurrent();
     const saved = saveProfileCredentials(pending.profileId, {
       accessToken: tokens.access_token!,
       refreshToken: tokens.refresh_token,
@@ -250,6 +262,7 @@ export async function completeAntigravityLogin(input: string): Promise<void> {
     if (!saved) throw new Error("Token 已获取，但本机 Keychain 保存失败");
     clearPending();
   } catch (error) {
+    assertCurrent();
     clearPending();
     throw error;
   }

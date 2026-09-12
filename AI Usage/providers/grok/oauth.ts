@@ -1,3 +1,8 @@
+import {
+  createAuthorizationGuard,
+  throwIfAuthorizationCancelled,
+  type AuthorizationSignal,
+} from "../../services/auth-errors";
 import { captureAccountWork } from "../../services/account-work-guard";
 import { createAccountOperationFlight } from "../../services/runtime-consistency";
 import { activePendingAuthorization } from "../../services/oauth-pending";
@@ -240,9 +245,14 @@ export async function startGrokLogin(profileId: string): Promise<string> {
 }
 
 /** 接受完整 127.0.0.1 回调 URL，或 xAI 页面显示的一次性授权码。 */
-export async function completeGrokLogin(callbackOrCode: string): Promise<void> {
+export async function completeGrokLogin(
+  callbackOrCode: string,
+  signal?: AuthorizationSignal,
+): Promise<void> {
+  throwIfAuthorizationCancelled(signal);
   const pending = readPending();
   if (!pending) throw new Error("未找到待完成的 Grok 授权，请重新开始");
+  const assertCurrent = createAuthorizationGuard(pending, readPending, signal);
   if (Date.now() - pending.createdAt > PENDING_TTL_MS) {
     clearPending();
     throw new Error("OAuth 会话已超过 10 分钟，请重新授权");
@@ -250,9 +260,11 @@ export async function completeGrokLogin(callbackOrCode: string): Promise<void> {
   try {
     const code = parseAuthorizationInput(callbackOrCode, pending.state);
     const tokens = await exchangeCode(code, pending.verifier);
+    assertCurrent();
     const identity = await fetchIdentity(
       tokens.id_token || tokens.access_token!,
     );
+    assertCurrent();
     const saved = saveProfileCredentials(pending.profileId, {
       accessToken: tokens.access_token!,
       refreshToken: tokens.refresh_token,
@@ -265,6 +277,7 @@ export async function completeGrokLogin(callbackOrCode: string): Promise<void> {
     if (!saved) throw new Error("Token 已获取，但本机 Keychain 保存失败");
     clearPending();
   } catch (e) {
+    assertCurrent();
     clearPending();
     throw e;
   }
