@@ -66,6 +66,20 @@ export function GlassSectionHeader(props: { title: string }) {
   return <Text foregroundStyle="secondaryLabel">{props.title}</Text>;
 }
 
+export function GlassNoteRow(props: { text: string }) {
+  return (
+    <Text
+      font={12}
+      foregroundStyle="tertiaryLabel"
+      padding={{ vertical: true }}
+      frame={{ maxWidth: "infinity", alignment: "leading" }}
+      multilineTextAlignment="leading"
+    >
+      {props.text}
+    </Text>
+  );
+}
+
 export function GlassActionRow(props: {
   title: string;
   action: () => void | Promise<void>;

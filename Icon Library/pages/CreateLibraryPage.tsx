@@ -11,6 +11,7 @@ import {
   GlassDivider,
   GlassGroup,
   GlassNavRow,
+  GlassNoteRow,
   GlassSectionHeader,
   glassRowBackground,
 } from "../components/Glass";
@@ -185,14 +186,9 @@ export function CreateLibraryPage(props: {
             frame={{ minHeight: 44, maxWidth: "infinity" }}
           />
           <GlassDivider />
-          <Text
-            font={12}
-            foregroundStyle="tertiaryLabel"
-            padding={{ vertical: true }}
-            frame={{ maxWidth: "infinity" }}
-          >
-            {`将写入 ${settings.owner}/${settings.repo}。不填则用灰色占位的默认名。`}
-          </Text>
+          <GlassNoteRow
+            text={`将写入 ${settings.owner}/${settings.repo}。不填则用灰色占位的默认名。`}
+          />
         </GlassGroup>
       </Section>
 
@@ -213,16 +209,13 @@ export function CreateLibraryPage(props: {
             action={() => setPreview("script")}
           />
           <GlassDivider />
-          <Text
-            font={12}
-            foregroundStyle="tertiaryLabel"
-            padding={{ vertical: true }}
-            frame={{ maxWidth: "infinity" }}
-          >
-            {draftOnly
-              ? "这里只编辑创建方式的草稿；返回后点击编辑页右上角「保存」才会写入仓库。"
-              : `只读预览，内容已按当前目录「${resolved.iconDir}」和索引「${resolved.jsonPath}」生成。创建时写入仓库，不能在这里改。`}
-          </Text>
+          <GlassNoteRow
+            text={
+              draftOnly
+                ? "这里只编辑创建方式的草稿；返回后点击编辑页右上角「保存」才会写入仓库。"
+                : `只读预览，内容已按当前目录「${resolved.iconDir}」和索引「${resolved.jsonPath}」生成。创建时写入仓库，不能在这里改。`
+            }
+          />
         </GlassGroup>
       </Section>
 

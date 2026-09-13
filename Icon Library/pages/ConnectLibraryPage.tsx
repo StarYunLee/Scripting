@@ -3,6 +3,7 @@ import {
   GlassCenteredActionRow,
   GlassDivider,
   GlassGroup,
+  GlassNoteRow,
   GlassSectionHeader,
   glassRowBackground,
 } from "../components/Glass";
@@ -187,14 +188,7 @@ export function ConnectLibraryPage(props: {
             </Picker>
           )}
           <GlassDivider />
-          <Text
-            font={12}
-            foregroundStyle="tertiaryLabel"
-            padding={{ vertical: true }}
-            frame={{ maxWidth: "infinity" }}
-          >
-            {statusText}
-          </Text>
+          <GlassNoteRow text={statusText} />
         </GlassGroup>
       </Section>
       <Section listRowBackground={glassRowBackground}>
@@ -217,14 +211,7 @@ export function ConnectLibraryPage(props: {
           {draftOnly ? (
             <>
               <GlassDivider />
-              <Text
-                font={12}
-                foregroundStyle="tertiaryLabel"
-                padding={{ vertical: true }}
-                frame={{ maxWidth: "infinity" }}
-              >
-                这里只修改草稿，返回后由右上角「保存」提交整个仓库配置。
-              </Text>
+              <GlassNoteRow text="这里只修改草稿，返回后由右上角「保存」提交整个仓库配置。" />
             </>
           ) : null}
         </GlassGroup>

@@ -24,7 +24,10 @@ import {
   glassRowBackground,
 } from "../components/Glass";
 import { glassListPageProps } from "../components/GlassListPage";
-import { IconGlassTile } from "../components/IconGlassTile";
+import {
+  IconGlassTile,
+  ICON_GRID_ADAPTIVE_COLUMNS,
+} from "../components/IconGlassTile";
 import { PageBackground } from "../components/PageBackground";
 import { formatError } from "../services/errors";
 import { confirmAddedDraft, confirmAddedDrafts } from "../services/addDraftFlow";
@@ -43,29 +46,6 @@ import {
 } from "../services/lobeIcons";
 import type { LobeIconCatalogItem } from "../services/lobeIconsCatalog";
 import type { UploadDraft } from "../services/models";
-
-const PREVIEW_COLUMNS = [
-  {
-    size: { type: "flexible" as const, min: 1 },
-    spacing: 10,
-    alignment: "top" as const,
-  },
-  {
-    size: { type: "flexible" as const, min: 1 },
-    spacing: 10,
-    alignment: "top" as const,
-  },
-  {
-    size: { type: "flexible" as const, min: 1 },
-    spacing: 10,
-    alignment: "top" as const,
-  },
-  {
-    size: { type: "flexible" as const, min: 1 },
-    spacing: 10,
-    alignment: "top" as const,
-  },
-];
 
 export type LobePickMode = "stay" | "back";
 
@@ -605,7 +585,7 @@ export function LobeIconsPickerPage(props: {
             </Text>
           ) : (
             <LazyVGrid
-              columns={PREVIEW_COLUMNS}
+              columns={ICON_GRID_ADAPTIVE_COLUMNS}
               spacing={14}
               alignment="center"
               frame={{ maxWidth: "infinity" }}

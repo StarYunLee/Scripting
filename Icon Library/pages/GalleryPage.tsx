@@ -18,7 +18,10 @@ import {
   GlassEmptyStateCard,
   GlassEmptyStateContainer,
 } from "../components/Glass";
-import { IconGlassTile } from "../components/IconGlassTile";
+import {
+  IconGlassTile,
+  ICON_GRID_ADAPTIVE_COLUMNS,
+} from "../components/IconGlassTile";
 import { PageBackground } from "../components/PageBackground";
 import { formatError } from "../services/errors";
 import type {
@@ -39,28 +42,6 @@ import { IconDetailPage } from "./IconDetailPage";
 import { GalleryManagePage } from "./GalleryManagePage";
 
 const ICON_SIZE = 64;
-const GRID_COLUMNS = [
-  {
-    size: { type: "flexible" as const, min: 1 },
-    spacing: 12,
-    alignment: "top" as const,
-  },
-  {
-    size: { type: "flexible" as const, min: 1 },
-    spacing: 12,
-    alignment: "top" as const,
-  },
-  {
-    size: { type: "flexible" as const, min: 1 },
-    spacing: 12,
-    alignment: "top" as const,
-  },
-  {
-    size: { type: "flexible" as const, min: 1 },
-    spacing: 12,
-    alignment: "top" as const,
-  },
-];
 
 function filterIcons(icons: CatalogIcon[], query: string): CatalogIcon[] {
   const keyword = query.trim().toLowerCase();
@@ -363,7 +344,7 @@ export function GalleryPage() {
             )
           ) : (
             <LazyVGrid
-              columns={GRID_COLUMNS}
+              columns={ICON_GRID_ADAPTIVE_COLUMNS}
               spacing={18}
               alignment="center"
               frame={{ maxWidth: "infinity" }}

@@ -17,6 +17,7 @@ import {
   GlassGroup,
   GlassCopyInfoRow,
   GlassNavRow,
+  GlassNoteRow,
   GlassSectionHeader,
   GlassSelectionRow,
   glassRowBackground,
@@ -217,90 +218,89 @@ export function SettingsPage(props: {
         <Section
           listRowBackground={glassRowBackground}
           header={<GlassSectionHeader title="订阅地址" />}
-            >
-              <GlassGroup>
-                {ready && subUrl ? (
-                  <GlassCopyInfoRow
-                    value={subUrl}
-                    note={copyStatus ?? "由当前仓库和索引文件自动生成"}
-                    action={copySubscribe}
-                  />
-                ) : (
-                  <Text
-                    foregroundStyle="secondaryLabel"
-                    padding={{ vertical: true }}
-                    frame={{ maxWidth: "infinity" }}
-                  >
-                    完成仓库与图标库配置后显示
-                  </Text>
-                )}
-              </GlassGroup>
-            </Section>
+        >
+          <GlassGroup>
+            {ready && subUrl ? (
+              <GlassCopyInfoRow
+                value={subUrl}
+                note={copyStatus ?? "由当前仓库和索引文件自动生成"}
+                action={copySubscribe}
+              />
+            ) : (
+              <GlassNoteRow text="完成仓库与图标库配置后显示" />
+            )}
+          </GlassGroup>
+        </Section>
 
-            <Section
-              listRowBackground={glassRowBackground}
-              header={<GlassSectionHeader title="关于" />}
+        <Section
+          listRowBackground={glassRowBackground}
+          header={<GlassSectionHeader title="关于" />}
+        >
+          <GlassGroup>
+            <VStack
+              alignment="leading"
+              spacing={8}
+              padding={{ vertical: true }}
+              frame={{ maxWidth: "infinity", alignment: "leading" }}
             >
-              <GlassGroup>
-                <VStack
-                  alignment="leading"
-                  spacing={8}
-                  padding={{ vertical: true }}
-                  frame={{ maxWidth: "infinity" }}
+              <Text font={15} fontWeight="medium">
+                Icon Library
+              </Text>
+              <VStack
+                alignment="leading"
+                spacing={6}
+                frame={{ maxWidth: "infinity", alignment: "leading" }}
+              >
+                <Text
+                  font={14}
+                  foregroundStyle="secondaryLabel"
+                  multilineTextAlignment="leading"
+                  fixedSize={{ horizontal: false, vertical: true }}
                 >
-                  <Text font={15} fontWeight="medium">
-                    Icon Library
-                  </Text>
-                  <VStack
-                    alignment="leading"
-                    spacing={6}
-                    frame={{ maxWidth: "infinity" }}
-                  >
-                    <Text
-                      font={14}
-                      foregroundStyle="secondaryLabel"
-                      fixedSize={{ horizontal: false, vertical: true }}
-                    >
-                      • 使用 GitHub 公开仓库托管图标，并生成可订阅的索引。
-                    </Text>
-                    <Text
-                      font={14}
-                      foregroundStyle="secondaryLabel"
-                      fixedSize={{ horizontal: false, vertical: true }}
-                    >
-                      • 支持创建图标库或连接已有图标目录。
-                    </Text>
-                    <Text
-                      font={14}
-                      foregroundStyle="secondaryLabel"
-                      fixedSize={{ horizontal: false, vertical: true }}
-                    >
-                      • 支持从相册、文件、Lobe Icons 和 App Store 导入图标。
-                    </Text>
-                    <Text
-                      font={14}
-                      foregroundStyle="secondaryLabel"
-                      fixedSize={{ horizontal: false, vertical: true }}
-                    >
-                      • 支持浏览、重命名、删除和导出 PNG。
-                    </Text>
-                    <Text
-                      font={14}
-                      foregroundStyle="secondaryLabel"
-                      fixedSize={{ horizontal: false, vertical: true }}
-                    >
-                      • 订阅公开 JSON 仅供只读浏览，不修改对方仓库。
-                    </Text>
-                  </VStack>
-                </VStack>
-                <GlassDivider />
-                <GlassNavRow
-                  title="版本信息"
-                  detail={`v${CURRENT_VERSION}`}
-                  action={() => setDestination("changelog")}
-                />
-              </GlassGroup>
-            </Section>
+                  • 使用 GitHub 公开仓库托管图标，并生成可订阅的索引。
+                </Text>
+                <Text
+                  font={14}
+                  foregroundStyle="secondaryLabel"
+                  multilineTextAlignment="leading"
+                  fixedSize={{ horizontal: false, vertical: true }}
+                >
+                  • 支持创建图标库或连接已有图标目录。
+                </Text>
+                <Text
+                  font={14}
+                  foregroundStyle="secondaryLabel"
+                  multilineTextAlignment="leading"
+                  fixedSize={{ horizontal: false, vertical: true }}
+                >
+                  • 支持从相册、文件、Lobe Icons 和 App Store 导入图标。
+                </Text>
+                <Text
+                  font={14}
+                  foregroundStyle="secondaryLabel"
+                  multilineTextAlignment="leading"
+                  fixedSize={{ horizontal: false, vertical: true }}
+                >
+                  • 支持浏览、重命名、删除和导出 PNG。
+                </Text>
+                <Text
+                  font={14}
+                  foregroundStyle="secondaryLabel"
+                  multilineTextAlignment="leading"
+                  fixedSize={{ horizontal: false, vertical: true }}
+                >
+                  • 订阅公开 JSON 仅供只读浏览，不修改对方仓库。
+                </Text>
+              </VStack>
+            </VStack>
+            <GlassDivider />
+            <GlassNavRow
+              title="版本信息"
+              detail={`v${CURRENT_VERSION}`}
+              action={() => setDestination("changelog")}
+            />
+          </GlassGroup>
+        </Section>
       </List>
     </NavigationStack>
   );

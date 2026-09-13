@@ -16,6 +16,7 @@ import {
   GlassGroup,
   GlassLabeledRow,
   GlassNavRow,
+  GlassNoteRow,
   GlassSectionHeader,
   glassRowBackground,
 } from "../components/Glass";
@@ -487,14 +488,7 @@ export function RepoSettingsPage(props: {
             frame={{ minHeight: 44, maxWidth: "infinity" }}
           />
           <GlassDivider />
-          <Text
-            font={12}
-            foregroundStyle="tertiaryLabel"
-            padding={{ vertical: true }}
-            frame={{ maxWidth: "infinity" }}
-          >
-            显示名称仅用于 App 内仓库列表。
-          </Text>
+          <GlassNoteRow text="显示名称仅用于 App 内仓库列表。" />
         </GlassGroup>
       </Section>
 
@@ -600,15 +594,7 @@ export function RepoSettingsPage(props: {
             </>
           )}
           <GlassDivider />
-          <Text
-            font={12}
-            foregroundStyle="tertiaryLabel"
-            padding={{ vertical: true }}
-            frame={{ maxWidth: "infinity" }}
-          >
-            Fine-grained：选择目标仓库，授予 Contents → Read and write。
-            Classic：授予 public_repo。保存时会通过 GitHub 只读接口验证令牌，验证失败不会保存。
-          </Text>
+          <GlassNoteRow text="Fine-grained：选择目标仓库，授予 Contents → Read and write。Classic：授予 public_repo。保存时会通过 GitHub 只读接口验证令牌，验证失败不会保存。" />
         </GlassGroup>
       </Section>
 

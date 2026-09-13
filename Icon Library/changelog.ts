@@ -6,6 +6,14 @@ type ChangelogEntry = {
 
 export const CHANGELOG = [
   {
+    version: "1.1.2",
+    date: "2026-09-13",
+    changes: [
+      "图标页、订阅画廊页与 Lobe Icons 选择页采用自适应网格布局，iPhone 保持紧凑排布，iPad 宽屏与横屏自动扩展列数，充分利用大屏空间。",
+      "新增 GlassNoteRow 规范组件，统一设置页关于描述、仓库设置与操作提示的左对齐排版，修复大屏下说明文字居中悬浮的问题。",
+    ],
+  },
+  {
     version: "1.1.1",
     date: "2026-09-05",
     changes: [
