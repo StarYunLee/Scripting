@@ -6,6 +6,15 @@ export type ChangelogEntry = {
 
 export const CHANGELOG = [
   {
+    version: "1.6.2",
+    date: "2026-09-13",
+    changes: [
+      "设置中新增小组件风格选择器，支持切换默认彩色与 Clear 简约双重风格，并配齐多行精准视觉指引。",
+      "优化应用内用量卡片，当可用重置次数为 0 时隐藏整行及时间信息，保持界面克制紧凑。",
+      "精简演示账号目录，仅保留各平台核心主力套餐，并规范 Grok Heavy 邮箱命名。",
+    ],
+  },
+  {
     version: "1.6.1",
     date: "2026-09-13",
     changes: [

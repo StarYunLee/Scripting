@@ -41,9 +41,9 @@ async function run() {
   const resolved = resolveWidgetParameter(Widget.parameter);
   const displaySettings = getAppDisplaySettings();
   const reloadMinutes = displaySettings.reloadMinutes;
-  const chromeStyle: WidgetChromeStyle = displaySettings.widgetClearHomeScreen
-    ? "clear"
-    : "color";
+  const chromeStyle: WidgetChromeStyle =
+    displaySettings.widgetChromeStyle ||
+    (displaySettings.widgetClearHomeScreen ? "clear" : "color");
   // 手动（0）或规划失败时的兜底：给系统一个较长重建窗口，避免立刻反复唤醒。
   const fallbackReloadPolicy = {
     policy: "after" as const,

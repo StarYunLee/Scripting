@@ -32,7 +32,7 @@ import {
   RELOAD_MINUTE_LABELS,
   RELOAD_MINUTE_OPTIONS,
   setAppReloadMinutes,
-  setWidgetClearHomeScreen,
+  setWidgetChromeStyle,
   snapReloadMinutes,
   type BackgroundThemeId,
 } from "../services/settings";
@@ -622,11 +622,13 @@ export function SettingsPage(props: {
               ))}
             </Picker>
             <GlassDivider />
-            <Toggle
-              title="小组件 Clear 风格"
-              value={settings.widgetClearHomeScreen}
-              onChanged={(value: boolean) => {
-                const result = setWidgetClearHomeScreen(value);
+            <Picker
+              title="小组件风格"
+              value={settings.widgetChromeStyle}
+              onChanged={(value: string) => {
+                const result = setWidgetChromeStyle(
+                  value === "clear" ? "clear" : "color",
+                );
                 if (!result.ok) {
                   void showSettingsSaveFailure();
                   refresh();
@@ -635,11 +637,19 @@ export function SettingsPage(props: {
                 requestWidgetReloadAfterStorage();
                 refresh();
               }}
+              pickerStyle="menu"
               padding={{ vertical: true }}
               frame={{ minHeight: 44, maxWidth: "infinity" }}
-            />
+            >
+              <Text tag="color">默认 (彩色)</Text>
+              <Text tag="clear">Clear (简约)</Text>
+            </Picker>
             <GlassDivider />
-            <GlassNoteRow text="专为透明桌面准备的小组件风格：轻量徽章与空心进度条。普通桌面下则为简约样式，App 内彩色胶囊不受影响。" />
+            <GlassNoteRow
+              text={
+                "• 默认（彩色）：专属彩色套餐徽章，进度条根据额度消耗动态切换色彩预警。\n• Clear（简约）：轻量无底色套餐徽章与镂空进度条；专为透明桌面适配，普通桌面上亦呈现通透简约质感。"
+              }
+            />
           </GlassGroup>
         </Section>
 

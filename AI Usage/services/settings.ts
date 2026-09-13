@@ -17,6 +17,8 @@ import {
 
 const DISPLAY_KEY = "ai_usage_display_settings_v1";
 
+import type { WidgetChromeStyle } from "../widget/chrome-style";
+
 export type BackgroundThemeId =
   "system_default" | "cool_blue" | "warm_paper" | "mist_haze";
 
@@ -25,9 +27,11 @@ export type AppDisplaySettings = {
   reloadMinutes: number;
   backgroundTheme: BackgroundThemeId;
   /**
-   * 小组件 Clear 风格：轻量徽章与空心进度条。
-   * Scripting 无法检测主屏幕 Clear，需用户手动打开；App 内彩色胶囊不受影响。
+   * 小组件视觉风格：color = 默认彩色，clear = 简约通透。
+   * 兼容旧版 widgetClearHomeScreen boolean。
    */
+  widgetChromeStyle: WidgetChromeStyle;
+  /** @deprecated 保留以兼容旧数据与单测 */
   widgetClearHomeScreen: boolean;
 };
 
@@ -68,6 +72,7 @@ const DEFAULT_SETTINGS: AppDisplaySettings = {
   // 贴近原先「打开几乎会刷一次」的体验，同时允许短时复用缓存秒开。
   reloadMinutes: 5,
   backgroundTheme: "system_default",
+  widgetChromeStyle: "color",
   widgetClearHomeScreen: false,
 };
 
@@ -100,6 +105,14 @@ function normalizeTheme(value: unknown): BackgroundThemeId {
   return DEFAULT_SETTINGS.backgroundTheme;
 }
 
+function normalizeChromeStyle(
+  value: unknown,
+  fallbackBoolean?: boolean,
+): WidgetChromeStyle {
+  if (value === "clear" || value === "color") return value;
+  return fallbackBoolean ? "clear" : "color";
+}
+
 let legacyWidgetSettingsMigrated = false;
 
 function migrateLegacyWidgetSettings(): void {
@@ -126,10 +139,15 @@ export function getAppDisplaySettings(): AppDisplaySettings {
         getAntigravitySettings().reloadMinutes;
       return { ...DEFAULT_SETTINGS, reloadMinutes: clampMinutes(fallback) };
     }
+    const chromeStyle = normalizeChromeStyle(
+      value.widgetChromeStyle,
+      value.widgetClearHomeScreen,
+    );
     return {
       reloadMinutes: clampMinutes(value.reloadMinutes),
       backgroundTheme: normalizeTheme(value.backgroundTheme),
-      widgetClearHomeScreen: value.widgetClearHomeScreen === true,
+      widgetChromeStyle: chromeStyle,
+      widgetClearHomeScreen: chromeStyle === "clear",
     };
   } catch {
     return { ...DEFAULT_SETTINGS };
@@ -173,12 +191,13 @@ export function setAppBackgroundTheme(
   }
 }
 
-export function setWidgetClearHomeScreen(
-  enabled: boolean,
+export function setWidgetChromeStyle(
+  style: WidgetChromeStyle,
 ): StorageWriteResult<AppDisplaySettings> {
-  const next = {
+  const next: AppDisplaySettings = {
     ...getAppDisplaySettings(),
-    widgetClearHomeScreen: enabled === true,
+    widgetChromeStyle: style,
+    widgetClearHomeScreen: style === "clear",
   };
   try {
     if (!Storage.set(DISPLAY_KEY, next)) return { ok: false, value: next };
@@ -186,4 +205,10 @@ export function setWidgetClearHomeScreen(
   } catch {
     return { ok: false, value: next };
   }
+}
+
+export function setWidgetClearHomeScreen(
+  enabled: boolean,
+): StorageWriteResult<AppDisplaySettings> {
+  return setWidgetChromeStyle(enabled ? "clear" : "color");
 }

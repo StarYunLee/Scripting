@@ -45,32 +45,6 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
     resetCredits: { available: 1, expirationOffsetsMs: [6 * 86_400_000] },
   },
   {
-    id: "demo_codex_pro5x",
-    provider: "codex",
-    title: "pro5x@codex.demo",
-    planLabel: "Pro 5X",
-    windows: [
-      {
-        id: "five_hour",
-        name: "five_hour",
-        label: "5 小时",
-        usedPercent: 92,
-        resetOffsetMs: 48 * 60_000,
-      },
-      {
-        id: "weekly",
-        name: "weekly",
-        label: "每周",
-        usedPercent: 67,
-        resetOffsetMs: 3 * 86_400_000 + 5 * 3_600_000,
-      },
-    ],
-    resetCredits: {
-      available: 2,
-      expirationOffsetsMs: [6 * 86_400_000, 6 * 86_400_000 + 1 * 86_400_000],
-    },
-  },
-  {
     id: "demo_codex_pro20x",
     provider: "codex",
     title: "pro20x@codex.demo",
@@ -101,32 +75,6 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
     },
   },
   {
-    id: "demo_codex_team",
-    provider: "codex",
-    title: "team@codex.demo",
-    planLabel: "Team",
-    windows: [
-      {
-        id: "five_hour",
-        name: "five_hour",
-        label: "5 小时",
-        usedPercent: 21,
-        resetOffsetMs: 4 * 3_600_000 + 8 * 60_000,
-      },
-      {
-        id: "weekly",
-        name: "weekly",
-        label: "每周",
-        usedPercent: 34,
-        resetOffsetMs: 5 * 86_400_000 + 2 * 3_600_000,
-      },
-    ],
-    resetCredits: {
-      available: 2,
-      expirationOffsetsMs: [9 * 86_400_000, 9 * 86_400_000 + 1 * 86_400_000],
-    },
-  },
-  {
     id: "demo_grok_supergrok",
     provider: "grok",
     title: "supergrok@xai.demo",
@@ -145,7 +93,7 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
   {
     id: "demo_grok_heavy",
     provider: "grok",
-    title: "heavy@xai.demo",
+    title: "supergrokheavy@xai.demo",
     planLabel: "SuperGrok Heavy",
     windows: [
       {
@@ -190,36 +138,6 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
     resetCredits: null,
   },
   {
-    id: "demo_claude_max5x",
-    provider: "claude",
-    title: "max5x@claude.demo",
-    planLabel: "Claude Max 5×",
-    windows: [
-      {
-        id: "five_hour",
-        name: "five_hour",
-        label: "5 小时",
-        usedPercent: 71,
-        resetOffsetMs: 2 * 3_600_000 + 18 * 60_000,
-      },
-      {
-        id: "weekly",
-        name: "weekly",
-        label: "每周",
-        usedPercent: 88,
-        resetOffsetMs: 2 * 86_400_000 + 8 * 3_600_000,
-      },
-      {
-        id: "weekly_fable",
-        name: "weekly_fable",
-        label: "Fable 每周",
-        usedPercent: 63,
-        resetOffsetMs: 5 * 86_400_000 + 2 * 3_600_000,
-      },
-    ],
-    resetCredits: null,
-  },
-  {
     id: "demo_claude_max20x",
     provider: "claude",
     title: "max20x@claude.demo",
@@ -245,66 +163,6 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
         label: "Fable 每周",
         usedPercent: 12,
         resetOffsetMs: 6 * 86_400_000 + 3 * 3_600_000,
-      },
-    ],
-    resetCredits: null,
-  },
-  {
-    id: "demo_claude_team",
-    provider: "claude",
-    title: "team@claude.demo",
-    planLabel: "Claude Team",
-    windows: [
-      {
-        id: "five_hour",
-        name: "five_hour",
-        label: "5 小时",
-        usedPercent: 33,
-        resetOffsetMs: 4 * 3_600_000 + 22 * 60_000,
-      },
-      {
-        id: "weekly",
-        name: "weekly",
-        label: "每周",
-        usedPercent: 48,
-        resetOffsetMs: 5 * 86_400_000 + 12 * 3_600_000,
-      },
-    ],
-    resetCredits: null,
-  },
-  {
-    id: "demo_antigravity_individual",
-    provider: "antigravity",
-    title: "individual@antigravity.demo",
-    planLabel: "Individual",
-    windows: [
-      {
-        id: "gemini_5h",
-        name: "five_hour",
-        label: "Gemini 5 小时",
-        usedPercent: 32,
-        resetOffsetMs: 3 * 3_600_000 + 15 * 60_000,
-      },
-      {
-        id: "gemini_weekly",
-        name: "weekly",
-        label: "Gemini 每周",
-        usedPercent: 55,
-        resetOffsetMs: 4 * 86_400_000 + 3 * 3_600_000,
-      },
-      {
-        id: "3p_5h",
-        name: "five_hour",
-        label: "Claude/GPT 5 小时",
-        usedPercent: 78,
-        resetOffsetMs: 2 * 3_600_000 + 20 * 60_000,
-      },
-      {
-        id: "3p_weekly",
-        name: "weekly",
-        label: "Claude/GPT 每周",
-        usedPercent: 91,
-        resetOffsetMs: 2 * 86_400_000 + 6 * 3_600_000,
       },
     ],
     resetCredits: null,

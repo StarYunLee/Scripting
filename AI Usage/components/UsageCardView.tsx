@@ -154,7 +154,7 @@ export function UsageCardView(props: {
         />
       </HStack>
 
-      {props.card.resetCredits ? (
+      {props.card.resetCredits && props.card.resetCredits.available > 0 ? (
         <HStack frame={{ maxWidth: "infinity" }}>
           <Button
             buttonStyle="plain"
