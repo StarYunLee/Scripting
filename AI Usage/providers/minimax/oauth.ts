@@ -1,4 +1,5 @@
 import {
+  AuthorizationInputRejectedError,
   createAuthorizationGuard,
   throwIfAuthorizationCancelled,
   type AuthorizationSignal,
@@ -114,7 +115,9 @@ export async function startMinimaxLogin(
 function normalizeApiKey(input: string): string {
   const trimmed = input.trim().replace(/^Bearer\s+/i, "");
   if (!trimmed || trimmed.length < 8)
-    throw new Error("请粘贴完整的 MiniMax Subscription Key");
+    throw new AuthorizationInputRejectedError(
+      "请粘贴完整的 MiniMax Subscription Key",
+    );
   return trimmed;
 }
 
@@ -276,14 +279,16 @@ export async function completeMinimaxLogin(
     throw new Error("授权会话已超过 15 分钟，请重新开始");
   }
   if (!input || !input.trim())
-    throw new Error("请粘贴从所选站点控制台复制的 Subscription Key");
+    throw new AuthorizationInputRejectedError(
+      "请粘贴从所选站点控制台复制的 Subscription Key",
+    );
   try {
     const apiKey = normalizeApiKey(input);
     const region = await chooseMinimaxRegion(pending.region, (candidate) =>
       probeRegionPayload(apiKey, candidate),
     );
     if (!region)
-      throw new Error(
+      throw new AuthorizationInputRejectedError(
         "Subscription Key 无效，或所选站点与备用站点均无可用额度",
       );
 
@@ -304,6 +309,7 @@ export async function completeMinimaxLogin(
     clearPending();
   } catch (error) {
     assertCurrent();
+    if (error instanceof AuthorizationInputRejectedError) throw error;
     clearPending();
     throw error;
   }

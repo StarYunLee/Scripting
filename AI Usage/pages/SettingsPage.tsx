@@ -14,9 +14,12 @@ import {
   useEffect,
   useState,
 } from "scripting";
-import { isAuthorizationCancelledError } from "../services/auth-errors";
+import {
+  isAuthorizationCancelledError,
+  isAuthorizationInputRejectedError,
+} from "../services/auth-errors";
 import { PROVIDERS, type ProviderId } from "../models";
-import { parseMinimaxAuthChoice } from "../providers/minimax/auth-choice";
+import { parseConsoleAuthChoice } from "../providers/console-auth-choice";
 import {
   authCoordinator,
   cachedPlanLabel,
@@ -156,7 +159,9 @@ export function SettingsPage(props: {
         status:
           error instanceof AuthorizationCheckDeferred
             ? "授权待继续：" + error.message
-            : "授权失败：" + errorText(error),
+            : isAuthorizationInputRejectedError(error)
+              ? "授权输入有误：" + error.message
+              : "授权失败：" + errorText(error),
       });
     } finally {
       if (authView.active && revision === authView.revision) {
@@ -180,36 +185,52 @@ export function SettingsPage(props: {
       const pendingSheet = restartSheet ? null : authCoordinator.resume();
       if (pendingSheet) {
         setSheet(pendingSheet);
-        if (pendingSheet.autoComplete && !pendingSheet.deviceCode)
+        if (
+          pendingSheet.autoComplete &&
+          !pendingSheet.deviceCode &&
+          pendingSheet.authorizationPageOpened !== false
+        )
           await finishAuth(pendingSheet);
         return;
       }
-      const minimaxRegion =
-        provider === "minimax"
-          ? parseMinimaxAuthChoice(
+      const consoleRegion =
+        provider === "minimax" || provider === "zai"
+          ? parseConsoleAuthChoice(
               (await Dialog.actionSheet({
-                title: "选择 MiniMax 站点",
+                title:
+                  provider === "minimax"
+                    ? "选择 MiniMax 站点"
+                    : "选择 Z.ai 站点",
                 message:
-                  "Subscription Key 必须从对应站点获取；稍后仍会用真实额度行校验区域。",
-                actions: [
-                  { label: "国际站 · minimax.io" },
-                  { label: "国内站 · minimaxi.com" },
-                ],
+                  provider === "minimax"
+                    ? "Subscription Key 必须从对应站点获取；稍后仍会用真实额度行校验区域。"
+                    : "API Key 必须从对应控制台获取；稍后仍会自动校验国际站或国内站。",
+                actions:
+                  provider === "minimax"
+                    ? [
+                        { label: "国际站 · minimax.io" },
+                        { label: "国内站 · minimaxi.com" },
+                      ]
+                    : [
+                        { label: "国际站 · Z.ai" },
+                        { label: "国内站 · 智谱开放平台" },
+                      ],
                 cancelButton: true,
               })) ?? -1,
             )
           : null;
       if (!current()) return;
-      if (provider === "minimax" && !minimaxRegion) return;
+      if ((provider === "minimax" || provider === "zai") && !consoleRegion)
+        return;
       const result = restartSheet
         ? await authCoordinator.restart(
             restartSheet,
-            minimaxRegion || undefined,
+            consoleRegion || undefined,
           )
         : await authCoordinator.start({
             provider,
             profileId,
-            providerInput: minimaxRegion || undefined,
+            providerInput: consoleRegion || undefined,
           });
       if (!current()) {
         if (result.ok) authCoordinator.cancel(result.sheet);
@@ -217,7 +238,11 @@ export function SettingsPage(props: {
       }
       if (result.ok) {
         setSheet(result.sheet);
-        if (result.sheet.autoComplete && !result.sheet.deviceCode)
+        if (
+          result.sheet.autoComplete &&
+          !result.sheet.deviceCode &&
+          result.sheet.authorizationPageOpened !== false
+        )
           await finishAuth(result.sheet);
         return;
       }

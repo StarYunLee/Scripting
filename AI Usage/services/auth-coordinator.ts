@@ -6,6 +6,7 @@ import {
   AuthorizationCancelledError,
   throwIfAuthorizationCancelled,
   isAuthorizationCancelledError,
+  isAuthorizationInputRejectedError,
   type AuthorizationAbort,
   type AuthorizationSignal,
 } from "./auth-errors";
@@ -40,6 +41,11 @@ export type AuthCoordinatorDependencies = {
   isDemoMode(): boolean;
   openAuthorizationPage(url: string): Promise<AuthorizationPageMode>;
   getCopilotAuthorizationState(): CopilotAuthorizationState | null;
+  getConsoleAuthorizationRegion?(provider: ProviderId): "intl" | "cn" | null;
+  getConsoleAuthorizationUrl?(
+    provider: ProviderId,
+    region: "intl" | "cn",
+  ): string | null;
   writeLog(input: AuthCoordinatorLog): void;
 };
 
@@ -157,6 +163,8 @@ export function createAuthCoordinator(
       const state = dependencies.getCopilotAuthorizationState();
       if (state) return stamp(copilotSheet(state, true));
     }
+    const authorizationRegion =
+      dependencies.getConsoleAuthorizationRegion?.(pending.provider) || null;
     return stamp(
       withAutoComplete(
         {
@@ -164,6 +172,13 @@ export function createAuthCoordinator(
           profileId: pending.profileId,
           authorizationInput: "",
           status: pendingStatus(pending.provider),
+          authorizationRegion: authorizationRegion || undefined,
+          authorizationUrl: authorizationRegion
+            ? dependencies.getConsoleAuthorizationUrl?.(
+                pending.provider,
+                authorizationRegion,
+              ) || undefined
+            : undefined,
         },
         pending.provider,
       ),
@@ -185,6 +200,13 @@ export function createAuthCoordinator(
           authorizationInput: "",
           authorizationUrl: url,
           status: startedStatus(provider, mode, providerInput),
+          authorizationPageOpened: true,
+          authorizationRegion:
+            provider === "zai" || provider === "minimax"
+              ? providerInput === "cn"
+                ? "cn"
+                : "intl"
+              : undefined,
         },
         provider,
       );
@@ -196,6 +218,13 @@ export function createAuthCoordinator(
           authorizationInput: "",
           authorizationUrl: url,
           status: `无法打开授权页：${errorText(error)}。可点击下方按钮重试。`,
+          authorizationPageOpened: false,
+          authorizationRegion:
+            provider === "zai" || provider === "minimax"
+              ? providerInput === "cn"
+                ? "cn"
+                : "intl"
+              : undefined,
         },
         provider,
       );
@@ -370,7 +399,8 @@ export function createAuthCoordinator(
       if (signal.aborted) throw new AuthorizationCancelledError();
       if (
         isAuthorizationCancelledError(error) ||
-        error instanceof AuthorizationCheckDeferred
+        error instanceof AuthorizationCheckDeferred ||
+        isAuthorizationInputRejectedError(error)
       )
         throw error;
       dependencies.writeLog({

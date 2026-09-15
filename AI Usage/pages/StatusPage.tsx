@@ -1,6 +1,9 @@
 import { AuthorizationCheckDeferred } from "../services/auth-single-check";
 import { List, NavigationStack, Text, useEffect, useState } from "scripting";
-import { isAuthorizationCancelledError } from "../services/auth-errors";
+import {
+  isAuthorizationCancelledError,
+  isAuthorizationInputRejectedError,
+} from "../services/auth-errors";
 import { captureAccountWork } from "../services/account-work-guard";
 import { observeUsageProgress } from "../services/usage-progress";
 import { AccountDetailPage } from "./AccountDetailPage";
@@ -20,7 +23,7 @@ import { PageBackground } from "../components/PageBackground";
 import { usePageToolbar } from "../components/PageToolbar";
 import { UsageCardView } from "../components/UsageCardView";
 import { type AuthSheet, type ProviderId, type UsageCard } from "../models";
-import { parseMinimaxAuthChoice } from "../providers/minimax/auth-choice";
+import { parseConsoleAuthChoice } from "../providers/console-auth-choice";
 import { refreshAccounts } from "../services/refresh";
 import {
   requestWidgetReload,
@@ -243,7 +246,9 @@ export function StatusPage(props: {
         status:
           error instanceof AuthorizationCheckDeferred
             ? "授权待继续：" + error.message
-            : "授权失败：" + errorText(error),
+            : isAuthorizationInputRejectedError(error)
+              ? "授权输入有误：" + error.message
+              : "授权失败：" + errorText(error),
       });
     } finally {
       if (authView.active && revision === authView.revision) {
@@ -268,38 +273,51 @@ export function StatusPage(props: {
       if (pendingSheet) {
         setProvider(pendingSheet.provider);
         setSheet(pendingSheet);
-        if (pendingSheet.autoComplete && !pendingSheet.deviceCode) {
+        if (
+          pendingSheet.autoComplete &&
+          !pendingSheet.deviceCode &&
+          pendingSheet.authorizationPageOpened !== false
+        ) {
           await finishAuth(pendingSheet);
           return;
         }
         return;
       }
-      const minimaxRegion =
-        target === "minimax"
-          ? parseMinimaxAuthChoice(
+      const consoleRegion =
+        target === "minimax" || target === "zai"
+          ? parseConsoleAuthChoice(
               (await Dialog.actionSheet({
-                title: "选择 MiniMax 站点",
+                title:
+                  target === "minimax" ? "选择 MiniMax 站点" : "选择 Z.ai 站点",
                 message:
-                  "Subscription Key 必须从对应站点获取；稍后仍会用真实额度行校验区域。",
-                actions: [
-                  { label: "国际站 · minimax.io" },
-                  { label: "国内站 · minimaxi.com" },
-                ],
+                  target === "minimax"
+                    ? "Subscription Key 必须从对应站点获取；稍后仍会用真实额度行校验区域。"
+                    : "API Key 必须从对应控制台获取；稍后仍会自动校验国际站或国内站。",
+                actions:
+                  target === "minimax"
+                    ? [
+                        { label: "国际站 · minimax.io" },
+                        { label: "国内站 · minimaxi.com" },
+                      ]
+                    : [
+                        { label: "国际站 · Z.ai" },
+                        { label: "国内站 · 智谱开放平台" },
+                      ],
                 cancelButton: true,
               })) ?? -1,
             )
           : null;
       if (!current()) return;
-      if (target === "minimax" && !minimaxRegion) return;
+      if ((target === "minimax" || target === "zai") && !consoleRegion) return;
       const result = restartSheet
         ? await authCoordinator.restart(
             restartSheet,
-            minimaxRegion || undefined,
+            consoleRegion || undefined,
           )
         : await authCoordinator.start({
             provider: target,
             profileId,
-            providerInput: minimaxRegion || undefined,
+            providerInput: consoleRegion || undefined,
           });
       if (!current()) {
         if (result.ok) authCoordinator.cancel(result.sheet);
@@ -308,7 +326,11 @@ export function StatusPage(props: {
       if (result.ok) {
         setProvider(result.sheet.provider);
         setSheet(result.sheet);
-        if (result.sheet.autoComplete && !result.sheet.deviceCode) {
+        if (
+          result.sheet.autoComplete &&
+          !result.sheet.deviceCode &&
+          result.sheet.authorizationPageOpened !== false
+        ) {
           await finishAuth(result.sheet);
           return;
         }

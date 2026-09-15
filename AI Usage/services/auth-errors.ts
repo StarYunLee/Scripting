@@ -1,3 +1,21 @@
+export class AuthorizationInputRejectedError extends Error {
+  readonly code = "authorization_input_rejected";
+
+  constructor(message: string) {
+    super(message);
+    this.name = "AuthorizationInputRejectedError";
+  }
+}
+
+export function isAuthorizationInputRejectedError(
+  error: unknown,
+): error is AuthorizationInputRejectedError {
+  return (
+    error instanceof AuthorizationInputRejectedError ||
+    (error instanceof Error && error.name === "AuthorizationInputRejectedError")
+  );
+}
+
 export class AuthorizationCancelledError extends Error {
   readonly code = "authorization_cancelled";
 

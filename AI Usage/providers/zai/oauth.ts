@@ -1,4 +1,5 @@
 import {
+  AuthorizationInputRejectedError,
   createAuthorizationGuard,
   throwIfAuthorizationCancelled,
   type AuthorizationSignal,
@@ -20,6 +21,7 @@ const CONSOLE_URL_CN = "https://open.bigmodel.cn/usercenter/apikeys";
 type PendingAuth = {
   createdAt: number;
   profileId: string;
+  region: ZaiRegion;
 };
 
 function savePending(value: PendingAuth): void {
@@ -33,7 +35,11 @@ function readPending(): PendingAuth | null {
     if (!raw) return null;
     const value = JSON.parse(raw) as Partial<PendingAuth>;
     if (!value.createdAt || !value.profileId) return null;
-    return { createdAt: value.createdAt, profileId: value.profileId };
+    return {
+      createdAt: value.createdAt,
+      profileId: value.profileId,
+      region: value.region === "cn" ? "cn" : "intl",
+    };
   } catch {
     return null;
   }
@@ -81,17 +87,30 @@ export function clearPendingOAuth(): void {
   clearPending();
 }
 
-/** 打开控制台获取 API Key；真正授权在 complete 时粘贴 Key。 */
-export async function startZaiLogin(profileId: string): Promise<string> {
+export function getPendingRegion(): ZaiRegion | null {
+  return (
+    activePendingAuthorization(readPending(), PENDING_TTL_MS, clearPending)
+      ?.region || null
+  );
+}
+
+/** 打开所选控制台获取 API Key；真正授权在 complete 时粘贴 Key。 */
+export async function startZaiLogin(
+  profileId: string,
+  input?: string,
+): Promise<string> {
   if (!profileId) throw new Error("未指定要授权的账号");
-  savePending({ createdAt: Date.now(), profileId });
-  return CONSOLE_URL_INTL;
+  const region: ZaiRegion = input === "cn" ? "cn" : "intl";
+  savePending({ createdAt: Date.now(), profileId, region });
+  return consoleUrlForRegion(region);
 }
 
 function normalizeApiKey(input: string): string {
   const trimmed = input.trim().replace(/^Bearer\s+/i, "");
   if (!trimmed || trimmed.length < 8)
-    throw new Error("请粘贴完整的 Z.ai / 智谱 API Key");
+    throw new AuthorizationInputRejectedError(
+      "请粘贴完整的 Z.ai / 智谱 API Key",
+    );
   return trimmed;
 }
 
@@ -132,15 +151,21 @@ export async function completeZaiLogin(
     clearPending();
     throw new Error("授权会话已超过 15 分钟，请重新开始");
   }
-  if (!input || !input.trim()) throw new Error("请粘贴从控制台复制的 API Key");
+  if (!input || !input.trim())
+    throw new AuthorizationInputRejectedError("请粘贴从控制台复制的 API Key");
   try {
     const apiKey = normalizeApiKey(input);
+    const preferred = pending.region;
+    const alternate: ZaiRegion = preferred === "cn" ? "intl" : "cn";
     let region: ZaiRegion | null = null;
-    if (await probeRegion(apiKey, "intl")) region = "intl";
+    if (await probeRegion(apiKey, preferred)) region = preferred;
     else {
       assertCurrent();
-      if (await probeRegion(apiKey, "cn")) region = "cn";
-      else throw new Error("API Key 无效，或国际站 / 国内站均无法访问");
+      if (await probeRegion(apiKey, alternate)) region = alternate;
+      else
+        throw new AuthorizationInputRejectedError(
+          "API Key 无效，或国际站 / 国内站均无法访问",
+        );
     }
 
     const masked = `${apiKey.slice(0, 4)}…${apiKey.slice(-4)}`;
@@ -155,6 +180,7 @@ export async function completeZaiLogin(
     clearPending();
   } catch (error) {
     assertCurrent();
+    if (error instanceof AuthorizationInputRejectedError) throw error;
     clearPending();
     throw error;
   }

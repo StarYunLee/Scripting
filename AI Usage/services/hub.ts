@@ -21,6 +21,12 @@ import { clearDashboardWidgetAccountPreferences } from "./dashboard-widget-prefs
 import { createAuthCoordinator } from "./auth-coordinator";
 import { openAuthorizationPage } from "./browser";
 import { getPendingAuthorizationState } from "../providers/copilot/oauth";
+import {
+  consoleUrlForRegion as zaiConsoleUrlForRegion,
+  getPendingRegion as getZaiPendingRegion,
+} from "../providers/zai/oauth";
+import { getPendingRegion as getMinimaxPendingRegion } from "../providers/minimax/oauth";
+import { consoleUrlForRegion as minimaxConsoleUrlForRegion } from "../providers/minimax/regions";
 import { clearWidgetRefreshMetadata } from "./widget-refresh-metadata";
 import { deleteAccountData } from "./account-deletion";
 import {
@@ -40,6 +46,16 @@ export const authCoordinator = createAuthCoordinator({
   isDemoMode,
   openAuthorizationPage,
   getCopilotAuthorizationState: getPendingAuthorizationState,
+  getConsoleAuthorizationRegion: (provider) => {
+    if (provider === "zai") return getZaiPendingRegion();
+    if (provider === "minimax") return getMinimaxPendingRegion();
+    return null;
+  },
+  getConsoleAuthorizationUrl: (provider, region) => {
+    if (provider === "zai") return zaiConsoleUrlForRegion(region);
+    if (provider === "minimax") return minimaxConsoleUrlForRegion(region);
+    return null;
+  },
   writeLog,
 });
 

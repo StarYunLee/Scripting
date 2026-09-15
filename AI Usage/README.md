@@ -17,7 +17,7 @@
 
 面向 [Scripting App](https://scriptingapp.github.io/) 的非官方多平台用量查看应用。在一个项目里管理 Codex、Grok、Claude、Antigravity、Cursor、Kimi Code、GitHub Copilot、Z.ai 与 MiniMax 的多账号用量、主屏幕小组件和自动化刷新。
 
-当前版本：`1.6.2`
+当前版本：`1.6.3`
 
 > 本项目不是 OpenAI、xAI、Anthropic、Google 或 Scripting App 官方产品，与上述平台无隶属或合作关系。
 
@@ -61,7 +61,7 @@ https://raw.githubusercontent.com/StarYunLee/Scripting/main/AI-Usage.scripting
 
 ## OAuth 登录
 
-在用量页点击右上角 `+` 选择平台后，应用会打开对应授权页。完成登录后，把回调内容复制回应用并提交。
+在用量页点击右上角 `+` 并选择平台。应用会根据平台引导完成授权：回调地址、一次性授权码、API Key 或 Subscription Key 粘贴后会自动验证并连接；Cursor、Kimi Code 与 GitHub Copilot 会在关闭授权页后自动检查结果。
 
 ### Codex
 
@@ -86,29 +86,29 @@ https://raw.githubusercontent.com/StarYunLee/Scripting/main/AI-Usage.scripting
 ### Cursor
 
 - 在应用打开的授权页中完成登录
-- 返回应用后直接提交完成授权，无需粘贴回调内容
+- 关闭授权页后应用会自动检查并完成连接，无需填写回调内容
 
 ### Kimi Code
 
-- 使用设备码在浏览器完成登录和授权
-- 返回应用后直接提交完成授权，无需粘贴回调内容
+- 使用授权链接在浏览器完成设备授权
+- 关闭授权页后应用会自动检查并完成连接
 
 ### GitHub Copilot
 
-- 使用设备码在 GitHub 完成设备授权
-- 返回应用后直接提交完成授权
+- 先复制应用显示的设备码，再打开 GitHub 授权页完成设备授权
+- 关闭授权页后应用会持续检查，并在成功后自动连接
 
 ### Z.ai
 
-- 在 Z.ai 或智谱控制台创建并复制 API Key
-- 将 API Key 粘贴回应用提交验证
+- 先选择国际站 Z.ai 或国内站智谱开放平台
+- 从对应控制台复制 API Key，粘贴后自动验证；密钥错误时可以原地重新粘贴
 
 ### MiniMax
 
 - 先选择国际站 `minimax.io` 或国内站 `minimaxi.com`
-- 从对应站点复制 Subscription Key 并粘贴回应用
+- 从对应站点复制 Subscription Key，粘贴后自动验证；密钥错误时可以原地重新粘贴
 
-OAuth 临时状态有效期为 10 分钟。Authorization Code 通常只能交换一次；授权失败或超时后请重新开始。
+回调型 OAuth 临时状态有效期为 10 分钟，设备授权与控制台密钥验证通常为 15 分钟。Authorization Code 通常只能交换一次；授权失败或超时后请按页面提示继续或重新开始。
 
 > 回调 URL 和一次性授权码属于短期敏感凭据。不要截图、公开或发送给他人。
 

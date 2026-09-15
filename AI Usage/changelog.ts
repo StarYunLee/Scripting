@@ -6,6 +6,15 @@ export type ChangelogEntry = {
 
 export const CHANGELOG = [
   {
+    version: "1.6.3",
+    date: "2026-09-15",
+    changes: [
+      "统一四类平台授权页面的信息层级，完善等待、验证、失败与恢复状态的展示。",
+      "优化 Cursor、Kimi Code 与 GitHub Copilot 的授权检查、设备码反馈和授权页打开失败恢复。",
+      "支持 Z.ai 国际站与智谱国内站选择，并允许 Z.ai 和 MiniMax 密钥验证失败后原地重试。",
+    ],
+  },
+  {
     version: "1.6.2",
     date: "2026-09-13",
     changes: [

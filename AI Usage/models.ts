@@ -24,6 +24,8 @@ export type AuthSheet = {
   status: string;
   deviceCode?: string;
   autoComplete?: boolean;
+  authorizationPageOpened?: boolean;
+  authorizationRegion?: "intl" | "cn";
   sessionId?: number;
 };
 
