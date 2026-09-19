@@ -66,6 +66,10 @@ import {
   isAccountShownInOverview,
   setAccountShownInOverview,
 } from "../services/app-overview-prefs";
+import {
+  runBackupExportFlow,
+  runBackupImportFlow,
+} from "../services/backup-service";
 
 export async function showSettingsSaveFailure(): Promise<void> {
   await Dialog.alert({
@@ -101,6 +105,7 @@ export function SettingsPage(props: {
   onDemoModeChange: (enabled: boolean) => void | Promise<void>;
   onBackgroundThemeChange: (theme: BackgroundThemeId) => void | Promise<void>;
   onOverviewChange: () => void;
+  onBackupRestored?: () => void;
 }) {
   const [tick, setTick] = useState(0);
   const [sheet, setSheet] = useState<AuthSheet | null>(null);
@@ -708,6 +713,61 @@ export function SettingsPage(props: {
             </Picker>
             <GlassDivider />
             <GlassNoteRow text="控制 App 启动自动刷新与小组件自动联网最短间隔；选「手动」则仅下拉/点刷新时联网。系统实际调度小组件可能延后。" />
+          </GlassGroup>
+        </Section>
+
+        <Section
+          listRowBackground={glassRowBackground}
+          header={<GlassSectionHeader title="数据与备份" />}
+        >
+          <GlassGroup>
+            <Button
+              buttonStyle="plain"
+              frame={{ maxWidth: "infinity" }}
+              action={() => {
+                void runBackupExportFlow();
+              }}
+            >
+              <HStack
+                padding={{ vertical: true }}
+                frame={{ minHeight: 44, maxWidth: "infinity" }}
+                contentShape="rect"
+              >
+                <Text>导出加密备份文件</Text>
+                <Spacer />
+                <Image
+                  systemName="square.and.arrow.up"
+                  foregroundStyle="tertiaryLabel"
+                />
+              </HStack>
+            </Button>
+            <GlassDivider />
+            <Button
+              buttonStyle="plain"
+              frame={{ maxWidth: "infinity" }}
+              action={() => {
+                void runBackupImportFlow(() => {
+                  refresh();
+                  props.onOverviewChange();
+                  props.onBackupRestored?.();
+                });
+              }}
+            >
+              <HStack
+                padding={{ vertical: true }}
+                frame={{ minHeight: 44, maxWidth: "infinity" }}
+                contentShape="rect"
+              >
+                <Text>从备份文件恢复</Text>
+                <Spacer />
+                <Image
+                  systemName="square.and.arrow.down"
+                  foregroundStyle="tertiaryLabel"
+                />
+              </HStack>
+            </Button>
+            <GlassDivider />
+            <GlassNoteRow text="备份包含所有已授权账号凭据及小组件偏好。采用 AES-GCM 256 强加密，请牢记设置的密码，密码丢失将无法恢复。" />
           </GlassGroup>
         </Section>
 

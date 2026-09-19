@@ -86,6 +86,10 @@ function App() {
           onDemoModeChange={updateDemoMode}
           onBackgroundThemeChange={updateBackgroundTheme}
           onOverviewChange={() => setOverviewRevision((current) => current + 1)}
+          onBackupRestored={() => {
+            setBackgroundThemeState(getAppDisplaySettings().backgroundTheme);
+            setOverviewRevision((current) => current + 1);
+          }}
         />
       </Tab>
     </TabView>

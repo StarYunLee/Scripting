@@ -206,7 +206,7 @@ export function StatusPage(props: {
     return () => {
       cancelled = true;
     };
-  }, [props.demoMode]);
+  }, [props.demoMode, props.overviewRevision]);
 
   async function finishAuth(target: AuthSheet) {
     const revision = ++authView.revision;

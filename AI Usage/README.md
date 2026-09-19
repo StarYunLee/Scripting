@@ -17,13 +17,14 @@
 
 面向 [Scripting App](https://scriptingapp.github.io/) 的非官方多平台用量查看应用。在一个项目里管理 Codex、Grok、Claude、Antigravity、Cursor、Kimi Code、GitHub Copilot、Z.ai 与 MiniMax 的多账号用量、主屏幕小组件和自动化刷新。
 
-当前版本：`1.6.3`
+当前版本：`1.7.0`
 
 > 本项目不是 OpenAI、xAI、Anthropic、Google 或 Scripting App 官方产品，与上述平台无隶属或合作关系。
 
 ## 功能
 
 - 统一管理 Codex、Grok、Claude、Antigravity、Cursor、Kimi Code、GitHub Copilot、Z.ai 与 MiniMax 多个账号
+- 支持文件级 AES-256-GCM 加密备份与恢复，跨设备安全迁移账号凭据、默认账号及小组件偏好
 - 应用内用量总览支持按账号控制显示，并可在账号详情中选择需要展示的额度窗口
 - Access Token、Refresh Token 和相关身份凭据保存在本机 Keychain
 - Token 到期前自动刷新

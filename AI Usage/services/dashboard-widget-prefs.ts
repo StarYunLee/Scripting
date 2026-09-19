@@ -165,6 +165,11 @@ export function readDashboardWidgetPreferences(
   }
 }
 
+export function invalidateDashboardWidgetPreferences(): void {
+  delete inMemoryPreferences.live;
+  delete inMemoryPreferences.demo;
+}
+
 export function getDashboardWidgetPreferences(
   scope: DashboardPreferenceScope = "live",
 ): DashboardWidgetPreferences {
