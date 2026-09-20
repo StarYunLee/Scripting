@@ -13,22 +13,12 @@
 
 ## 目录
 
-### 当前维护
-
 - [AI Usage](#ai-usage)
 - [GitHub Stars](#github-stars)
 - [Icon Library](#icon-library)
 - [Surge Metrics](#surge-metrics)
 
-### 已归档
-
-- [Codex Usage](#已归档项目)
-- [Claude Usage](#已归档项目)
-- [Grok Usage](#已归档项目)
-
-## 当前维护项目
-
-### AI Usage
+## AI Usage
 
 面向 Scripting App 的非官方多平台 AI 用量聚合与桌面看板工具。在一个应用中集中管理主流平台的多账号用量、主屏幕小组件与本地数据安全。
 
@@ -71,11 +61,18 @@
 https://raw.githubusercontent.com/StarYunLee/Scripting/main/AI-Usage.scripting
 ```
 
-> Codex Usage、Claude Usage、Grok Usage 不再更新，请改用 AI Usage。旧项目仍可安装，仅作兼容保留。
 
-### GitHub Stars
+## GitHub Stars
 
-浏览已加星仓库，支持常驻搜索、按语言或列表筛选、多种排序，以及粘贴链接加星、长按取消 Star。可维护自定义列表与仓库归属；也可浏览本人仓库，编辑描述、Homepage、Topics 与 Issues；Fork 支持上游状态检查、同步和差异查看。设置页保留 GitHub Profile 卡片，并集中管理账户权限、私有仓库范围和访问令牌。
+面向 Scripting App 的非官方 GitHub Stars 与仓库管理工具。在一个应用中浏览和维护 Stars、自定义列表、本人仓库与 GitHub 个人资料。
+
+当前版本：`1.1.1`
+
+- **Stars 与自定义列表**：按 Star 时间浏览和搜索仓库，支持按语言、自定义列表、Star 时间、最近推送、星标数或名称筛选排序；可创建、重命名、删除列表并批量维护仓库归属。
+- **仓库资料管理**：浏览本人公开或私有仓库，支持描述、Homepage、Topics 与 Issues 状态维护；GitHub Pinned 仓库优先展示。
+- **Fork 协作检查**：查看 Fork 上游状态，支持重新检查、同步上游与查看差异；检测到冲突时不会强制覆盖，并要求输入仓库名称确认归档。
+- **个人资料与洞察**：展示 Stars、Lists、Followers、Following、贡献热力图与常用语言信息。
+- **本地缓存与权限管理**：访问令牌保存在本机 Keychain，支持离线浏览与下拉刷新；账户、私有仓库范围和令牌操作集中在设置页。
 
 <table>
   <tr>
@@ -95,9 +92,17 @@ https://raw.githubusercontent.com/StarYunLee/Scripting/main/AI-Usage.scripting
 https://raw.githubusercontent.com/StarYunLee/Scripting/main/GitHub-Stars.scripting
 ```
 
-### Icon Library
+## Icon Library
 
-用 GitHub 公开仓库托管自建图标库，按仓库独立授权，支持浏览、上传、删除和自动生成订阅索引。可从相册、文件、Lobe 品牌图标和 App Store 应用图标导入；也可订阅别人的公开图标索引，只读浏览、复制引用或导出 PNG。
+面向 Scripting App 的非官方 GitHub 公开图标库管理工具。集中管理自有图标库、订阅公开索引，并将图标导入、提交与导出整合在一个应用中。
+
+当前版本：`1.1.2`
+
+- **多图标库管理**：连接或创建多个 GitHub 公开图标库，按仓库独立保存访问令牌与显示名称。
+- **图标导入与整理**：从相册、文件、Lobe Icons 与 App Store 导入图标，支持搜索、重命名和批量删除；App Store 图标支持多尺寸与官方圆角或原图样式。
+- **可靠仓库写入**：上传或批量删除合并为单次提交，同名文件可选择覆盖或跳过；新建图标库时可按需写入自动生成索引的 GitHub Actions 工作流。
+- **订阅与导出**：只读浏览其他公开 `icons.json` 索引，支持复制引用和将图标、订阅、Lobe 或 App Store 图片导出为 PNG。
+- **本地授权与隐私**：访问令牌保存在本机 Keychain，仓库配置、订阅列表和缓存保存在本机 Storage，不经过作者服务器中转。
 
 <table>
   <tr>
@@ -117,9 +122,17 @@ https://raw.githubusercontent.com/StarYunLee/Scripting/main/GitHub-Stars.scripti
 https://raw.githubusercontent.com/StarYunLee/Scripting/main/Icon-Library.scripting
 ```
 
-### Surge Metrics
+## Surge Metrics
 
-Surge iOS 运行指标小组件，通过官方 Prometheus Metrics 端点展示累计上下行、内存占用、活跃请求、DNS 缓存、运行时长及网络接口累计流量 Top 3；支持 Medium、Large、明暗模式、WidgetKit 请求刷新及手动刷新。
+面向 Scripting App 的非官方 Surge iOS 运行指标小组件。通过 Surge HTTP API 的 Prometheus Metrics 端点读取引擎状态、累计流量与接口流量，并在主屏幕提供 Medium / Large 看板。
+
+当前版本：`1.1.0`
+
+- **核心运行指标**：展示累计上行与下行、内存占用、活跃请求、DNS 缓存、运行时长、Surge 版本 / Build 以及未授权访问封禁告警。
+- **Medium / Large 看板**：Medium 聚焦累计流量与核心状态；Large 进一步展示累计流量最高的 3 个接口及其上下行构成。
+- **刷新与预览**：支持 5 / 10 / 15 / 30 / 60 分钟的最早刷新请求、组件内手动刷新，以及设置页双尺寸预览和实际更新时间显示。
+- **连接配置**：支持 Host、Port、HTTP API Key 与 HTTPS 配置，并提供连通测试、缓存清理和“立即刷新并预览”。
+- **本地数据边界**：组件直连用户配置的 Surge HTTP API，不经过作者服务器；配置与缓存保存在本机 Storage。
 
 ![Surge Metrics 小组件预览](./Surge%20Metrics/assets/surge-metrics-preview.png)
 
@@ -131,18 +144,6 @@ Surge iOS 运行指标小组件，通过官方 Prometheus Metrics 端点展示�
 ```text
 https://raw.githubusercontent.com/StarYunLee/Scripting/main/Surge-Metrics.scripting
 ```
-
-## 已归档项目
-
-以下项目已停止维护，相关功能已整合至 [AI Usage](#ai-usage)。为保持历史源码和安装链接可用，仓库继续保留其最终版本，但不会继续适配接口变化或修复问题；旧安装包保持最终发布版本的原始内容，不代表重新发布。
-
-| 项目         | 最终版本 | 源码                          | 安装包                                                                                         |
-| ------------ | -------: | ----------------------------- | ---------------------------------------------------------------------------------------------- |
-| Codex Usage  |  `1.5.1` | [查看源码](./Codex%20Usage/)  | [下载安装](https://raw.githubusercontent.com/StarYunLee/Scripting/main/Codex-Usage.scripting)  |
-| Claude Usage |  `1.3.5` | [查看源码](./Claude%20Usage/) | [下载安装](https://raw.githubusercontent.com/StarYunLee/Scripting/main/Claude-Usage.scripting) |
-| Grok Usage   |  `1.5.1` | [查看源码](./Grok%20Usage/)   | [下载安装](https://raw.githubusercontent.com/StarYunLee/Scripting/main/Grok-Usage.scripting)   |
-
-> 旧项目仅为兼容和历史参考保留。新安装和问题反馈请统一使用 AI Usage。
 
 ## 隐私
 
