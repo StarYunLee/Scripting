@@ -1,22 +1,9 @@
 import { HStack, Image, Script, Spacer, Text, VStack, ZStack } from "scripting";
-import type { Color, DynamicShapeStyle } from "scripting";
 import type { ProviderId } from "../models";
 import type { WidgetChromeStyle } from "./chrome-style";
 import { PlanBadge } from "../components/PlanBadge";
 import { WidgetProgress } from "./WidgetProgress";
-
-const dynamic = (light: Color, dark: Color): DynamicShapeStyle => ({
-  light,
-  dark,
-});
-
-const C = {
-  bg: "systemBackground" as Color,
-  primary: "label" as Color,
-  secondary: "secondaryLabel" as Color,
-  watermark: dynamic("rgba(35,35,38,0.09)", "rgba(245,245,247,0.075)"),
-  warn: "systemOrange" as Color,
-};
+import { isWidgetTransparent, widgetTheme as C } from "./transparent";
 
 export type MediumWindowItem = {
   title: string;
@@ -33,13 +20,19 @@ export type MediumOptionalMeta = {
 } | null;
 
 function Watermark(props: { path: string }) {
+  // 透明模式下彻底不渲染水印，保持背景纯净无污斑
+  if (isWidgetTransparent()) return null;
+
   return (
     <Image
       filePath={`${Script.directory}/${props.path}`}
       resizable
       scaleToFit
       renderingMode="template"
-      foregroundStyle={C.watermark}
+      foregroundStyle={{
+        light: "rgba(35,35,38,0.09)",
+        dark: "rgba(245,245,247,0.075)",
+      }}
       frame={{ width: 140, height: 140 }}
     />
   );
@@ -119,7 +112,12 @@ export function ImmersiveSingleMediumLayout(props: {
           chromeStyle={props.chromeStyle}
         />
         <Spacer />
-        <Text font={10} fontWeight="medium" foregroundStyle={C.secondary}>
+        <Text
+          font={10}
+          fontWeight="medium"
+          foregroundStyle={C.secondary}
+          {...(C.textShadow ? { shadow: C.textShadow } : {})}
+        >
           {props.fetchedText}
         </Text>
       </HStack>
@@ -133,7 +131,12 @@ export function ImmersiveSingleMediumLayout(props: {
         }}
         padding={{ leading: 20, top: pos.titleTop }}
       >
-        <Text font={16} fontWeight="bold" foregroundStyle={C.primary}>
+        <Text
+          font={16}
+          fontWeight="bold"
+          foregroundStyle={C.primary}
+          {...(C.textShadow ? { shadow: C.textShadow } : {})}
+        >
           {props.title}
         </Text>
       </HStack>
@@ -154,10 +157,16 @@ export function ImmersiveSingleMediumLayout(props: {
           fontWeight="bold"
           foregroundStyle={C.primary}
           minScaleFactor={0.4}
+          {...(C.textShadow ? { shadow: C.textShadow } : {})}
         >
           {percent}
         </Text>
-        <Text font={16} fontWeight="bold" foregroundStyle={C.secondary}>
+        <Text
+          font={16}
+          fontWeight="bold"
+          foregroundStyle={C.secondary}
+          {...(C.textShadow ? { shadow: C.textShadow } : {})}
+        >
           剩余
         </Text>
       </HStack>
@@ -263,6 +272,7 @@ function DualWindowRow(props: {
   top: number;
   chromeStyle?: WidgetChromeStyle;
 }) {
+  const shadow = C.textShadow;
   return (
     <>
       {/* 行 1：窗口标题独占行（统一提升为 16pt bold，与单窗口一致） */}
@@ -274,7 +284,12 @@ function DualWindowRow(props: {
         }}
         padding={{ leading: 20, trailing: 20, top: props.top }}
       >
-        <Text font={16} fontWeight="bold" foregroundStyle={C.primary}>
+        <Text
+          font={16}
+          fontWeight="bold"
+          foregroundStyle={C.primary}
+          {...(shadow ? { shadow } : {})}
+        >
           {props.window.title}
         </Text>
       </HStack>
@@ -293,6 +308,7 @@ function DualWindowRow(props: {
           fontWeight="medium"
           foregroundStyle={C.secondary}
           lineLimit={1}
+          {...(shadow ? { shadow } : {})}
         >
           {props.window.resetText}
         </Text>
@@ -302,6 +318,7 @@ function DualWindowRow(props: {
           fontWeight="bold"
           foregroundStyle={C.primary}
           lineLimit={1}
+          {...(shadow ? { shadow } : {})}
         >
           {props.window.remainingText}
         </Text>
@@ -461,6 +478,7 @@ function TripleWindowRow(props: {
 }) {
   const barOffset = 19;
   const barHeight = 5.5;
+  const shadow = C.textShadow;
   return (
     <>
       <HStack
@@ -478,6 +496,7 @@ function TripleWindowRow(props: {
           foregroundStyle={C.primary}
           lineLimit={1}
           minScaleFactor={0.7}
+          {...(shadow ? { shadow } : {})}
         >
           {props.window.title}
         </Text>
@@ -488,10 +507,16 @@ function TripleWindowRow(props: {
             fontWeight="medium"
             foregroundStyle={C.secondary}
             lineLimit={1}
+            {...(shadow ? { shadow } : {})}
           >
             {props.window.resetText}
           </Text>
-          <Text font={14} fontWeight="bold" foregroundStyle={C.primary}>
+          <Text
+            font={14}
+            fontWeight="bold"
+            foregroundStyle={C.primary}
+            {...(shadow ? { shadow } : {})}
+          >
             {props.window.remainingText}
           </Text>
         </HStack>
@@ -570,7 +595,12 @@ export function PanoramicTripleMediumLayout(props: {
           chromeStyle={props.chromeStyle}
         />
         <Spacer />
-        <Text font={9} fontWeight="medium" foregroundStyle={C.secondary}>
+        <Text
+          font={9}
+          fontWeight="medium"
+          foregroundStyle={C.secondary}
+          {...(C.textShadow ? { shadow: C.textShadow } : {})}
+        >
           {props.fetchedText}
         </Text>
       </HStack>

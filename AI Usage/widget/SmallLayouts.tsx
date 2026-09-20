@@ -8,23 +8,11 @@ import {
   Widget,
   ZStack,
 } from "scripting";
-import type { Color, DynamicShapeStyle } from "scripting";
 import type { ProviderId } from "../models";
 import type { WidgetChromeStyle } from "./chrome-style";
 import { PlanBadge } from "../components/PlanBadge";
 import { WidgetProgress } from "./WidgetProgress";
-
-const dynamic = (light: Color, dark: Color): DynamicShapeStyle => ({
-  light,
-  dark,
-});
-
-const C = {
-  bg: "systemBackground" as Color,
-  primary: "label" as Color,
-  secondary: "secondaryLabel" as Color,
-  watermark: dynamic("rgba(35,35,38,0.09)", "rgba(245,245,247,0.075)"),
-};
+import { isWidgetTransparent, widgetTheme as C } from "./transparent";
 
 export type SmallOptionalMeta = {
   label: string;
@@ -41,13 +29,18 @@ export type SmallWindowItem = {
 };
 
 function Watermark(props: { path: string }) {
+  if (isWidgetTransparent()) return null;
+
   return (
     <Image
       filePath={`${Script.directory}/${props.path}`}
       resizable
       scaleToFit
       renderingMode="template"
-      foregroundStyle={C.watermark}
+      foregroundStyle={{
+        light: "rgba(35,35,38,0.09)",
+        dark: "rgba(245,245,247,0.075)",
+      }}
       frame={{ width: 96, height: 96 }}
     />
   );
@@ -149,6 +142,7 @@ export function FocusSingleSmallLayout(props: {
           foregroundStyle={C.primary}
           lineLimit={1}
           minScaleFactor={0.7}
+          {...(C.textShadow ? { shadow: C.textShadow } : {})}
         >
           {props.title}
         </Text>
@@ -173,6 +167,7 @@ export function FocusSingleSmallLayout(props: {
           fontWeight="bold"
           foregroundStyle={C.primary}
           minScaleFactor={0.7}
+          {...(C.textShadow ? { shadow: C.textShadow } : {})}
         >
           {props.remainingText}
         </Text>
@@ -182,6 +177,7 @@ export function FocusSingleSmallLayout(props: {
           fontWeight="semibold"
           foregroundStyle={C.secondary}
           lineLimit={1}
+          {...(C.textShadow ? { shadow: C.textShadow } : {})}
         >
           剩余
         </Text>
@@ -298,6 +294,7 @@ function DualWindowRow(props: {
   top: number;
   chromeStyle?: WidgetChromeStyle;
 }) {
+  const shadow = C.textShadow;
   return (
     <>
       {/* 行 1：窗口标题独占行（与单额度一致，14pt bold） */}
@@ -315,6 +312,7 @@ function DualWindowRow(props: {
           foregroundStyle={C.primary}
           lineLimit={1}
           minScaleFactor={0.7}
+          {...(shadow ? { shadow } : {})}
         >
           {props.window.title}
         </Text>
@@ -334,6 +332,7 @@ function DualWindowRow(props: {
           fontWeight="medium"
           foregroundStyle={C.secondary}
           lineLimit={1}
+          {...(shadow ? { shadow } : {})}
         >
           {props.window.resetText}
         </Text>
@@ -343,6 +342,7 @@ function DualWindowRow(props: {
           fontWeight="bold"
           foregroundStyle={C.primary}
           lineLimit={1}
+          {...(shadow ? { shadow } : {})}
         >
           {props.window.remainingText}
         </Text>

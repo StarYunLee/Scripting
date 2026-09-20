@@ -10,6 +10,7 @@ import { loadWidgetAccountSnapshot } from "./services/widget-account-loader";
 import { loadDashboardWidgetUsage } from "./widget/dashboard-loader";
 import { DashboardWidgetView } from "./widget/dashboard/DashboardWidgetView";
 import { widgetFallbackWidth } from "./widget/family";
+import { widgetTheme } from "./widget/transparent";
 
 function ErrorWidget({ message }: { message: string }) {
   return (
@@ -18,7 +19,7 @@ function ErrorWidget({ message }: { message: string }) {
       spacing={8}
       padding={16}
       frame={{ maxWidth: "infinity", maxHeight: "infinity" }}
-      widgetBackground="systemBackground"
+      widgetBackground={widgetTheme.bg}
     >
       <Image
         systemName="chart.bar.doc.horizontal.fill"

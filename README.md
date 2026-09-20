@@ -30,9 +30,16 @@
 
 ### AI Usage
 
-统一管理 Codex、Grok、Claude、Antigravity、Cursor、Kimi Code、GitHub Copilot、Z.ai 与 MiniMax 的多账号用量。支持普通单账号和多账号主屏幕小组件，覆盖 Small、Medium 与 Large 尺寸；可配置显示账号、额度窗口和账号标识。应用内用量总览、快捷指令与 App Intent 可刷新全部授权账号，失败时回退最近缓存，未授权时可使用只读演示模式。
+面向 Scripting App 的非官方多平台 AI 用量聚合与桌面看板工具。在一个应用中集中管理主流平台的多账号用量、主屏幕小组件与本地数据安全。
 
-当前版本：`1.7.0`
+当前版本：`1.7.1`
+
+- **多平台与多账号聚合**：统一连接 Codex、Grok、Claude、Antigravity、Cursor、Kimi Code、GitHub Copilot、Z.ai 与 MiniMax，支持同平台多账号及多额度窗口独立跟踪。
+- **全尺寸桌面看板**：提供单账号 Small / Medium 小组件，以及可展示 2、4 或 8 个账号的 Small / Medium / Large 多账号看板；可配置展示账号、额度窗口与账号标识。
+- **双重视觉风格**：默认彩色风格提供品牌徽章与绿 / 橙 / 红额度预警；Clear 简约风格在普通桌面呈现黑白线框，在透明桌面呈现通透白线框。
+- **透明小组件适配**：采用 15% 微透暗底、纯白高对比文字、苹果亮绿用量色与抗杂色微阴影（受静态壁纸切片且无实时模糊限制，不保证所有高反差、强光或复杂壁纸下效果均佳）。
+- **文件级加密备份与恢复**：使用 PBKDF2-HMAC-SHA256 与 AES-256-GCM 保护账号凭据、默认选择和小组件偏好，支持跨设备迁移与增量恢复。
+- **可靠缓存与本地隐私**：网络异常或接口限流时回退最近成功缓存；凭据保存在本机 Keychain，并提供无需真实账号的只读演示模式。
 
 <table>
   <tr>
@@ -46,6 +53,12 @@
     <td align="center" width="25%"><img src="./AI%20Usage/assets/ai-usage-preview-widgets-dark.jpeg" alt="AI Usage 深色 Small 与 Medium 小组件" /></td>
     <td align="center" width="25%"><img src="./AI%20Usage/assets/ai-usage-preview-layouts-dark.jpeg" alt="AI Usage 深色 Medium 布局" /></td>
     <td align="center" width="25%"><img src="./AI%20Usage/assets/ai-usage-preview-dashboard-dark.jpeg" alt="AI Usage 深色多账号小组件" /></td>
+  </tr>
+  <tr>
+    <td align="center" width="25%"><img src="./AI%20Usage/assets/ai-usage-preview-clear-standard.jpeg" alt="AI Usage 普通桌面 Clear 简约小组件" /></td>
+    <td align="center" width="25%"><img src="./AI%20Usage/assets/ai-usage-preview-clear-transparent.jpeg" alt="AI Usage 透明桌面 Clear 简约小组件" /></td>
+    <td align="center" width="25%"><img src="./AI%20Usage/assets/ai-usage-preview-transparent-widgets.jpeg" alt="AI Usage 透明单账号小组件" /></td>
+    <td align="center" width="25%"><img src="./AI%20Usage/assets/ai-usage-preview-transparent-dashboard.jpeg" alt="AI Usage 透明多账号看板小组件" /></td>
   </tr>
 </table>
 

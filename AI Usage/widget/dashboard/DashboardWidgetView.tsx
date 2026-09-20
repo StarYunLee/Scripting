@@ -1,5 +1,4 @@
 import { Button, HStack, Image, Spacer, Text, VStack } from "scripting";
-import type { Color, DynamicShapeStyle } from "scripting";
 import { RefreshAIUsageAllIntent } from "../../app_intents";
 import { PlanBadge } from "../../components/PlanBadge";
 import { formatResetCountdown } from "../../services/usage-format";
@@ -7,6 +6,7 @@ import { parseWidgetFamily } from "../family";
 import { providerMeta, type UsageWindowView } from "../../models";
 import { WidgetProgress } from "../WidgetProgress";
 import type { WidgetChromeStyle } from "../chrome-style";
+import { widgetTheme as C } from "../transparent";
 import {
   readDashboardWidgetPreferences,
   type DashboardWidgetDisplayPreferences,
@@ -16,19 +16,6 @@ import {
   type DashboardAccount,
   type DashboardPlan,
 } from "./model";
-
-const dynamic = (light: Color, dark: Color): DynamicShapeStyle => ({
-  light,
-  dark,
-});
-const C = {
-  bg: "systemBackground" as Color,
-  primary: "label" as Color,
-  secondary: "secondaryLabel" as Color,
-  accent: "systemBlue" as Color,
-  divider: dynamic("rgba(60,60,67,0.12)", "rgba(235,235,245,0.16)"),
-  warn: "systemOrange" as Color,
-};
 
 function percent(value: number | null): string {
   return value == null || !Number.isFinite(value)
@@ -59,6 +46,7 @@ function WindowRow(props: {
   chromeStyle?: WidgetChromeStyle;
 }) {
   const countdown = formatResetCountdown(props.window.resetAt);
+  const shadow = C.textShadow;
   return (
     <VStack alignment="leading" spacing={props.compact ? 2 : 3}>
       <HStack spacing={4} frame={{ width: props.width }}>
@@ -68,6 +56,7 @@ function WindowRow(props: {
           foregroundStyle={C.secondary}
           lineLimit={1}
           minScaleFactor={0.75}
+          {...(shadow ? { shadow } : {})}
         >
           {props.window.label}
         </Text>
@@ -79,6 +68,7 @@ function WindowRow(props: {
             monospacedDigit
             foregroundStyle={C.secondary}
             layoutPriority={1}
+            {...(shadow ? { shadow } : {})}
           >
             {countdown}
           </Text>
@@ -89,6 +79,7 @@ function WindowRow(props: {
           monospacedDigit
           foregroundStyle={C.primary}
           layoutPriority={1}
+          {...(shadow ? { shadow } : {})}
         >
           {percent(props.window.remainingPercent)}
         </Text>
@@ -134,6 +125,7 @@ function AccountCell(props: {
             truncationMode="tail"
             minScaleFactor={0.85}
             layoutPriority={0}
+            {...(C.textShadow ? { shadow: C.textShadow } : {})}
           >
             {props.account.accountTitle}
           </Text>
@@ -208,7 +200,11 @@ function DashboardFooter(props: {
 }) {
   return (
     <HStack alignment="center" frame={{ maxWidth: "infinity" }}>
-      <Text font={9} foregroundStyle={C.secondary}>
+      <Text
+        font={9}
+        foregroundStyle={C.secondary}
+        {...(C.textShadow ? { shadow: C.textShadow } : {})}
+      >
         {props.hiddenAccountCount > 0
           ? `另有 ${props.hiddenAccountCount} 个账号`
           : ""}
@@ -222,7 +218,11 @@ function DashboardFooter(props: {
             foregroundStyle={C.warn}
           />
         ) : null}
-        <Text font={9} foregroundStyle={C.secondary}>
+        <Text
+          font={9}
+          foregroundStyle={C.secondary}
+          {...(C.textShadow ? { shadow: C.textShadow } : {})}
+        >
           {props.refreshText}
         </Text>
         <Button intent={RefreshAIUsageAllIntent(undefined)} buttonStyle="plain">
@@ -375,11 +375,21 @@ function LargeDashboard(props: {
       widgetBackground={C.bg}
     >
       <HStack frame={{ maxWidth: "infinity" }}>
-        <Text font={13} fontWeight="bold">
+        <Text
+          font={13}
+          fontWeight="bold"
+          foregroundStyle={C.primary}
+          {...(C.textShadow ? { shadow: C.textShadow } : {})}
+        >
           AI Usage
         </Text>
         <Spacer minLength={0} />
-        <Text font={10.5} foregroundStyle={C.secondary} monospacedDigit>
+        <Text
+          font={10.5}
+          foregroundStyle={C.secondary}
+          monospacedDigit
+          {...(C.textShadow ? { shadow: C.textShadow } : {})}
+        >
           {accountSummary}
         </Text>
       </HStack>
@@ -420,7 +430,11 @@ function LargeDashboard(props: {
               foregroundStyle={C.warn}
             />
           ) : null}
-          <Text font={10.5} foregroundStyle={C.secondary}>
+          <Text
+            font={10.5}
+            foregroundStyle={C.secondary}
+            {...(C.textShadow ? { shadow: C.textShadow } : {})}
+          >
             {refreshText}
           </Text>
           <Button
@@ -511,11 +525,21 @@ function SparseLargeDashboard(props: {
       widgetBackground={C.bg}
     >
       <HStack frame={{ maxWidth: "infinity" }}>
-        <Text font={13} fontWeight="bold">
+        <Text
+          font={13}
+          fontWeight="bold"
+          foregroundStyle={C.primary}
+          {...(C.textShadow ? { shadow: C.textShadow } : {})}
+        >
           AI Usage
         </Text>
         <Spacer minLength={0} />
-        <Text font={10.5} foregroundStyle={C.secondary} monospacedDigit>
+        <Text
+          font={10.5}
+          foregroundStyle={C.secondary}
+          monospacedDigit
+          {...(C.textShadow ? { shadow: C.textShadow } : {})}
+        >
           {accountSummary}
         </Text>
       </HStack>
@@ -567,7 +591,11 @@ function SparseLargeDashboard(props: {
               foregroundStyle={C.warn}
             />
           ) : null}
-          <Text font={10.5} foregroundStyle={C.secondary}>
+          <Text
+            font={10.5}
+            foregroundStyle={C.secondary}
+            {...(C.textShadow ? { shadow: C.textShadow } : {})}
+          >
             {refreshText}
           </Text>
           <Button

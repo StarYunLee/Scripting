@@ -13,30 +13,32 @@
     <td align="center" width="25%"><img src="assets/ai-usage-preview-layouts-dark.jpeg" alt="AI Usage 深色 Medium 布局" /></td>
     <td align="center" width="25%"><img src="assets/ai-usage-preview-dashboard-dark.jpeg" alt="AI Usage 深色多账号小组件" /></td>
   </tr>
+  <tr>
+    <td align="center" width="25%"><img src="assets/ai-usage-preview-clear-standard.jpeg" alt="AI Usage 普通桌面 Clear 简约小组件" /></td>
+    <td align="center" width="25%"><img src="assets/ai-usage-preview-clear-transparent.jpeg" alt="AI Usage 透明桌面 Clear 简约小组件" /></td>
+    <td align="center" width="25%"><img src="assets/ai-usage-preview-transparent-widgets.jpeg" alt="AI Usage 透明单账号小组件" /></td>
+    <td align="center" width="25%"><img src="assets/ai-usage-preview-transparent-dashboard.jpeg" alt="AI Usage 透明多账号看板小组件" /></td>
+  </tr>
 </table>
 
 面向 [Scripting App](https://scriptingapp.github.io/) 的非官方多平台用量查看应用。在一个项目里管理 Codex、Grok、Claude、Antigravity、Cursor、Kimi Code、GitHub Copilot、Z.ai 与 MiniMax 的多账号用量、主屏幕小组件和自动化刷新。
 
-当前版本：`1.7.0`
+当前版本：`1.7.1`
 
 > 本项目不是 OpenAI、xAI、Anthropic、Google 或 Scripting App 官方产品，与上述平台无隶属或合作关系。
 
 ## 功能
 
-- 统一管理 Codex、Grok、Claude、Antigravity、Cursor、Kimi Code、GitHub Copilot、Z.ai 与 MiniMax 多个账号
-- 支持文件级 AES-256-GCM 加密备份与恢复，跨设备安全迁移账号凭据、默认账号及小组件偏好
-- 应用内用量总览支持按账号控制显示，并可在账号详情中选择需要展示的额度窗口
-- Access Token、Refresh Token 和相关身份凭据保存在本机 Keychain
-- Token 到期前自动刷新
-- 主屏幕小组件支持普通单账号和多账号模式，覆盖 Small、Medium 与 Large 尺寸
-- 普通小组件可在账号详情中选择要显示的额度窗口：Small 最多 2 项、Medium 最多 4 项
-- 多账号小组件可集中选择账号和每账号最多 2 个额度窗口，并按尺寸展示 2、4 或 8 个账号
-- 小组件主数值和进度条固定显示剩余额度，刷新与重置时间使用相对表述
-- 统一绿 / 橙 / 红风险配色：剩余不高于 40% 显示橙色，不高于 15% 显示红色
-- 网络失败或接口限流时回退最近一次成功缓存
-- 内置只读演示模式，可在未授权时预览界面和小组件
-- 支持快捷指令与 App Intent，手动或定时刷新全部账号
-- 运行记录不包含 Token、授权码、Cookie 或完整接口响应；账号仅显示本机已保存的邮箱或账号名
+- **多平台用量集中聚合**：统一连接并追踪 Codex、Grok、Claude、Antigravity、Cursor、Kimi Code、GitHub Copilot、Z.ai 与 MiniMax 多平台账号，支持同平台多账号并行管理与多窗口额度独立跟踪。
+- **全尺寸主屏幕小组件**：
+  - 覆盖单账号（Small / Medium）与多账号聚合看板（Small / Medium / Large / ExtraLarge），支持集中配置展示账号、额度窗口与账号标识。
+  - **默认彩色风格**：保留经典彩色品牌胶囊徽章，配备绿 / 橙 / 红三段式用量风险预警进度条（剩余 ≤40% 预警，≤15% 紧急），主数值固定显示剩余额度。
+  - **Clear 简约风格**：内置独立外观开关。在普通桌面上呈现黑白反差的高级线框极简风；在透明桌面上呈现纯粹通透的白线框极简风。
+  - **透明小组件深度适配**：解绑系统固定背景，采用 15% 黄金微透暗底托底，配合全天候通透纯白高亮字、苹果亮绿用量色与抗杂色文字微阴影（*受限于无实时模糊的系统切图机制，不保证在所有高反差、强光或复杂壁纸下视觉效果均佳*）。
+- **文件级加密备份与恢复**：采用 PBKDF2-HMAC-SHA256 密钥派生与 AES-256-GCM 强加密算法，安全导出与跨设备迁移 Keychain 凭据、默认平台选择与小组件布局偏好；支持原地增量合并与过期残留字段清理。
+- **平滑离线缓存回退**：遭遇网络波动、服务宕机或官方接口限流时，小组件与应用内自动平滑回退至最近一次成功缓存，避免白屏与报错跳动。
+- **开箱只读演示模式**：内置完整 Demo 数据集，无需绑定真实密钥即可直接在应用内与主屏幕小组件上预览全部尺寸与布局效果。
+- **硬件级本地隐私安全**：所有 Access Token、Refresh Token 与身份凭据直接保存于 iOS 本机 Keychain 硬件保护区，用量查询直连官方服务，零第三方中转，日志绝不记录敏感凭据。
 
 ## 系统要求
 
@@ -230,6 +232,7 @@ dashboard
 - OAuth 成功不代表所有账号都具有对应用量查询资格
 - 账号实际拥有的额度窗口由服务端决定，缺失窗口显示 `—`
 - WidgetKit 不保证严格按照所选分钟数刷新
+- 透明小组件依赖 Scripting 静态壁纸切片机制，在极高频高光杂色壁纸下可能存在局部对比度差异
 - 单账号小组件未专门适配 Large；未知或不支持的尺寸按现有回退渲染
 - Small 使用所选窗口顺序中的前 2 项
 - 演示模式只用于预览界面，不会写入真实账号或发起授权请求
