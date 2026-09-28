@@ -39,6 +39,7 @@ export type BackupPayload = {
       displaySettings?: {
         reloadMinutes: number;
         backgroundTheme: string;
+        maskUsageCardEmail?: boolean;
         widgetChromeStyle: WidgetChromeStyle;
       };
       appOverview?: {

@@ -181,6 +181,7 @@ export function buildBackupPayload(): BackupPayload {
         displaySettings: {
           reloadMinutes: displaySettings.reloadMinutes,
           backgroundTheme: displaySettings.backgroundTheme,
+          maskUsageCardEmail: displaySettings.maskUsageCardEmail,
           widgetChromeStyle: displaySettings.widgetChromeStyle,
         },
         appOverview:

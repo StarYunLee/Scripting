@@ -6,6 +6,14 @@ export type ChangelogEntry = {
 
 export const CHANGELOG = [
   {
+    version: "1.7.2",
+    date: "2026-09-28",
+    changes: [
+      "新增用量卡邮箱隐私开关，可在保留邮箱域名的同时隐藏账号主体信息。",
+      "修复调整设置开关或选择器时账号列表平台图标短暂闪烁的问题。",
+    ],
+  },
+  {
     version: "1.7.1",
     date: "2026-09-20",
     changes: [

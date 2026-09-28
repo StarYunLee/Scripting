@@ -22,7 +22,7 @@
 
 面向 Scripting App 的非官方多平台 AI 用量聚合与桌面看板工具。在一个应用中集中管理主流平台的多账号用量、主屏幕小组件与本地数据安全。
 
-当前版本：`1.7.1`
+当前版本：`1.7.2`
 
 - **多平台与多账号聚合**：统一连接 Codex、Grok、Claude、Antigravity、Cursor、Kimi Code、GitHub Copilot、Z.ai 与 MiniMax，支持同平台多账号及多额度窗口独立跟踪。
 - **全尺寸桌面看板**：提供单账号 Small / Medium 小组件，以及可展示 2、4 或 8 个账号的 Small / Medium / Large 多账号看板；可配置展示账号、额度窗口与账号标识。

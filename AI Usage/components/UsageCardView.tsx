@@ -19,6 +19,7 @@ import { providerMeta, type UsageCard } from "../models";
 import { usageTint } from "../services/usage-colors";
 import { PlanBadge } from "./PlanBadge";
 import { ProviderLogo } from "./ProviderLogo";
+import { maskEmailAddress } from "../services/account-privacy";
 
 const CARD_RADIUS = 20;
 
@@ -90,6 +91,7 @@ export function UsageCardView(props: {
   displayMode: "used" | "remaining";
   onRefresh: () => void;
   onOpen?: () => void;
+  maskEmail: boolean;
 }) {
   const meta = providerMeta(props.card.provider);
   const percentLabel = props.displayMode === "remaining" ? "剩余" : "已用";
@@ -131,7 +133,9 @@ export function UsageCardView(props: {
             />
           </HStack>
           <Text font={15} foregroundStyle="secondaryLabel" lineLimit={1}>
-            {props.card.title}
+            {props.maskEmail
+              ? maskEmailAddress(props.card.title)
+              : props.card.title}
           </Text>
         </VStack>
         <Spacer />

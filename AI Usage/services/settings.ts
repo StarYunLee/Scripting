@@ -26,6 +26,8 @@ export type AppDisplaySettings = {
   /** 0 = 手动（App 启动不自动联网；小组件也不自动拉新） */
   reloadMinutes: number;
   backgroundTheme: BackgroundThemeId;
+  /** 仅在 App 用量卡中隐藏邮箱本地部分。 */
+  maskUsageCardEmail: boolean;
   /**
    * 小组件视觉风格：color = 默认彩色，clear = 简约通透。
    * 兼容旧版 widgetClearHomeScreen boolean。
@@ -72,6 +74,7 @@ const DEFAULT_SETTINGS: AppDisplaySettings = {
   // 贴近原先「打开几乎会刷一次」的体验，同时允许短时复用缓存秒开。
   reloadMinutes: 5,
   backgroundTheme: "system_default",
+  maskUsageCardEmail: false,
   widgetChromeStyle: "color",
   widgetClearHomeScreen: false,
 };
@@ -146,6 +149,7 @@ export function getAppDisplaySettings(): AppDisplaySettings {
     return {
       reloadMinutes: clampMinutes(value.reloadMinutes),
       backgroundTheme: normalizeTheme(value.backgroundTheme),
+      maskUsageCardEmail: value.maskUsageCardEmail === true,
       widgetChromeStyle: chromeStyle,
       widgetClearHomeScreen: chromeStyle === "clear",
     };
@@ -182,6 +186,21 @@ export function setAppBackgroundTheme(
   const next = {
     ...getAppDisplaySettings(),
     backgroundTheme: normalizeTheme(backgroundTheme),
+  };
+  try {
+    if (!Storage.set(DISPLAY_KEY, next)) return { ok: false, value: next };
+    return { ok: true, value: next };
+  } catch {
+    return { ok: false, value: next };
+  }
+}
+
+export function setMaskUsageCardEmail(
+  enabled: boolean,
+): StorageWriteResult<AppDisplaySettings> {
+  const next: AppDisplaySettings = {
+    ...getAppDisplaySettings(),
+    maskUsageCardEmail: enabled === true,
   };
   try {
     if (!Storage.set(DISPLAY_KEY, next)) return { ok: false, value: next };

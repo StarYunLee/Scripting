@@ -17,7 +17,9 @@ export function isWidgetTransparent(): boolean {
       isTransparentMode?: boolean;
       isBlurMode?: boolean;
     };
-    return Boolean(w.isTransparentBackground || w.isTransparentMode || w.isBlurMode);
+    return Boolean(
+      w.isTransparentBackground || w.isTransparentMode || w.isBlurMode,
+    );
   } catch {
     return false;
   }

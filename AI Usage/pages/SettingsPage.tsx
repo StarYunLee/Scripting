@@ -35,6 +35,7 @@ import {
   RELOAD_MINUTE_LABELS,
   RELOAD_MINUTE_OPTIONS,
   setAppReloadMinutes,
+  setMaskUsageCardEmail,
   setWidgetChromeStyle,
   snapReloadMinutes,
   type BackgroundThemeId,
@@ -107,7 +108,7 @@ export function SettingsPage(props: {
   onOverviewChange: () => void;
   onBackupRestored?: () => void;
 }) {
-  const [tick, setTick] = useState(0);
+  const [, setTick] = useState(0);
   const [sheet, setSheet] = useState<AuthSheet | null>(null);
   const [authView] = useState(() => ({
     revision: 0,
@@ -441,7 +442,7 @@ export function SettingsPage(props: {
                 const shown = isAccountShownInOverview(meta.id, account.id);
                 return (
                   <VStack
-                    key={`${meta.id}:${account.id}:${tick}`}
+                    key={`${meta.id}:${account.id}`}
                     alignment="leading"
                     spacing={0}
                     frame={{ maxWidth: "infinity" }}
@@ -535,6 +536,30 @@ export function SettingsPage(props: {
             )}
             <GlassDivider />
             <GlassNoteRow text="账号开关仅控制是否在 App 用量页显示，不影响单账号或多账号桌面小组件。" />
+          </GlassGroup>
+        </Section>
+
+        <Section
+          listRowBackground={glassRowBackground}
+          header={<GlassSectionHeader title="隐私" />}
+        >
+          <GlassGroup>
+            <Toggle
+              title="隐藏用量卡邮箱"
+              value={settings.maskUsageCardEmail}
+              onChanged={(value: boolean) => {
+                const result = setMaskUsageCardEmail(value);
+                if (!result.ok) {
+                  void showSettingsSaveFailure();
+                  refresh();
+                  return;
+                }
+                props.onOverviewChange();
+                refresh();
+              }}
+              padding={{ vertical: true }}
+              frame={{ minHeight: 44, maxWidth: "infinity" }}
+            />
           </GlassGroup>
         </Section>
 

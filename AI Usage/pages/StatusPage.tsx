@@ -70,6 +70,7 @@ export function StatusPage(props: {
   const [openedCard, setOpenedCard] = useState<UsageCard | null>(null);
   const [filterProvider, setFilterProvider] = useState<ProviderId | null>(null);
   const displayMode = "remaining";
+  const maskUsageCardEmail = getAppDisplaySettings().maskUsageCardEmail;
   const [feedbackTimers] = useState(
     () => new Map<string, ReturnType<typeof setTimeout>>(),
   );
@@ -665,6 +666,7 @@ export function StatusPage(props: {
               key={card.key}
               card={card}
               displayMode={displayMode}
+              maskEmail={maskUsageCardEmail}
               onRefresh={() => refreshOne(card)}
               onOpen={() => setOpenedCard(card)}
             />
