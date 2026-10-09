@@ -12,13 +12,13 @@
       "homepage": "https://github.com/gamesme"
     }
   ],
-  "version": "1.7.2",
+  "version": "1.8.0",
   "intentInputTypes": [],
   "localizedNames": {
     "zh": "AI Usage",
     "en": "AI Usage"
   },
-  "description": "Unified multi-account AI usage app for Codex, Grok, Claude, Antigravity, Cursor, Kimi Code, GitHub Copilot, Z.ai, and MiniMax, with configurable Small, Medium, and Large Home Screen widgets.",
+  "description": "Unified multi-account AI usage app for Codex, Grok, Claude, Antigravity, Cursor, Kimi Code, GitHub Copilot, Z.ai, and MiniMax, with configurable Home Screen widgets and an optional persistent Home Tab for Scripting Pro users.",
   "remoteResource": {
     "url": "https://raw.githubusercontent.com/StarYunLee/Scripting/main/AI-Usage.scripting",
     "autoUpdateInterval": 86400
@@ -29,8 +29,8 @@
     "homepage": "https://github.com/StarYunLee"
   },
   "localizedDescriptions": {
-    "zh": "整合 Codex、Grok、Claude、Antigravity、Cursor、Kimi Code、GitHub Copilot、Z.ai 与 MiniMax 多账号用量。支持可配置的 Small、Medium 与 Large 普通和多账号主屏幕小组件。",
-    "en": "Unified multi-account usage for Codex, Grok, Claude, Antigravity, Cursor, Kimi Code, GitHub Copilot, Z.ai, and MiniMax, with configurable Small, Medium, and Large Home Screen widgets."
+    "zh": "整合 Codex、Grok、Claude、Antigravity、Cursor、Kimi Code、GitHub Copilot、Z.ai 与 MiniMax 多账号用量。支持可配置的普通和多账号主屏幕小组件，以及需要 Scripting Pro 的可选主页常驻入口。",
+    "en": "Unified multi-account usage for Codex, Grok, Claude, Antigravity, Cursor, Kimi Code, GitHub Copilot, Z.ai, and MiniMax, with configurable Home Screen widgets and an optional persistent Home Tab for Scripting Pro users."
   },
   "iconImage": null
 }

@@ -170,6 +170,8 @@ export const PROVIDER_META: Record<ProviderId, ProviderMeta> = {
 
 export const PROVIDERS = PROVIDER_IDS.map((id) => PROVIDER_META[id]);
 
+export type AppHost = "index" | "home_screen";
+
 export function providerMeta(id: ProviderId) {
   return PROVIDER_META[id];
 }

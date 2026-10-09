@@ -23,13 +23,14 @@
 
 面向 [Scripting App](https://scriptingapp.github.io/) 的非官方多平台用量查看应用。在一个项目里管理 Codex、Grok、Claude、Antigravity、Cursor、Kimi Code、GitHub Copilot、Z.ai 与 MiniMax 的多账号用量、主屏幕小组件和自动化刷新。
 
-当前版本：`1.7.2`
+当前版本：`1.8.0`
 
 > 本项目不是 OpenAI、xAI、Anthropic、Google 或 Scripting App 官方产品，与上述平台无隶属或合作关系。
 
 ## 功能
 
 - **多平台用量集中聚合**：统一连接并追踪 Codex、Grok、Claude、Antigravity、Cursor、Kimi Code、GitHub Copilot、Z.ai 与 MiniMax 多平台账号，支持同平台多账号并行管理与多窗口额度独立跟踪。
+- **可选的 Scripting 主页入口（需要 Scripting Pro）**：可将 AI Usage 固定在 Scripting Home Tab，直接查看用量并进入设置；不启用该入口不影响独立应用、主屏幕小组件及其他原有功能。
 - **全尺寸主屏幕小组件**：
   - 覆盖单账号（Small / Medium）与多账号聚合看板（Small / Medium / Large / ExtraLarge），支持集中配置展示账号、额度窗口与账号标识。
   - **默认彩色风格**：保留经典彩色品牌胶囊徽章，配备绿 / 橙 / 红三段式用量风险预警进度条（剩余 ≤40% 预警，≤15% 紧急），主数值固定显示剩余额度。
@@ -46,15 +47,17 @@
 - 已安装 Scripting App
 - 具备对应平台用量查询资格的账号
 - 需要联网完成 OAuth 和用量查询
-- 不需要 Scripting Pro
+- 独立应用、主屏幕小组件和自动化功能不需要 Scripting Pro
+- 可选的 Scripting Home Tab 常驻入口需要 Scripting Pro
 
 ## 安装
 
 1. 下载本项目目录或发布的 `AI-Usage.scripting` 安装包。
 2. 将 `AI Usage` 导入 Scripting App。
 3. 在 Scripting 中运行 `AI Usage`，进入用量页。
-4. 按下方步骤完成对应平台的 OAuth。
-5. 在主屏幕添加 Scripting 小组件，并选择 `AI Usage`。
+4. 可选：Scripting Pro 用户可在 Scripting 设置中开启 `Show Home Tab` 并选择 `AI Usage`，将用量页面固定在 Scripting 主页；修改项目源码后，请长按该 Tab 图标并选择 Reload。
+5. 按下方步骤完成对应平台的 OAuth。
+6. 在主屏幕添加 Scripting 小组件，并选择 `AI Usage`。
 
 远程导入地址：
 
@@ -251,7 +254,8 @@ AI Usage/
 ├── tests/                    业务回归测试；tsc/esbuild/测试门禁由 Mac Build Worker 执行
 ├── widget/                   小组件分发、Loader 与平台布局
 ├── app_intents.tsx           系统 App Intent
-├── index.tsx                 应用入口
+├── home_screen_default_ui.tsx Scripting 主页 Tab 常驻入口
+├── index.tsx                 应用独立运行入口
 ├── intent.tsx                快捷指令刷新入口
 ├── widget.tsx                小组件入口
 ├── changelog.ts              版本更新日志

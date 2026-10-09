@@ -1,48 +1,63 @@
-import {
-  Button,
-  HStack,
-  Menu,
-  Navigation,
-  Toolbar,
-  ToolbarItem,
-} from "scripting";
-import { PROVIDERS, type ProviderId } from "../models";
+import { Button, HStack, Menu, Toolbar, ToolbarItem } from "scripting";
+import { PROVIDERS, type AppHost, type ProviderId } from "../models";
 
-export function usePageToolbar(options?: {
+export function buildPageToolbar(options?: {
+  host?: AppHost;
+  showLeading?: boolean;
+  onDismiss?: () => void;
   showAdd?: boolean;
   onAdd?: (provider: ProviderId) => void;
   showFilter?: boolean;
   filterProvider?: ProviderId | null;
   onFilter?: (provider: ProviderId | null) => void;
+  onOpenSettings?: () => void;
 }) {
-  const dismiss = Navigation.useDismiss();
-
   const filterIcon = options?.filterProvider
     ? "line.3.horizontal.decrease.circle.fill"
     : "line.3.horizontal.decrease.circle";
 
+  const hasTrailing =
+    (options?.showAdd && options.onAdd) ||
+    (options?.showFilter && options.onFilter);
+
   return (
     <Toolbar>
-      <ToolbarItem placement="topBarLeading">
-        <Button
-          title="返回"
-          systemImage="chevron.left"
-          labelStyle="iconOnly"
-          action={dismiss}
-        />
-      </ToolbarItem>
-      {options?.showAdd && options.onAdd ? (
+      {options?.showLeading === false ? null : options?.host ===
+        "home_screen" ? (
+        options.onOpenSettings ? (
+          <ToolbarItem placement="topBarLeading">
+            <Button
+              title="设置"
+              systemImage="gearshape"
+              labelStyle="iconOnly"
+              action={options.onOpenSettings}
+            />
+          </ToolbarItem>
+        ) : null
+      ) : options?.onDismiss ? (
+        <ToolbarItem placement="topBarLeading">
+          <Button
+            title="返回"
+            systemImage="chevron.left"
+            labelStyle="iconOnly"
+            action={options.onDismiss}
+          />
+        </ToolbarItem>
+      ) : null}
+      {hasTrailing ? (
         <ToolbarItem placement="topBarTrailing">
           <HStack spacing={14} alignment="center">
-            <Menu title="添加账号" systemImage="plus" labelStyle="iconOnly">
-              {PROVIDERS.map((item) => (
-                <Button
-                  key={item.id}
-                  title={item.title}
-                  action={() => options.onAdd?.(item.id)}
-                />
-              ))}
-            </Menu>
+            {options?.showAdd && options.onAdd ? (
+              <Menu title="添加账号" systemImage="plus" labelStyle="iconOnly">
+                {PROVIDERS.map((item) => (
+                  <Button
+                    key={item.id}
+                    title={item.title}
+                    action={() => options.onAdd?.(item.id)}
+                  />
+                ))}
+              </Menu>
+            ) : null}
             {options?.showFilter && options.onFilter ? (
               <Menu
                 title="筛选平台"

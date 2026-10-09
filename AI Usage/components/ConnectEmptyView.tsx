@@ -1,25 +1,31 @@
 import {
   Button,
   Menu,
-  Navigation,
   Spacer,
   Text,
   Toolbar,
   ToolbarItem,
   VStack,
 } from "scripting";
-import { PROVIDERS, providerMeta, type ProviderId } from "../models";
+import {
+  PROVIDERS,
+  providerMeta,
+  type AppHost,
+  type ProviderId,
+} from "../models";
 import { PageBackground } from "./PageBackground";
 import type { BackgroundThemeId } from "../services/settings";
 
 export function ConnectEmptyView(props: {
+  host?: AppHost;
   provider: ProviderId;
   backgroundTheme: BackgroundThemeId;
   onSelectProvider: (id: ProviderId) => void;
   onConnect: () => void;
+  onDismiss?: () => void;
+  onOpenSettings?: () => void;
 }) {
   const meta = providerMeta(props.provider);
-  const dismiss = Navigation.useDismiss();
 
   return (
     <VStack
@@ -30,14 +36,27 @@ export function ConnectEmptyView(props: {
       background={<PageBackground theme={props.backgroundTheme} />}
       toolbar={
         <Toolbar>
-          <ToolbarItem placement="topBarLeading">
-            <Button
-              title="返回"
-              systemImage="chevron.left"
-              labelStyle="iconOnly"
-              action={dismiss}
-            />
-          </ToolbarItem>
+          {props.host === "home_screen" ? (
+            props.onOpenSettings ? (
+              <ToolbarItem placement="topBarLeading">
+                <Button
+                  title="设置"
+                  systemImage="gearshape"
+                  labelStyle="iconOnly"
+                  action={props.onOpenSettings}
+                />
+              </ToolbarItem>
+            ) : null
+          ) : props.onDismiss ? (
+            <ToolbarItem placement="topBarLeading">
+              <Button
+                title="返回"
+                systemImage="chevron.left"
+                labelStyle="iconOnly"
+                action={props.onDismiss}
+              />
+            </ToolbarItem>
+          ) : null}
           <ToolbarItem placement="topBarTrailing">
             <Menu title={meta.title}>
               {PROVIDERS.map((item) => (

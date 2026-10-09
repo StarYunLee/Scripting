@@ -6,6 +6,13 @@ export type ChangelogEntry = {
 
 export const CHANGELOG = [
   {
+    version: "1.8.0",
+    date: "2026-10-09",
+    changes: [
+      "新增可选的 Scripting Home Tab 常驻入口（需要 Scripting Pro），可直接在 Scripting 主页查看用量并进入设置；不启用该功能不影响原有独立应用和主屏幕小组件的使用。",
+    ],
+  },
+  {
     version: "1.7.2",
     date: "2026-09-28",
     changes: [

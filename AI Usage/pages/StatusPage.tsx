@@ -1,5 +1,12 @@
 import { AuthorizationCheckDeferred } from "../services/auth-single-check";
-import { List, NavigationStack, Text, useEffect, useState } from "scripting";
+import {
+  List,
+  NavigationStack,
+  Text,
+  VStack,
+  useEffect,
+  useState,
+} from "scripting";
 import {
   isAuthorizationCancelledError,
   isAuthorizationInputRejectedError,
@@ -7,6 +14,7 @@ import {
 import { captureAccountWork } from "../services/account-work-guard";
 import { observeUsageProgress } from "../services/usage-progress";
 import { AccountDetailPage } from "./AccountDetailPage";
+import { SettingsPage } from "./SettingsPage";
 import {
   authCoordinator,
   deleteAuthorizedAccount,
@@ -20,7 +28,7 @@ import { writeLog } from "../services/logger";
 import { AuthSheetView } from "../components/AuthSheetView";
 import { ConnectEmptyView } from "../components/ConnectEmptyView";
 import { PageBackground } from "../components/PageBackground";
-import { usePageToolbar } from "../components/PageToolbar";
+import { buildPageToolbar } from "../components/PageToolbar";
 import { UsageCardView } from "../components/UsageCardView";
 import { type AuthSheet, type ProviderId, type UsageCard } from "../models";
 import { parseConsoleAuthChoice } from "../providers/console-auth-choice";
@@ -43,12 +51,29 @@ function errorText(error: unknown): string {
   return String(error);
 }
 
-export function StatusPage(props: {
+type StatusPageProps = {
   demoMode: boolean;
   backgroundTheme: BackgroundThemeId;
   overviewRevision: number;
+  onDismiss?: () => void;
   onOverviewChange: () => void;
-}) {
+  onBackupRestored?: () => void;
+} & (
+  | {
+      host: "home_screen";
+      onDemoModeChange: (enabled: boolean) => void | Promise<void>;
+      onBackgroundThemeChange: (
+        theme: BackgroundThemeId,
+      ) => void | Promise<void>;
+    }
+  | {
+      host?: "index";
+      onDemoModeChange?: never;
+      onBackgroundThemeChange?: never;
+    }
+);
+
+export function StatusPage(props: StatusPageProps) {
   const [provider, setProvider] = useState<ProviderId>("codex");
   const [cards, setCards] = useState<UsageCard[]>([]);
   const [hasAccounts, setHasAccounts] = useState(false);
@@ -68,6 +93,7 @@ export function StatusPage(props: {
   }, []);
   const [busy, setBusy] = useState(false);
   const [openedCard, setOpenedCard] = useState<UsageCard | null>(null);
+  const [showSettings, setShowSettings] = useState(false);
   const [filterProvider, setFilterProvider] = useState<ProviderId | null>(null);
   const displayMode = "remaining";
   const maskUsageCardEmail = getAppDisplaySettings().maskUsageCardEmail;
@@ -385,7 +411,12 @@ export function StatusPage(props: {
     }
   }
 
-  const toolbar = usePageToolbar({
+  const toolbar = buildPageToolbar({
+    host: props.host,
+    onDismiss: props.onDismiss,
+    // Home 模式下通过右上角齿轮图标进入设置
+    onOpenSettings:
+      props.host === "home_screen" ? () => setShowSettings(true) : undefined,
     // 无账号空态中心已有平台选择；已有账号即使全部隐藏也保留添加入口。
     showAdd: hasAccounts || Boolean(sheet),
     onAdd: startAuth,
@@ -554,14 +585,49 @@ export function StatusPage(props: {
   }
 
   if (!cards.length && !hasAccounts) {
+    const emptyView = (
+      <ConnectEmptyView
+        host={props.host}
+        provider={provider}
+        backgroundTheme={props.backgroundTheme}
+        onSelectProvider={setProvider}
+        onConnect={() => startAuth(provider)}
+        onDismiss={props.onDismiss}
+        onOpenSettings={
+          props.host === "home_screen" ? () => setShowSettings(true) : undefined
+        }
+      />
+    );
+
+    if (props.host !== "home_screen") {
+      return <NavigationStack>{emptyView}</NavigationStack>;
+    }
+
     return (
       <NavigationStack>
-        <ConnectEmptyView
-          provider={provider}
-          backgroundTheme={props.backgroundTheme}
-          onSelectProvider={setProvider}
-          onConnect={() => startAuth(provider)}
-        />
+        <VStack
+          frame={{ maxWidth: "infinity", maxHeight: "infinity" }}
+          navigationDestination={{
+            isPresented: showSettings,
+            onChanged: (value) => {
+              if (!value) setShowSettings(false);
+            },
+            content: (
+              <SettingsPage
+                host="home_screen"
+                demoMode={props.demoMode}
+                backgroundTheme={props.backgroundTheme}
+                onDemoModeChange={props.onDemoModeChange}
+                onBackgroundThemeChange={props.onBackgroundThemeChange}
+                onOverviewChange={props.onOverviewChange}
+                onBackupRestored={props.onBackupRestored}
+                isNestedChild={true}
+              />
+            ),
+          }}
+        >
+          {emptyView}
+        </VStack>
       </NavigationStack>
     );
   }
@@ -579,56 +645,73 @@ export function StatusPage(props: {
         toolbar={toolbar}
         refreshable={refreshAll}
         navigationDestination={{
-          isPresented: openedCard != null,
+          isPresented: showSettings || openedCard != null,
           onChanged: (value) => {
-            if (!value) setOpenedCard(null);
+            if (!value) {
+              setShowSettings(false);
+              setOpenedCard(null);
+            }
           },
-          content: openedCard ? (
-            <AccountDetailPage
-              key={`${openedCard.provider}:${openedCard.accountId}:${openedCard.key}`}
-              provider={openedCard.provider}
-              account={{
-                id: openedCard.accountId,
-                name: openedCard.title,
-                email: openedCard.title.includes("@") ? openedCard.title : null,
-                planLabel: openedCard.planLabel,
-              }}
-              overviewWindows={
-                listAuthorizedCards().find(
-                  (card) => card.key === openedCard.key,
-                )?.windows || openedCard.windows
-              }
-              onOverviewChange={props.onOverviewChange}
-              demo={props.demoMode}
-              backgroundTheme={props.backgroundTheme}
-              onReauthorize={() =>
-                startAuth(openedCard.provider, openedCard.accountId)
-              }
-              onDelete={() => {
-                const result = deleteAuthorizedAccount(
-                  openedCard.provider,
-                  openedCard.accountId,
-                );
-                requestWidgetReloadAfterStorage();
-                setOpenedCard(null);
-                reloadCards();
-                if (
-                  result.pendingSecretCleanup ||
-                  result.pendingPreferenceCleanup
-                ) {
-                  void Dialog.alert({
-                    title: "账号已删除",
-                    message: result.pendingSecretCleanup
-                      ? "账号已从 AI Usage 移除，剩余 Keychain 清理将在下次启动时自动重试。"
-                      : "账号已删除，但部分小组件或显示偏好未能清理。",
-                    buttonLabel: "关闭",
-                  });
+          content:
+            showSettings && props.host === "home_screen" ? (
+              <SettingsPage
+                host="home_screen"
+                demoMode={props.demoMode}
+                backgroundTheme={props.backgroundTheme}
+                onDemoModeChange={props.onDemoModeChange}
+                onBackgroundThemeChange={props.onBackgroundThemeChange}
+                onOverviewChange={props.onOverviewChange}
+                onBackupRestored={props.onBackupRestored}
+                isNestedChild={true}
+              />
+            ) : openedCard ? (
+              <AccountDetailPage
+                key={`${openedCard.provider}:${openedCard.accountId}:${openedCard.key}`}
+                provider={openedCard.provider}
+                account={{
+                  id: openedCard.accountId,
+                  name: openedCard.title,
+                  email: openedCard.title.includes("@")
+                    ? openedCard.title
+                    : null,
+                  planLabel: openedCard.planLabel,
+                }}
+                overviewWindows={
+                  listAuthorizedCards().find(
+                    (card) => card.key === openedCard.key,
+                  )?.windows || openedCard.windows
                 }
-              }}
-            />
-          ) : (
-            <Text>选择账号</Text>
-          ),
+                onOverviewChange={props.onOverviewChange}
+                demo={props.demoMode}
+                backgroundTheme={props.backgroundTheme}
+                onReauthorize={() =>
+                  startAuth(openedCard.provider, openedCard.accountId)
+                }
+                onDelete={() => {
+                  const result = deleteAuthorizedAccount(
+                    openedCard.provider,
+                    openedCard.accountId,
+                  );
+                  requestWidgetReloadAfterStorage();
+                  setOpenedCard(null);
+                  reloadCards();
+                  if (
+                    result.pendingSecretCleanup ||
+                    result.pendingPreferenceCleanup
+                  ) {
+                    void Dialog.alert({
+                      title: "账号已删除",
+                      message: result.pendingSecretCleanup
+                        ? "账号已从 AI Usage 移除，剩余 Keychain 清理将在下次启动时自动重试。"
+                        : "账号已删除，但部分小组件或显示偏好未能清理。",
+                      buttonLabel: "关闭",
+                    });
+                  }
+                }}
+              />
+            ) : (
+              <Text>选择账号</Text>
+            ),
         }}
       >
         {cards.length === 0 ? (
