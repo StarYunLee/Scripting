@@ -24,6 +24,7 @@ import type { AntigravityProjectInfo } from "./types";
 
 const CLIENT_ID =
   "1071006060591-tmhssin2h21lcre235vtolojh4g403ep.apps.googleusercontent.com";
+// 公开客户端凭据，来源：Google Antigravity 官方桌面客户端 OAuth 配置；不是用户账号密钥。
 const CLIENT_SECRET = "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";
 const AUTHORIZATION_URL = "https://accounts.google.com/o/oauth2/v2/auth";
 const TOKEN_URL = "https://oauth2.googleapis.com/token";

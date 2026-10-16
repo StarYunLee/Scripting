@@ -247,11 +247,9 @@ dashboard
 AI Usage/
 ├── assets/                   平台 Logo、水印与展示图
 ├── components/               共享 UI 与用量卡片
-├── docs/                     当前架构说明与历史验收记录
 ├── pages/                    用量、设置、账号详情、日志页
 ├── providers/                Codex / Grok / Claude / Antigravity / Cursor / Kimi / Copilot / Z.ai / MiniMax 适配
 ├── services/                 刷新编排、配色、设置、演示与存储
-├── tests/                    业务回归测试；tsc/esbuild/测试门禁由 Mac Build Worker 执行
 ├── widget/                   小组件分发、Loader 与平台布局
 ├── app_intents.tsx           系统 App Intent
 ├── home_screen_default_ui.tsx Scripting 主页 Tab 常驻入口
