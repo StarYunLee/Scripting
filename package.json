@@ -1,0 +1,17 @@
+{
+  "private": true,
+  "name": "scripting-development",
+  "version": "1.0.0",
+  "description": "Shared development tool versions and commands for the Scripting monorepo.",
+  "engines": {
+    "node": ">=22"
+  },
+  "devDependencies": {
+    "esbuild": "0.24.0",
+    "tsx": "4.19.2",
+    "typescript": "5.4.5"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  }
+}

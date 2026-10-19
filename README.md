@@ -2,21 +2,16 @@
 
 适用于 [Scripting App](https://scriptingapp.github.io/) 的非官方开源小组件与脚本项目。
 
-## 安装方式
+## 项目
 
-两种入口指向同一个 `.scripting` 安装包：
+点击项目名查看源码与使用说明，点击「一键导入」直接用 Scripting 安装。四个项目均已启用每日自动更新检查。
 
-- **直接安装**：点击项目下的安装链接，下载当前包并用 Scripting 打开。适合第一次安装。
-- **远程导入**：复制项目下的远程地址，在 Scripting 中选择「导入远程脚本」并粘贴导入。
-
-直接安装只拿到当时那一份，之后更新仓库不会自动同步。远程导入由 Scripting 记住该地址；只有安装包启用了自动更新，才会定期检查新版本。目前 AI Usage、GitHub Stars 与 Icon Library 会每日检查，其余项目仍需重新导入。
-
-## 目录
-
-- [AI Usage](#ai-usage)
-- [GitHub Stars](#github-stars)
-- [Icon Library](#icon-library)
-- [Surge Metrics](#surge-metrics)
+| 项目 | 简介 | 版本 | 安装 |
+|---|---|---|---|
+| [AI Usage](./AI%20Usage/) | 多平台 AI 用量聚合与桌面看板 | `1.8.0` | [一键导入](scripting://import_scripts?urls=%5B%22https%3A%2F%2Fraw.githubusercontent.com%2FStarYunLee%2FScripting%2Fmain%2FAI-Usage.scripting%22%5D) |
+| [GitHub Stars](./GitHub%20Stars/) | GitHub Stars 与仓库管理 | `1.1.1` | [一键导入](scripting://import_scripts?urls=%5B%22https%3A%2F%2Fraw.githubusercontent.com%2FStarYunLee%2FScripting%2Fmain%2FGitHub-Stars.scripting%22%5D) |
+| [Icon Library](./Icon%20Library/) | GitHub 公开图标库管理 | `1.1.2` | [一键导入](scripting://import_scripts?urls=%5B%22https%3A%2F%2Fraw.githubusercontent.com%2FStarYunLee%2FScripting%2Fmain%2FIcon-Library.scripting%22%5D) |
+| [Surge Metrics](./Surge%20Metrics/) | Surge iOS 运行指标小组件 | `1.1.0` | [一键导入](scripting://import_scripts?urls=%5B%22https%3A%2F%2Fraw.githubusercontent.com%2FStarYunLee%2FScripting%2Fmain%2FSurge-Metrics.scripting%22%5D) |
 
 ## AI Usage
 
@@ -53,9 +48,6 @@
   </tr>
 </table>
 
-- [查看源码与使用说明](./AI%20Usage/)
-- [直接安装 AI-Usage.scripting](https://raw.githubusercontent.com/StarYunLee/Scripting/main/AI-Usage.scripting)
-
 远程导入地址：
 
 ```text
@@ -84,9 +76,6 @@ https://raw.githubusercontent.com/StarYunLee/Scripting/main/AI-Usage.scripting
   </tr>
 </table>
 
-- [查看源码与使用说明](./GitHub%20Stars/)
-- [直接安装 GitHub-Stars.scripting](https://raw.githubusercontent.com/StarYunLee/Scripting/main/GitHub-Stars.scripting)
-
 远程导入地址：
 
 ```text
@@ -114,9 +103,6 @@ https://raw.githubusercontent.com/StarYunLee/Scripting/main/GitHub-Stars.scripti
   </tr>
 </table>
 
-- [查看源码与使用说明](./Icon%20Library/)
-- [直接安装 Icon-Library.scripting](https://raw.githubusercontent.com/StarYunLee/Scripting/main/Icon-Library.scripting)
-
 远程导入地址：
 
 ```text
@@ -136,9 +122,6 @@ https://raw.githubusercontent.com/StarYunLee/Scripting/main/Icon-Library.scripti
 - **本地数据边界**：组件直连用户配置的 Surge HTTP API，不经过作者服务器；配置与缓存保存在本机 Storage。
 
 ![Surge Metrics 小组件预览](./Surge%20Metrics/assets/surge-metrics-preview.png)
-
-- [查看源码与使用说明](./Surge%20Metrics/)
-- [直接安装 Surge-Metrics.scripting](https://raw.githubusercontent.com/StarYunLee/Scripting/main/Surge-Metrics.scripting)
 
 远程导入地址：
 

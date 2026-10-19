@@ -1,4 +1,36 @@
-**/.learnings/
-.DS_Store
-*.log
+# Private engineering files excluded from the public repository
+/dev/
+/tests/
+/dts/
+/AGENTS.md
+/CLAUDE.md
+
+# Dependencies, build outputs, and compiler caches
 node_modules/
+.cache/
+.esbuild/
+*.tsbuildinfo
+dist/
+build/
+out/
+
+# Local environment files and private keys; keep .env.example secret-free
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+
+# Logs, temporary files, and Python caches
+*.log
+*.tmp
+*.temp
+__pycache__/
+
+# OS metadata and editor temporary files
+.vscode/
+.DS_Store
+._*
+*.swp
+*~

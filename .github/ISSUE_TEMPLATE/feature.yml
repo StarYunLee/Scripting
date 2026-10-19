@@ -1,0 +1,42 @@
+name: 功能建议
+description: 说明使用中遇到的问题，以及希望改善的功能或体验。
+title: "[Feature] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        建议先说明问题，再描述方案；没有具体实现思路也可以提交。
+        请先搜索已有建议，并避免填写账号、密钥或其他个人敏感信息。
+
+  - type: input
+    id: project
+    attributes:
+      label: 涉及的脚本项目
+      description: 跨项目建议或新脚本想法也可以直接说明。
+      placeholder: "例如：AI Usage，或仓库整体建议"
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: 你遇到的具体问题
+      description: 在什么使用场景下不方便？目前行为有什么不足？
+    validations:
+      required: true
+
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: 希望怎样改善（可选）
+      description: 描述希望得到的使用效果即可，不必提供代码或技术设计。
+    validations:
+      required: false
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: 目前的替代办法（可选）
+      description: 现在如何完成这件事？为什么现有办法不够合适？
+    validations:
+      required: false

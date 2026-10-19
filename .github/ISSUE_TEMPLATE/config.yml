@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: 安装说明与项目列表
+    url: https://github.com/StarYunLee/Scripting#readme
+    about: 查看各脚本的安装入口、使用说明和已知限制。
