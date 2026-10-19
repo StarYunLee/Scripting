@@ -148,7 +148,7 @@ function App() {
           <Picker
             title="请求刷新间隔"
             value={reloadMinutes}
-            onChanged={(value) => { setReloadMinutes(String(value)); markEdited() }}
+            onChanged={(value: string) => { setReloadMinutes(String(value)); markEdited() }}
             pickerStyle="navigationLink"
           >
             <Text tag="5">5 分钟</Text>

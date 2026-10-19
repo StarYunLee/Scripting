@@ -44,7 +44,7 @@ function TrafficComposition({ item }: { item: InterfaceTraffic }) {
       key={String(index)}
       frame={{ width: 13.7, height: 5 }}
       background={item.totalBytes <= 0 ? C.track : index < downCount ? C.down : C.up}
-      clipShape={{ type: "capsule" }}
+      clipShape="capsule"
     />)}
   </HStack>
 }

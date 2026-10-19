@@ -1,8 +1,9 @@
 import { Button, HStack, Image, Script, Spacer, Text, VStack } from "scripting"
+import type { Color, DynamicShapeStyle, ShapeStyle } from "scripting"
 import { RefreshSurgeMetricsIntent } from "../app_intents"
 import { formatFetchedAt } from "../services/format"
 
-const dynamic = (light: string, dark: string) => ({ light, dark })
+const dynamic = (light: Color, dark: Color): DynamicShapeStyle => ({ light, dark })
 
 export const C = {
   bg: "systemBackground",
@@ -14,7 +15,7 @@ export const C = {
   up: dynamic("#FF9F0A", "#FF9F0A"),
   warn: "systemOrange",
   track: dynamic("#E5E5EA", "#3A3A3C"),
-}
+} as const
 
 function normalizedBuildLabel(value: string): string {
   let raw = String(value || "").trim()
@@ -57,21 +58,21 @@ export function Header({ fetchedAt, cached, inset = 0, titleFont = 11 }: { fetch
 }
 
 export function VersionLabel({ value, font = 9 }: { value: string; font?: number }) {
-  return <Text font={font} fontWeight="medium" foregroundStyle={C.tertiary} lineLimit={1} minimumScaleFactor={0.7}>{normalizedBuildLabel(value)}</Text>
+  return <Text font={font} fontWeight="medium" foregroundStyle={C.tertiary} lineLimit={1} minScaleFactor={0.7}>{normalizedBuildLabel(value)}</Text>
 }
 
 export function RateCard({ icon, label, value, color }: {
   icon: string
   label: string
   value: string
-  color: string | { light: string; dark: string }
+  color: ShapeStyle | DynamicShapeStyle
 }) {
   return <VStack spacing={3} alignment="center" padding={{ horizontal: 5, vertical: 5 }} frame={{ maxWidth: "infinity", alignment: "center" }}>
     <HStack spacing={5} alignment="center">
       <Image systemName={icon} resizable scaleToFit foregroundStyle={color} frame={{ width: 11, height: 11 }}/>
       <Text font={10} fontWeight="medium" foregroundStyle={C.secondary} multilineTextAlignment="center">{label}</Text>
     </HStack>
-    <Text font={22} fontWeight="bold" fontDesign="rounded" foregroundStyle={C.primary} lineLimit={1} minimumScaleFactor={0.58} multilineTextAlignment="center">{value}</Text>
+    <Text font={22} fontWeight="bold" fontDesign="rounded" foregroundStyle={C.primary} lineLimit={1} minScaleFactor={0.58} multilineTextAlignment="center">{value}</Text>
   </VStack>
 }
 
@@ -79,14 +80,14 @@ export function StatusBlock({ icon, label, value, color }: {
   icon: string
   label: string
   value: string
-  color?: string | { light: string; dark: string }
+  color?: ShapeStyle | DynamicShapeStyle
 }) {
   return <VStack spacing={3} alignment="center" frame={{ maxWidth: "infinity", alignment: "center" }}>
     <HStack spacing={4} alignment="center">
       <Image systemName={icon} resizable scaleToFit foregroundStyle={color || C.secondary} frame={{ width: 12, height: 12 }}/>
       <Text font={10} fontWeight="medium" foregroundStyle={C.secondary}>{label}</Text>
     </HStack>
-    <Text font={13} fontWeight="bold" fontDesign="rounded" foregroundStyle={C.primary} lineLimit={1} minimumScaleFactor={0.68}>{value}</Text>
+    <Text font={13} fontWeight="bold" fontDesign="rounded" foregroundStyle={C.primary} lineLimit={1} minScaleFactor={0.68}>{value}</Text>
   </VStack>
 }
 

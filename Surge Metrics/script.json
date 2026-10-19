@@ -13,7 +13,10 @@
     "en": "Surge Metrics"
   },
   "description": "Medium and Large widgets for Surge iOS Prometheus metrics: cumulative traffic, memory, active requests, DNS cache, uptime, and interface traffic.",
-  "remoteResource": null,
+  "remoteResource": {
+    "url": "https://raw.githubusercontent.com/StarYunLee/Scripting/main/Surge-Metrics.scripting",
+    "autoUpdateInterval": 86400
+  },
   "author": {
     "name": "StarYunLee",
     "email": null,
