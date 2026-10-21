@@ -8,10 +8,10 @@
 
 | 项目 | 简介 | 版本 | 安装 |
 |---|---|---|---|
-| [AI Usage](./AI%20Usage/) | 多平台 AI 用量聚合与桌面看板 | `1.8.0` | [一键导入](scripting://import_scripts?urls=%5B%22https%3A%2F%2Fraw.githubusercontent.com%2FStarYunLee%2FScripting%2Fmain%2FAI-Usage.scripting%22%5D) |
-| [GitHub Stars](./GitHub%20Stars/) | GitHub Stars 与仓库管理 | `1.1.1` | [一键导入](scripting://import_scripts?urls=%5B%22https%3A%2F%2Fraw.githubusercontent.com%2FStarYunLee%2FScripting%2Fmain%2FGitHub-Stars.scripting%22%5D) |
-| [Icon Library](./Icon%20Library/) | GitHub 公开图标库管理 | `1.1.2` | [一键导入](scripting://import_scripts?urls=%5B%22https%3A%2F%2Fraw.githubusercontent.com%2FStarYunLee%2FScripting%2Fmain%2FIcon-Library.scripting%22%5D) |
-| [Surge Metrics](./Surge%20Metrics/) | Surge iOS 运行指标小组件 | `1.1.0` | [一键导入](scripting://import_scripts?urls=%5B%22https%3A%2F%2Fraw.githubusercontent.com%2FStarYunLee%2FScripting%2Fmain%2FSurge-Metrics.scripting%22%5D) |
+| [AI Usage](./AI%20Usage/) | 多平台 AI 用量聚合与桌面看板 | `1.8.0` | [一键导入](https://www.scripting.fun/import_scripts/?urls=%5B%22https%3A%2F%2Fraw.githubusercontent.com%2FStarYunLee%2FScripting%2Fmain%2FAI-Usage.scripting%22%5D) |
+| [GitHub Stars](./GitHub%20Stars/) | GitHub Stars 与仓库管理 | `1.1.1` | [一键导入](https://www.scripting.fun/import_scripts/?urls=%5B%22https%3A%2F%2Fraw.githubusercontent.com%2FStarYunLee%2FScripting%2Fmain%2FGitHub-Stars.scripting%22%5D) |
+| [Icon Library](./Icon%20Library/) | GitHub 公开图标库管理 | `1.1.2` | [一键导入](https://www.scripting.fun/import_scripts/?urls=%5B%22https%3A%2F%2Fraw.githubusercontent.com%2FStarYunLee%2FScripting%2Fmain%2FIcon-Library.scripting%22%5D) |
+| [Surge Metrics](./Surge%20Metrics/) | Surge iOS 运行指标小组件 | `1.1.0` | [一键导入](https://www.scripting.fun/import_scripts/?urls=%5B%22https%3A%2F%2Fraw.githubusercontent.com%2FStarYunLee%2FScripting%2Fmain%2FSurge-Metrics.scripting%22%5D) |
 
 ## AI Usage
 
