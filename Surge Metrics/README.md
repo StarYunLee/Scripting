@@ -4,6 +4,8 @@
 
 面向 [Scripting App](https://scriptingapp.github.io/) 的非官方 Surge iOS 运行指标小组件。通过 Surge HTTP API 的 Prometheus Metrics 端点读取本次引擎运行的累计流量和核心状态，支持 Medium、Large 两种尺寸及浅色、深色模式。
 
+当前版本：`1.1.1`
+
 > 本项目不是 Surge 官方产品，与 Surge Networks Inc. 无隶属或合作关系。
 
 ## 功能
@@ -167,6 +169,13 @@ Surge Metrics/
 ├── README.md                        使用说明
 └── LICENSE                          MIT License
 ```
+
+## 更新记录
+
+### 1.1.1 · 2026-10-24
+
+- 修正小组件文字缩放与流量构成条形状的兼容性，改善当前 Scripting 版本下的显示适配。
+- 启用安装包的每日远程更新检查，连接配置与本地缓存保持不变。
 
 ## 免责声明
 

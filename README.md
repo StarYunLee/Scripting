@@ -11,7 +11,7 @@
 | [AI Usage](./AI%20Usage/) | 多平台 AI 用量聚合与桌面看板 | `1.8.1` | [一键导入](https://www.scripting.fun/import_scripts/?urls=%5B%22https%3A%2F%2Fraw.githubusercontent.com%2FStarYunLee%2FScripting%2Fmain%2FAI-Usage.scripting%22%5D) |
 | [GitHub Stars](./GitHub%20Stars/) | GitHub Stars 与仓库管理 | `1.1.1` | [一键导入](https://www.scripting.fun/import_scripts/?urls=%5B%22https%3A%2F%2Fraw.githubusercontent.com%2FStarYunLee%2FScripting%2Fmain%2FGitHub-Stars.scripting%22%5D) |
 | [Icon Library](./Icon%20Library/) | GitHub 公开图标库管理 | `1.1.2` | [一键导入](https://www.scripting.fun/import_scripts/?urls=%5B%22https%3A%2F%2Fraw.githubusercontent.com%2FStarYunLee%2FScripting%2Fmain%2FIcon-Library.scripting%22%5D) |
-| [Surge Metrics](./Surge%20Metrics/) | Surge iOS 运行指标小组件 | `1.1.0` | [一键导入](https://www.scripting.fun/import_scripts/?urls=%5B%22https%3A%2F%2Fraw.githubusercontent.com%2FStarYunLee%2FScripting%2Fmain%2FSurge-Metrics.scripting%22%5D) |
+| [Surge Metrics](./Surge%20Metrics/) | Surge iOS 运行指标小组件 | `1.1.1` | [一键导入](https://www.scripting.fun/import_scripts/?urls=%5B%22https%3A%2F%2Fraw.githubusercontent.com%2FStarYunLee%2FScripting%2Fmain%2FSurge-Metrics.scripting%22%5D) |
 
 ## AI Usage
 
@@ -113,7 +113,7 @@ https://raw.githubusercontent.com/StarYunLee/Scripting/main/Icon-Library.scripti
 
 面向 Scripting App 的非官方 Surge iOS 运行指标小组件。通过 Surge HTTP API 的 Prometheus Metrics 端点读取引擎状态、累计流量与接口流量，并在主屏幕提供 Medium / Large 看板。
 
-当前版本：`1.1.0`
+当前版本：`1.1.1`
 
 - **核心运行指标**：展示累计上行与下行、内存占用、活跃请求、DNS 缓存、运行时长、Surge 版本 / Build 以及未授权访问封禁告警。
 - **Medium / Large 看板**：Medium 聚焦累计流量与核心状态；Large 进一步展示累计流量最高的 3 个接口及其上下行构成。
