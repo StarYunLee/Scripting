@@ -6,6 +6,15 @@ export type ChangelogEntry = {
 
 export const CHANGELOG = [
   {
+    version: "1.8.1",
+    date: "2026-10-24",
+    changes: [
+      "补全 Antigravity 的 Free、Google AI Plus、Pro 与 Ultra 5x / 20x 套餐标签和演示样例；仅确认 Ultra 类型时保留系列名称，不猜测倍率。",
+      "修复 Antigravity 套餐信息缺失或查询失败时标签丢失的问题，避免把服务注册层误判为订阅降级，并在主动刷新时核对套餐变化。",
+      "优化登录信息解码，统一使用 Scripting 原生能力处理令牌中的账户信息。",
+    ],
+  },
+  {
     version: "1.8.0",
     date: "2026-10-09",
     changes: [

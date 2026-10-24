@@ -1,4 +1,8 @@
 import type { AntigravityProjectInfo, LimitWindow } from "./types";
+import {
+  displayAntigravityPlanLabel,
+  knownAntigravityPlanLabel,
+} from "./plan-label";
 import { antigravityWindowTitle } from "./window-titles";
 
 export type JsonObject = Record<string, unknown>;
@@ -361,22 +365,35 @@ export function parseAvailableModels(payload: JsonObject): LimitWindow[] {
   return windows.sort(sortWindows);
 }
 
-function normalizeTierLabel(value: string): string {
-  const normalized = value
-    .trim()
-    .toLowerCase()
-    .replace(/[_-]+/g, " ")
-    .replace(/\s+/g, " ");
-  if (/^(google )?ai pro$/.test(normalized)) return "Google AI Pro";
-  if (/^(google )?ai ultra$/.test(normalized)) return "Google AI Ultra";
-  if (normalized === "google one ai premium") return "Google AI Pro";
-  return value.trim();
+function tierCandidates(value: unknown): string[] {
+  const object = asObject(value);
+  const values = typeof value === "string"
+    ? [value]
+    : [object?.name, object?.displayName, object?.id];
+  return values
+    .map(textValue)
+    .filter((candidate): candidate is string => candidate !== null);
 }
 
-function tierLabel(value: unknown): string | null {
-  const object = asObject(value);
-  const raw = object?.name ?? object?.displayName ?? object?.id;
-  return typeof raw === "string" && raw.trim() ? normalizeTierLabel(raw) : null;
+function tierLabel(candidates: string[]): string | null {
+  const known = candidates
+    .map(knownAntigravityPlanLabel)
+    .filter((label): label is string => label !== null);
+  const families = new Set(known.map((label) =>
+    /^Google AI Ultra(?: (?:5x|20x))?$/.test(label)
+      ? "Google AI Ultra"
+      : label,
+  ));
+  // 身份字段互相冲突时不选择更高或更低套餐，交给最后已知值回退。
+  if (families.size > 1) return null;
+  if (families.has("Google AI Ultra")) {
+    const variants = [...new Set(known.filter((label) =>
+      label !== "Google AI Ultra",
+    ))];
+    // 系列名不能遮住明确倍率；倍率互相冲突时只保留已确认系列。
+    return variants.length === 1 ? variants[0] : "Google AI Ultra";
+  }
+  return displayAntigravityPlanLabel(known[0] || candidates[0]);
 }
 
 export function parseProjectInfo(payload: JsonObject): AntigravityProjectInfo {
@@ -402,21 +419,19 @@ export function parseProjectInfo(payload: JsonObject): AntigravityProjectInfo {
         ? fallbackTierId.trim()
         : "legacy-tier";
 
-  const paid = tierLabel(payload.paidTier);
-  let planLabel = paid;
-  if (!planLabel) {
-    const ineligible = Array.isArray(payload.ineligibleTiers)
-      ? payload.ineligibleTiers
-      : [];
-    if (!ineligible.length) {
-      planLabel = tierLabel(payload.currentTier);
-    } else {
-      const restricted = tierLabel(defaultTier);
-      planLabel = restricted ? `${restricted}（受限）` : null;
-    }
-  }
+  const paidCandidates = tierCandidates(payload.paidTier);
+  const currentCandidates = tierCandidates(payload.currentTier);
+  const planSource = paidCandidates.length
+    ? "paid"
+    : currentCandidates.length
+      ? "current"
+      : null;
+  // allowedTiers / ineligibleTiers 只表达可用性，不代表实际已订阅。
+  const planLabel = tierLabel(
+    planSource === "paid" ? paidCandidates : currentCandidates,
+  );
 
-  return { projectId, planLabel, tierId };
+  return { projectId, planLabel, planSource, tierId };
 }
 
 export function parseOAuthCallback(

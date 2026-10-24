@@ -8,7 +8,7 @@
 
 | 项目 | 简介 | 版本 | 安装 |
 |---|---|---|---|
-| [AI Usage](./AI%20Usage/) | 多平台 AI 用量聚合与桌面看板 | `1.8.0` | [一键导入](https://www.scripting.fun/import_scripts/?urls=%5B%22https%3A%2F%2Fraw.githubusercontent.com%2FStarYunLee%2FScripting%2Fmain%2FAI-Usage.scripting%22%5D) |
+| [AI Usage](./AI%20Usage/) | 多平台 AI 用量聚合与桌面看板 | `1.8.1` | [一键导入](https://www.scripting.fun/import_scripts/?urls=%5B%22https%3A%2F%2Fraw.githubusercontent.com%2FStarYunLee%2FScripting%2Fmain%2FAI-Usage.scripting%22%5D) |
 | [GitHub Stars](./GitHub%20Stars/) | GitHub Stars 与仓库管理 | `1.1.1` | [一键导入](https://www.scripting.fun/import_scripts/?urls=%5B%22https%3A%2F%2Fraw.githubusercontent.com%2FStarYunLee%2FScripting%2Fmain%2FGitHub-Stars.scripting%22%5D) |
 | [Icon Library](./Icon%20Library/) | GitHub 公开图标库管理 | `1.1.2` | [一键导入](https://www.scripting.fun/import_scripts/?urls=%5B%22https%3A%2F%2Fraw.githubusercontent.com%2FStarYunLee%2FScripting%2Fmain%2FIcon-Library.scripting%22%5D) |
 | [Surge Metrics](./Surge%20Metrics/) | Surge iOS 运行指标小组件 | `1.1.0` | [一键导入](https://www.scripting.fun/import_scripts/?urls=%5B%22https%3A%2F%2Fraw.githubusercontent.com%2FStarYunLee%2FScripting%2Fmain%2FSurge-Metrics.scripting%22%5D) |
@@ -17,7 +17,7 @@
 
 面向 Scripting App 的非官方多平台 AI 用量聚合与桌面看板工具。在一个应用中集中管理主流平台的多账号用量、主屏幕小组件与本地数据安全。
 
-当前版本：`1.8.0`
+当前版本：`1.8.1`
 
 - **多平台与多账号聚合**：统一连接 Codex、Grok、Claude、Antigravity、Cursor、Kimi Code、GitHub Copilot、Z.ai 与 MiniMax，支持同平台多账号及多额度窗口独立跟踪。
 - **可选的 Scripting 主页入口（需要 Scripting Pro）**：可将 AI Usage 固定在 Scripting Home Tab，直接查看用量并进入设置；不启用该入口不影响独立应用、主屏幕小组件及其他原有功能。

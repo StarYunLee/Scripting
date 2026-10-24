@@ -23,7 +23,7 @@
 
 面向 [Scripting App](https://scriptingapp.github.io/) 的非官方多平台用量查看应用。在一个项目里管理 Codex、Grok、Claude、Antigravity、Cursor、Kimi Code、GitHub Copilot、Z.ai 与 MiniMax 的多账号用量、主屏幕小组件和自动化刷新。
 
-当前版本：`1.8.0`
+当前版本：`1.8.1`
 
 > 本项目不是 OpenAI、xAI、Anthropic、Google 或 Scripting App 官方产品，与上述平台无隶属或合作关系。
 
@@ -88,6 +88,8 @@ https://raw.githubusercontent.com/StarYunLee/Scripting/main/AI-Usage.scripting
 
 - 回调：`http://localhost:51121/oauth-callback?...`
 - 复制 Safari 地址栏中的完整回调地址
+- 套餐标签按上游身份信息显示 Free、Google AI Plus、Pro 或 Ultra；仅在明确提供倍率时细分为 Ultra 5x / 20x，否则保留 Ultra 系列名称。
+- 主动刷新会同步核对套餐；查询失败或暂缺订阅信息时保留最后已知标签，不根据额度大小推断套餐或倍率。
 
 ### Cursor
 
@@ -234,6 +236,7 @@ dashboard
 
 - 各平台内部用量接口可能随时变化
 - OAuth 成功不代表所有账号都具有对应用量查询资格
+- Antigravity 套餐身份可能缺失或不含倍率；标签保留的最后已知套餐不代表已确认当前订阅仍有效，不能据此判断是否取消订阅。
 - 账号实际拥有的额度窗口由服务端决定，缺失窗口显示 `—`
 - WidgetKit 不保证严格按照所选分钟数刷新
 - 透明小组件依赖 Scripting 静态壁纸切片机制，在极高频高光杂色壁纸下可能存在局部对比度差异

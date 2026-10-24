@@ -13,6 +13,11 @@ import {
   updateProfileInfo,
 } from "./accounts";
 import { shouldStopCodeAssistHostLoop } from "./host-failover";
+import {
+  displayAntigravityPlanLabel,
+  isUnspecifiedAntigravityUltra,
+  resolveAntigravityPlanLabel,
+} from "./plan-label";
 import { fetchAccountInfo, refreshOAuthToken } from "./oauth";
 import {
   asObject,
@@ -165,8 +170,9 @@ async function fetchQuotaWindows(
 }
 
 function shouldRefreshAccountInfo(planLabel: string | null): boolean {
-  if (!planLabel) return true;
-  return /gemini code assist|受限|restricted/i.test(planLabel);
+  const label = displayAntigravityPlanLabel(planLabel);
+  if (!label || isUnspecifiedAntigravityUltra(label)) return true;
+  return /gemini code assist|受限|restricted/i.test(planLabel || "");
 }
 
 async function fetchLive(
@@ -174,19 +180,21 @@ async function fetchLive(
   token: string,
   profile: NonNullable<ReturnType<typeof resolveProfile>>,
   budget: RequestBudget,
+  forceAccountInfo = false,
 ): Promise<UsageSnapshot> {
-  const accountInfo = shouldRefreshAccountInfo(profile.planLabel)
-    ? fetchAccountInfo(
-        token,
-        createRequestBudget(Math.min(3000, budget.remainingMs())),
-      ).catch(() => null)
-    : Promise.resolve(null);
+  const accountInfo =
+    forceAccountInfo || shouldRefreshAccountInfo(profile.planLabel)
+      ? fetchAccountInfo(
+          token,
+          createRequestBudget(Math.min(3000, budget.remainingMs())),
+        ).catch(() => null)
+      : Promise.resolve(null);
   const [info, windows] = await Promise.all([
     accountInfo,
     fetchQuotaWindows(token, profile.projectId, budget),
   ]);
   const projectId = info?.projectId || profile.projectId;
-  const planLabel = info?.planLabel || profile.planLabel;
+  const planLabel = resolveAntigravityPlanLabel(info, profile.planLabel);
   if (info) updateProfileInfo(profileId, { projectId, planLabel });
 
   if (!windows.length) {
@@ -259,13 +267,25 @@ export async function fetchUsage(options?: {
   try {
     let snapshot: UsageSnapshot;
     try {
-      snapshot = await fetchLive(profile.id, token, profile, budget);
+      snapshot = await fetchLive(
+        profile.id,
+        token,
+        profile,
+        budget,
+        options?.force === true,
+      );
     } catch (error) {
       if ((error as UpstreamError).status !== 401) throw error;
       const refreshed = await refreshOAuthToken(profile.id, true);
       if (!refreshed || refreshed === token) throw error;
       token = refreshed;
-      snapshot = await fetchLive(profile.id, token, profile, budget);
+      snapshot = await fetchLive(
+        profile.id,
+        token,
+        profile,
+        budget,
+        options?.force === true,
+      );
     }
     assertCurrentAccountWork(
       currentWork,

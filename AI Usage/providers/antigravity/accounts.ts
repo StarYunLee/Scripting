@@ -52,7 +52,7 @@ export function updateProfileInfo(
     email: patch.email || a.email || null,
     accountId: patch.accountId ?? a.accountId,
     projectId: patch.projectId ?? a.projectId,
-    planLabel: patch.planLabel ?? a.planLabel,
+    planLabel: patch.planLabel === undefined ? a.planLabel : patch.planLabel,
     name: patch.email || a.email || a.name,
     updatedAt: new Date().toISOString(),
   }));

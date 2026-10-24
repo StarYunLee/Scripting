@@ -41,6 +41,8 @@ export type UsageSnapshot = {
 export type AntigravityProjectInfo = {
   projectId: string | null;
   planLabel: string | null;
+  // paidTier 是订阅身份；currentTier 也可能只是服务注册层。
+  planSource: "paid" | "current" | null;
   tierId: string | null;
 };
 

@@ -1,5 +1,6 @@
 import type { NormalizedUsageSnapshot } from "../../services/usage-model";
 import type { UsageSnapshot } from "./types";
+import { displayAntigravityPlanLabel } from "./plan-label";
 import {
   antigravityWindowTitle,
   type AntigravityWindowKey,
@@ -17,7 +18,9 @@ export function normalizeUsageSnapshot(
     return null;
   };
   return {
-    planLabel: snapshot.planLabel || snapshot.planType || null,
+    planLabel:
+      displayAntigravityPlanLabel(snapshot.planLabel) ||
+      displayAntigravityPlanLabel(snapshot.planType),
     windows: snapshot.windows.map((window) => {
       const key = keyFor(window.id);
       return key ? { ...window, label: antigravityWindowTitle(key) } : window;
