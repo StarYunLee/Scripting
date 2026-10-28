@@ -32,8 +32,8 @@ export function getWidgetPalette(isTransparent: boolean) {
   if (isTransparent) {
     return {
       isTransparent: true,
-      // 黄金甜点位微透底板：15% 半透黑，纯色壁纸通透，复杂人像/花壁纸有效压制高频高光
-      bg: "rgba(0, 0, 0, 0.15)" as Color as ShapeStyle,
+      // 透明与模糊模式下不铺任何底板，完全交给系统绘制背景
+      bg: "clear" as Color as ShapeStyle,
       // 核心标题与数值：通透纯白高亮
       primary: "#FFFFFF" as Color,
       // 倒计时、副标题：高对比度白半透明
