@@ -56,6 +56,7 @@ const PROVIDER_SECRET_FIELDS: Record<ProviderId, string[]> = {
     "region",
     "account_id",
   ],
+  deepseek: ["access_token"],
 };
 
 const PROVIDER_SECRET_PREFIXES: Record<ProviderId, string> = {
@@ -69,6 +70,7 @@ const PROVIDER_SECRET_PREFIXES: Record<ProviderId, string> = {
   zai: "ai_usage_zai_profile",
   minimax: "ai_usage_minimax_profile",
   workbuddy: "ai_usage_workbuddy_profile",
+  deepseek: "ai_usage_deepseek_profile",
 };
 
 const PROVIDER_REGISTRY_KEYS: Record<ProviderId, string> = {
@@ -82,6 +84,7 @@ const PROVIDER_REGISTRY_KEYS: Record<ProviderId, string> = {
   zai: "ai_usage_zai_account_registry_v1",
   minimax: "ai_usage_minimax_account_registry_v1",
   workbuddy: "ai_usage_workbuddy_account_registry_v1",
+  deepseek: "ai_usage_deepseek_account_registry_v1",
 };
 
 type StoredRegistry = {

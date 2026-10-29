@@ -37,6 +37,8 @@ export async function loadWidgetAccountSnapshotWith(
     provider: ProviderId;
     profileId: string;
     reloadMinutes: number;
+    /** 仅用于重新确认缺失凭据等不能被近期缓存遮蔽的状态。 */
+    force?: boolean;
   },
   dependencies: WidgetAccountLoaderDependencies,
 ): Promise<LoadedWidgetSnapshot> {
@@ -48,6 +50,7 @@ export async function loadWidgetAccountSnapshotWith(
     reloadMinutes: input.reloadMinutes,
     metadata,
     now,
+    force: input.force,
   });
   let errorMessage: string | undefined;
 

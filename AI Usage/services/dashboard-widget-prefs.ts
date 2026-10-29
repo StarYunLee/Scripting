@@ -1,4 +1,5 @@
 import { providerMeta, type UsageCard } from "../models";
+import { selectBalanceWindow } from "../providers/deepseek/format";
 
 const LIVE_STORAGE_KEY = "ai_usage_dashboard_widget_preferences_v1";
 const DEMO_STORAGE_KEY = "ai_usage_demo_dashboard_widget_preferences_v1";
@@ -261,6 +262,10 @@ export function applyDashboardWidgetPreferences(
   return cards
     .filter((card) => !hidden.has(card.key))
     .map((card) => {
+      if (card.provider === "deepseek") {
+        const selected = selectBalanceWindow(card.windows);
+        return { ...card, windows: selected ? [selected] : [] };
+      }
       const fixed = providerMeta(card.provider).capabilities.fixedWidgetLayout;
       if (fixed) {
         const windows = card.provider === "workbuddy"

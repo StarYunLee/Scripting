@@ -5,25 +5,26 @@ export function refreshTargetKey(target: RefreshTarget): string {
 }
 
 export function createRefreshSingleFlight() {
-  const inFlight = new Map<string, Promise<RefreshOutcome>>();
+  const inFlight = new Map<string, {
+    promise: Promise<RefreshOutcome>;
+    isCurrent?: () => boolean;
+  }>();
 
   function run(
     target: RefreshTarget,
     task: () => Promise<RefreshOutcome>,
+    isCurrent?: () => boolean,
   ): Promise<RefreshOutcome> {
     const key = refreshTargetKey(target);
     const existing = inFlight.get(key);
-    if (existing) return existing;
+    if (existing && (!existing.isCurrent || existing.isCurrent())) return existing.promise;
     const running = task();
-    inFlight.set(key, running);
-    running.then(
-      () => {
-        if (inFlight.get(key) === running) inFlight.delete(key);
-      },
-      () => {
-        if (inFlight.get(key) === running) inFlight.delete(key);
-      },
-    );
+    const entry = { promise: running, isCurrent };
+    inFlight.set(key, entry);
+    const clear = () => {
+      if (inFlight.get(key) === entry) inFlight.delete(key);
+    };
+    running.then(clear, clear);
     return running;
   }
 

@@ -21,7 +21,7 @@
   </tr>
 </table>
 
-面向 [Scripting App](https://scriptingapp.github.io/) 的非官方多平台用量查看应用。在一个项目里管理 Codex、Grok、Claude、Antigravity、Cursor、Kimi Code、GitHub Copilot、Z.ai、MiniMax 与 WorkBuddy 的多账号用量、主屏幕小组件和自动化刷新。
+面向 [Scripting App](https://scriptingapp.github.io/) 的非官方多平台用量查看应用。在一个项目里管理 Codex、Grok、Claude、Antigravity、Cursor、Kimi Code、GitHub Copilot、Z.ai、MiniMax、WorkBuddy 与 DeepSeek 的多账号用量、主屏幕小组件和自动化刷新。
 
 当前版本：`1.8.1`
 
@@ -29,7 +29,7 @@
 
 ## 功能
 
-- **多平台用量集中聚合**：统一连接并追踪 Codex、Grok、Claude、Antigravity、Cursor、Kimi Code、GitHub Copilot、Z.ai、MiniMax 与 WorkBuddy 多平台账号，支持同平台多账号并行管理与多窗口额度独立跟踪。
+- **多平台用量集中聚合**：统一连接并追踪 Codex、Grok、Claude、Antigravity、Cursor、Kimi Code、GitHub Copilot、Z.ai、MiniMax、WorkBuddy 与 DeepSeek 多平台账号，支持同平台多账号并行管理与多窗口额度独立跟踪。
 - **可选的 Scripting 主页入口（需要 Scripting Pro）**：可将 AI Usage 固定在 Scripting Home Tab，直接查看用量并进入设置；不启用该入口不影响独立应用、主屏幕小组件及其他原有功能。
 - **全尺寸主屏幕小组件**：
   - 覆盖单账号（Small / Medium）与多账号聚合看板（Small / Medium / Large / ExtraLarge），支持集中配置展示账号、额度窗口与账号标识。
@@ -127,6 +127,16 @@ https://raw.githubusercontent.com/StarYunLee/Scripting/main/AI-Usage.scripting
 - 用量卡显示剩余 / 总积分与单行签到状态，并在有数据时显示预付费余额和积分包到期提示；不展示今日已用或每日免费切片
 - 国内版支持只读签到状态；查询失败会明确提示获取失败，和未开放区分；奖励数值跟随接口，国际版不查询签到
 
+### DeepSeek
+
+- 点击连接后直接粘贴 API Key，应用会用官方余额接口验证；Key 无效时可以直接重新粘贴
+- 不自动打开网页；没有 Key 时可点击“获取 API Key”，前往 DeepSeek 开放平台创建或复制
+- 只读取账户余额，不发起任何模型生成请求
+- 展示总可用余额、充值余额与赠金余额；不显示额度上限、使用百分比或重置时间
+- 币种按接口数据自动选择：优先 CNY，其次 USD；不提供手动设置，不合计也不换算
+- API Key 不返回邮箱等账号资料，可在账户详情中修改本地账户名称以区分
+- 余额为 0 或余额不足时仍按接口原值展示，不伪造额度
+
 回调型 OAuth 临时状态有效期为 10 分钟，设备授权与控制台密钥验证通常为 15 分钟。Authorization Code 通常只能交换一次；授权失败或超时后请按页面提示继续或重新开始。
 
 > 回调 URL 和一次性授权码属于短期敏感凭据。不要截图、公开或发送给他人。
@@ -219,6 +229,7 @@ dashboard
 - Z.ai：Z.ai / 智谱 API Key 与用量接口
 - MiniMax：MiniMax Subscription Key 与 Token Plan 用量接口
 - WorkBuddy：WorkBuddy 国内版 / 国际版浏览器账户授权与积分接口
+- DeepSeek：DeepSeek 开放平台 API Key 与官方账户余额接口
 
 服务端更新后，路径、字段或访问策略可能变化。
 
@@ -263,7 +274,7 @@ AI Usage/
 ├── assets/                   平台 Logo、水印与展示图
 ├── components/               共享 UI 与用量卡片
 ├── pages/                    用量、设置、账号详情、日志页
-├── providers/                Codex / Grok / Claude / Antigravity / Cursor / Kimi / Copilot / Z.ai / MiniMax / WorkBuddy 适配
+├── providers/                Codex / Grok / Claude / Antigravity / Cursor / Kimi / Copilot / Z.ai / MiniMax / WorkBuddy / DeepSeek 适配
 ├── services/                 刷新编排、配色、设置、演示与存储
 ├── widget/                   小组件分发、Loader 与平台布局
 ├── app_intents.tsx           系统 App Intent

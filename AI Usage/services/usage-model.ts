@@ -1,4 +1,4 @@
-import type { UsageWindowView } from "../models";
+import type { UsageBalanceView, UsageWindowView } from "../models";
 
 export type NormalizedResetCredits = {
   available: number;
@@ -22,7 +22,31 @@ type UsageWindowLike = {
   resetAt: string | null;
   kind?: UsageWindowView["kind"];
   detail?: string | null;
+  balance?: UsageBalanceView;
 };
+
+/** 保留十进制字符串，金额不通过 Number 往返转换，也不把非法值补成 0。 */
+function balanceDecimal(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const text = value.trim();
+  return /^\d+(?:\.\d+)?$/.test(text) ? text : null;
+}
+
+export function sanitizeUsageBalance(value: unknown): UsageBalanceView | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const item = value as Partial<UsageBalanceView>;
+  if (typeof item.currency !== "string" || !/^[A-Z]{3}$/.test(item.currency) ||
+      typeof item.isAvailable !== "boolean") return null;
+  const total = balanceDecimal(item.total);
+  if (total == null) return null;
+  return {
+    currency: item.currency,
+    total,
+    paid: balanceDecimal(item.paid),
+    granted: balanceDecimal(item.granted),
+    isAvailable: item.isAvailable,
+  };
+}
 
 const WINDOW_KINDS = new Set(["quota", "balance", "status", "notice"]);
 
@@ -70,7 +94,8 @@ export function sanitizeNormalizedUsageSnapshot(
         (item.usedPercent != null ||
           item.remainingPercent != null ||
           item.resetAt != null ||
-          detail != null)
+          detail != null ||
+          sanitizeUsageBalance(item.balance) != null)
       );
     },
   ).map((window) => {
@@ -79,6 +104,7 @@ export function sanitizeNormalizedUsageSnapshot(
         ? window.detail.trim()
         : null;
     const kind = windowKind(window.kind);
+    const balance = sanitizeUsageBalance(window.balance);
     return {
       id: window.id,
       label: window.label,
@@ -87,6 +113,7 @@ export function sanitizeNormalizedUsageSnapshot(
       resetAt: window.resetAt ?? null,
       ...(kind ? { kind } : {}),
       ...(detail ? { detail } : {}),
+      ...(balance ? { balance } : {}),
     };
   });
   const rawCredits = snapshot.resetCredits;
@@ -167,11 +194,13 @@ export function toUsageWindowView(
     typeof window.detail === "string" && window.detail.trim()
       ? window.detail.trim()
       : null;
+  const balance = sanitizeUsageBalance(window.balance);
   if (
     window.usedPercent == null &&
     window.remainingPercent == null &&
     !window.resetAt &&
-    !detail
+    !detail &&
+    !balance
   ) {
     return null;
   }
@@ -184,5 +213,6 @@ export function toUsageWindowView(
     resetAt: window.resetAt,
     ...(kind ? { kind } : {}),
     ...(detail ? { detail } : {}),
+    ...(balance ? { balance } : {}),
   };
 }

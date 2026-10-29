@@ -27,6 +27,7 @@ import {
 import type { NormalizedResetCredits } from "../services/usage-model";
 import type { WidgetChromeStyle } from "./chrome-style";
 import { WorkbuddyMediumLayout } from "./workbuddy-layouts";
+import { DeepseekSmallLayout, DeepseekMediumLayout } from "./deepseek-layouts";
 
 function workbuddyCreditParts(detail: string | null | undefined): {
   used: string;
@@ -107,6 +108,20 @@ export function WidgetDispatcher(props: Props) {
   const timeText = formatTimeOnly(props.fetchedAt);
   const fetchedText = timeText === "—" ? "—" : `${timeText} 刷新`;
   const optionalMeta = resolveOptionalMeta(props.resetCredits);
+
+  if (props.provider === "deepseek") {
+    const Layout = isSmall ? DeepseekSmallLayout : DeepseekMediumLayout;
+    return (
+      <Layout
+        width={width}
+        windows={props.windows}
+        watermarkPath={watermarkPath}
+        fetchedText={timeText}
+        errorText={props.errorText}
+        chromeStyle={props.chromeStyle}
+      />
+    );
+  }
 
   if (props.provider === "workbuddy") {
     if (isSmall) {

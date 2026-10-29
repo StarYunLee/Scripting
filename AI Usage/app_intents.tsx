@@ -70,6 +70,12 @@ export const RefreshAIUsageWorkbuddyIntent = AppIntentManager.register({
   perform: async () => refreshProviderIntent("workbuddy"),
 });
 
+export const RefreshAIUsageDeepSeekIntent = AppIntentManager.register({
+  name: "RefreshAIUsageDeepSeekIntent",
+  protocol: AppIntentProtocol.AppIntent,
+  perform: async () => refreshProviderIntent("deepseek"),
+});
+
 export const RefreshAIUsageAllIntent = AppIntentManager.register({
   name: "RefreshAIUsageAllIntent",
   protocol: AppIntentProtocol.AppIntent,

@@ -60,11 +60,16 @@ function singleCheckInstruction(provider: AuthSheet["provider"]): string {
 }
 
 function isConsoleSecretProvider(provider: AuthSheet["provider"]): boolean {
+  return provider === "zai" || provider === "minimax" || provider === "deepseek";
+}
+
+/** 只有 Z.ai / MiniMax 有国内/国际站；DeepSeek 不显示站点选择。 */
+function showsConsoleRegion(provider: AuthSheet["provider"]): boolean {
   return provider === "zai" || provider === "minimax";
 }
 
 function consoleSecretTitle(provider: AuthSheet["provider"]): string {
-  return provider === "zai" ? "API Key" : "Subscription Key";
+  return provider === "minimax" ? "Subscription Key" : "API Key";
 }
 
 function consoleRegionLabel(
@@ -77,9 +82,17 @@ function consoleRegionLabel(
 }
 
 function consoleSecretInstruction(provider: AuthSheet["provider"]): string {
+  if (provider === "deepseek")
+    return "直接粘贴 API Key 即可验证账户余额；没有 Key 时可点击下方“获取 API Key”。";
   return provider === "zai"
     ? "从所选控制台复制 API Key，粘贴后将自动验证账户。"
     : "从所选站点复制 Subscription Key，粘贴后将自动验证账户。";
+}
+
+function consoleOpenLabel(provider: AuthSheet["provider"]): string {
+  return provider === "deepseek"
+    ? "获取 API Key"
+    : "重新打开控制台";
 }
 
 function callbackInputTitle(provider: AuthSheet["provider"]): string {
@@ -215,7 +228,9 @@ export function AuthSheetView(props: {
   const consoleHeroMessage = consoleCompleting
     ? "请稍候，连接完成后将自动返回。"
     : consoleOpenFailed
-      ? "请检查网络后再次打开密钥控制台。"
+      ? props.authSheet.provider === "deepseek"
+        ? "请检查网络后再次打开 DeepSeek 开放平台。"
+        : "请检查网络后再次打开密钥控制台。"
       : failed
         ? "本次密钥验证会话已失效，请重新开始。"
         : inputRejected
@@ -227,9 +242,11 @@ export function AuthSheetView(props: {
       ? "无法打开控制台"
       : "无法完成连接";
   const consoleStatusDetail = consoleCompleting
-    ? props.authSheet.provider === "zai"
-      ? "正在确认 API Key 与账户区域，请勿重复提交。"
-      : "正在确认站点与可用额度，请勿重复提交。"
+    ? props.authSheet.provider === "deepseek"
+      ? "正在确认 API Key 与账户余额，请勿重复提交。"
+      : props.authSheet.provider === "zai"
+        ? "正在确认 API Key 与账户区域，请勿重复提交。"
+        : "正在确认站点与可用额度，请勿重复提交。"
     : consoleOpenFailed
       ? props.authSheet.status.replace(/^无法打开授权页：/, "")
       : failureDetail || "请重新开始密钥验证。";
@@ -435,6 +452,7 @@ export function AuthSheetView(props: {
                       : consoleHeroMessage}
               </Text>
               {consoleSecret &&
+              showsConsoleRegion(props.authSheet.provider) &&
               !consoleCompleting &&
               !consoleOpenFailed &&
               !failed ? (
@@ -1050,7 +1068,7 @@ export function AuthSheetView(props: {
                   multilineTextAlignment="center"
                   frame={{ width: 300, height: 28 }}
                 >
-                  重新打开控制台
+                  {consoleOpenLabel(props.authSheet.provider)}
                 </Text>
               </Button>
             </VStack>
@@ -1108,7 +1126,7 @@ export function AuthSheetView(props: {
                   frame={{ width: 300, height: 44 }}
                   contentShape="rect"
                 >
-                  重新打开控制台
+                  {consoleOpenLabel(props.authSheet.provider)}
                 </Text>
               </Button>
               <Button
@@ -1123,7 +1141,9 @@ export function AuthSheetView(props: {
                   frame={{ width: 300, height: 40 }}
                   contentShape="rect"
                 >
-                  切换站点
+                  {showsConsoleRegion(props.authSheet.provider)
+                    ? "切换站点"
+                    : "重新开始"}
                 </Text>
               </Button>
             </VStack>

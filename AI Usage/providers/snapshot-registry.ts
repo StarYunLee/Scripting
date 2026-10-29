@@ -19,6 +19,8 @@ import { normalizeUsageSnapshot as normalizeMinimaxUsage } from "./minimax/norma
 import type { UsageSnapshot as MinimaxSnapshot } from "./minimax/types";
 import { normalizeUsageSnapshot as normalizeWorkbuddyUsage } from "./workbuddy/normalize";
 import type { UsageSnapshot as WorkbuddySnapshot } from "./workbuddy/types";
+import { normalizeUsageSnapshot as normalizeDeepseekUsage } from "./deepseek/normalize";
+import type { UsageSnapshot as DeepseekSnapshot } from "./deepseek/types";
 import type { ProviderId } from "../models";
 import type { AccountLookupProvider } from "./contracts";
 import {
@@ -89,6 +91,10 @@ const DEFINITIONS = {
     prefix: "ai_usage_workbuddy_cache_v2",
     normalize: normalizeWorkbuddyUsage,
   } satisfies CacheDefinition<WorkbuddySnapshot>,
+  deepseek: {
+    prefix: "ai_usage_deepseek_cache_v1",
+    normalize: normalizeDeepseekUsage,
+  } satisfies CacheDefinition<DeepseekSnapshot>,
 };
 
 function cachePrefix(provider: ProviderId): string | null {
@@ -189,6 +195,10 @@ export const SNAPSHOT_PROVIDERS = {
   workbuddy: {
     ...ACCOUNT_PROVIDERS.workbuddy,
     cache: (profileId: string) => readSnapshot(profileId, DEFINITIONS.workbuddy),
+  },
+  deepseek: {
+    ...ACCOUNT_PROVIDERS.deepseek,
+    cache: (profileId: string) => readSnapshot(profileId, DEFINITIONS.deepseek),
   },
 } satisfies Record<ProviderId, SnapshotProvider>;
 

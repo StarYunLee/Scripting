@@ -1,4 +1,4 @@
-import { captureAccountWork } from "./account-work-guard";
+import { captureAccountWork, captureAccountCredentialWork } from "./account-work-guard";
 import { invalidateUsageRuntime } from "./runtime-consistency";
 import { createRefreshSingleFlight } from "./refresh-single-flight";
 import { credentialPersistenceFailure } from "./credential-errors";
@@ -54,10 +54,14 @@ export async function refreshAccount(
   target: RefreshTarget,
   options: RefreshOptions,
 ): Promise<RefreshOutcome> {
-  const execute = () =>
-    refreshSingleFlight.run(target, () =>
-      performRefreshAccount(target, options),
-    );
+  const execute = () => {
+    const isCurrent = target.provider === "deepseek"
+      ? captureAccountCredentialWork(target.provider, target.profileId,
+          () => getUsageProvider(target.provider).token(target.profileId))
+      : undefined;
+    return refreshSingleFlight.run(target,
+      () => performRefreshAccount(target, options), isCurrent);
+  };
   const result = await execute();
   return options.force && result.ok && result.source === "cache"
     ? execute()
@@ -68,7 +72,10 @@ async function performRefreshAccount(
   target: RefreshTarget,
   options: RefreshOptions,
 ): Promise<RefreshOutcome> {
-  const currentWork = captureAccountWork(target.provider, target.profileId);
+  const currentWork = target.provider === "deepseek"
+    ? captureAccountCredentialWork(target.provider, target.profileId,
+        () => getUsageProvider(target.provider).token(target.profileId))
+    : captureAccountWork(target.provider, target.profileId);
   invalidateUsageRuntime();
   const provider = getUsageProvider(target.provider);
   const account = provider.list().find((item) => item.id === target.profileId);
@@ -96,7 +103,8 @@ async function performRefreshAccount(
       fetchedAt: cached?.fetchedAt || null,
       reloadMinutes: getAppDisplaySettings().reloadMinutes,
       metadata: getWidgetRefreshMetadata(target.provider, target.profileId),
-      force: options.force,
+      // 无 Key 的余额账户仍交给 provider 返回 missing_token，不能由近期缓存伪报成功。
+      force: options.force || (target.provider === "deepseek" && !provider.token(target.profileId)),
     });
     if (plan.action === "use_cache") {
       if (plan.reason === "fresh" || plan.reason === "manual") {

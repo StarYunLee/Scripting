@@ -62,7 +62,8 @@ export function createUsageCache<TSnapshot extends UsageSnapshotBase>(
       }
     },
     clear(profileId?: string | null): void {
-      const id = resolve(profileId);
+      // 删除账号后 resolver 已找不到它，显式 id 仍足以定位该 provider 的缓存键。
+      const id = resolve(profileId) || profileId;
       if (!id) return;
       try {
         Storage.remove(key(id));

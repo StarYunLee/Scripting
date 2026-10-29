@@ -1,4 +1,5 @@
 import { providerMeta, type ProviderId, type UsageWindowView } from "../models";
+import { selectBalanceWindow } from "../providers/deepseek/format";
 
 const LIVE_STORAGE_KEY = "ai_usage_widget_window_preferences_v1";
 const DEMO_STORAGE_KEY = "ai_usage_demo_widget_window_preferences_v1";
@@ -114,6 +115,10 @@ export function getEffectiveWidgetWindows(
   allWindows: UsageWindowView[],
 ): UsageWindowView[] {
   if (!allWindows || allWindows.length === 0) return [];
+  if (provider === "deepseek") {
+    const selected = selectBalanceWindow(allWindows);
+    return selected ? [selected] : [];
+  }
   if (providerMeta(provider).capabilities.fixedWidgetLayout)
     return allWindows.slice(0, 4);
   const key = accountKey(provider, accountId);

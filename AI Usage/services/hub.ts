@@ -30,6 +30,7 @@ import {
   getPendingAuthorizationUrl as getWorkbuddyPendingUrl,
   getPendingRegion as getWorkbuddyPendingRegion,
 } from "../providers/workbuddy/oauth";
+import { getPendingAuthorizationUrl as getDeepseekPendingUrl } from "../providers/deepseek/auth";
 import { consoleUrlForRegion as minimaxConsoleUrlForRegion } from "../providers/minimax/regions";
 import { clearWidgetRefreshMetadata } from "./widget-refresh-metadata";
 import { deleteAccountData } from "./account-deletion";
@@ -60,6 +61,10 @@ export const authCoordinator = createAuthCoordinator({
     if (provider === "zai") return zaiConsoleUrlForRegion(region);
     if (provider === "minimax") return minimaxConsoleUrlForRegion(region);
     if (provider === "workbuddy") return getWorkbuddyPendingUrl();
+    return null;
+  },
+  getProviderAuthorizationUrl: (provider) => {
+    if (provider === "deepseek") return getDeepseekPendingUrl();
     return null;
   },
   writeLog,

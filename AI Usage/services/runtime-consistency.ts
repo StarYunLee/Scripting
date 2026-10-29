@@ -7,16 +7,21 @@ export function usageRuntimeRevision(): number {
   return revision;
 }
 
-/** Coalesce one account operation within this JS runtime. No credentials are retained after settlement. */
+/** Coalesce current account operations; stale work may finish but cannot absorb a new operation. */
 export function createAccountOperationFlight<T>() {
-  const pending = new Map<string, Promise<T>>();
-  return (key: string, task: () => Promise<T>): Promise<T> => {
+  const pending = new Map<string, { promise: Promise<T>; isCurrent?: () => boolean }>();
+  return (
+    key: string,
+    task: () => Promise<T>,
+    isCurrent?: () => boolean,
+  ): Promise<T> => {
     const existing = pending.get(key);
-    if (existing) return existing;
+    if (existing && (!existing.isCurrent || existing.isCurrent())) return existing.promise;
     const promise = Promise.resolve().then(task);
-    pending.set(key, promise);
+    const entry = { promise, isCurrent };
+    pending.set(key, entry);
     const clear = () => {
-      if (pending.get(key) === promise) pending.delete(key);
+      if (pending.get(key) === entry) pending.delete(key);
     };
     promise.then(clear, clear);
     return promise;

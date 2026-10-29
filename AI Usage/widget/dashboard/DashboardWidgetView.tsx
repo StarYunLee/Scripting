@@ -5,6 +5,7 @@ import { formatResetCountdown } from "../../services/usage-format";
 import { parseWidgetFamily } from "../family";
 import { providerMeta, type ProviderId, type UsageWindowView } from "../../models";
 import { WidgetProgress } from "../WidgetProgress";
+import { DeepseekDashboardBalanceRow } from "../deepseek-layouts";
 import type { WidgetChromeStyle } from "../chrome-style";
 import { widgetTheme as C } from "../transparent";
 import {
@@ -57,7 +58,17 @@ function WindowRow(props: {
   width: number;
   compact: boolean;
   chromeStyle?: WidgetChromeStyle;
+  errorText?: string;
 }) {
+  if (props.provider === "deepseek") {
+    return <DeepseekDashboardBalanceRow
+      window={props.window}
+      width={props.width}
+      compact={props.compact}
+      chromeStyle={props.chromeStyle}
+      errorText={props.errorText}
+    />;
+  }
   const countdown = formatResetCountdown(props.window.resetAt);
   const shadow = C.textShadow;
   const workbuddyCredits =
@@ -167,7 +178,7 @@ function AccountCell(props: {
       <HStack spacing={5} frame={{ width: props.width }}>
         <PlanBadge
           provider={props.account.provider}
-          label={props.account.planLabel || meta.title}
+          label={props.account.provider === "deepseek" ? "DeepSeek" : props.account.planLabel || meta.title}
           size="widget-dense"
           chromeStyle={props.chromeStyle}
         />
@@ -202,6 +213,7 @@ function AccountCell(props: {
           width={props.width}
           compact={props.compact}
           chromeStyle={props.chromeStyle}
+          errorText={props.account.source === "error" ? "查询失败，显示缓存余额" : undefined}
         />
       ))}
     </VStack>

@@ -11,6 +11,7 @@ const WATERMARK_MAP: Record<ProviderId, string> = {
   zai: "assets/watermark-zai.png",
   minimax: "assets/watermark-minimax.png",
   workbuddy: "assets/watermark-workbuddy.png",
+  deepseek: "assets/watermark-deepseek.png",
 };
 
 export function providerWatermarkPath(provider: ProviderId): string {

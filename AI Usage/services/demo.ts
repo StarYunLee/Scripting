@@ -1,4 +1,4 @@
-import type { UsageCard, UsageWindowView } from "../models";
+import type { UsageBalanceView, UsageCard, UsageWindowView } from "../models";
 
 const DEMO_KEY = "ai_usage_demo_mode_v1";
 
@@ -12,9 +12,10 @@ type DemoAccount = {
     name: string;
     label: string;
     usedPercent: number | null;
-    resetOffsetMs: number;
+    resetOffsetMs: number | null;
     kind?: UsageWindowView["kind"];
     detail?: string | null;
+    balance?: UsageBalanceView;
   }>;
   resetCredits: {
     available: number;
@@ -507,6 +508,46 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
     ],
     resetCredits: null,
   },
+  {
+    id: "demo_deepseek_balance",
+    provider: "deepseek",
+    title: "api@deepseek.demo",
+    planLabel: "API",
+    windows: [
+      {
+        // 余额窗口：无百分比、无重置时间，金额由 balance 结构化承载。
+        id: "deepseek:balance:CNY",
+        name: "balance",
+        label: "账户余额",
+        usedPercent: null,
+        resetOffsetMs: null,
+        kind: "balance",
+        balance: {
+          currency: "CNY",
+          total: "128.50",
+          paid: "100.00",
+          granted: "28.50",
+          isAvailable: true,
+        },
+      },
+      {
+        id: "deepseek:balance:USD",
+        name: "balance",
+        label: "账户余额",
+        usedPercent: null,
+        resetOffsetMs: null,
+        kind: "balance",
+        balance: {
+          currency: "USD",
+          total: "16.80",
+          paid: "12.00",
+          granted: "4.80",
+          isAvailable: true,
+        },
+      },
+    ],
+    resetCredits: null,
+  },
 ];
 
 function futureIso(offsetMs: number): string {
@@ -520,9 +561,11 @@ function toWindows(account: DemoAccount): UsageWindowView[] {
     usedPercent: window.usedPercent,
     remainingPercent:
       window.usedPercent == null ? null : 100 - window.usedPercent,
-    resetAt: futureIso(window.resetOffsetMs),
+    resetAt:
+      window.resetOffsetMs == null ? null : futureIso(window.resetOffsetMs),
     ...(window.kind ? { kind: window.kind } : {}),
     ...(window.detail ? { detail: window.detail } : {}),
+    ...(window.balance ? { balance: window.balance } : {}),
   }));
 }
 

@@ -52,7 +52,8 @@ export function isPasteCallbackProvider(provider: ProviderId): boolean {
     provider === "grok" ||
     provider === "claude" ||
     provider === "zai" ||
-    provider === "minimax"
+    provider === "minimax" ||
+    provider === "deepseek"
   );
 }
 
@@ -86,7 +87,7 @@ export function looksLikeAuthorizationInput(
     }
     return CLAUDE_ONE_TIME_CODE.test(value);
   }
-  if (provider === "zai" || provider === "minimax") {
+  if (provider === "zai" || provider === "minimax" || provider === "deepseek") {
     const key = value.replace(/^Bearer\s+/i, "").trim();
     return Boolean(key) && !isUrlLike(key);
   }
@@ -118,6 +119,12 @@ export function clipboardPasteError(
         message: "请先复制完整密钥后再试。",
       };
     }
+    if (provider === "deepseek") {
+      return {
+        title: "未读取到 API Key",
+        message: "请先复制完整 API Key 后再试。",
+      };
+    }
     return {
       title: "未读取到授权回调地址",
       message: "请先复制完整回调地址后再试。",
@@ -134,6 +141,12 @@ export function clipboardPasteError(
     return {
       title: "Subscription Key 无效",
       message: "请重新复制完整密钥后再试。",
+    };
+  }
+  if (provider === "deepseek") {
+    return {
+      title: "API Key 无效",
+      message: "请重新复制完整 API Key 后再试。",
     };
   }
   if (provider === "claude") {

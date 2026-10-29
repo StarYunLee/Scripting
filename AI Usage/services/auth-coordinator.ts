@@ -46,6 +46,8 @@ export type AuthCoordinatorDependencies = {
     provider: ProviderId,
     region: "intl" | "cn",
   ): string | null;
+  /** 无地区概念的密钥平台（如 DeepSeek）恢复授权页时使用。 */
+  getProviderAuthorizationUrl?(provider: ProviderId): string | null;
   writeLog(input: AuthCoordinatorLog): void;
 };
 
@@ -71,6 +73,8 @@ function pendingStatus(provider: ProviderId): string {
   if (provider === "minimax")
     return "存在未完成的 MiniMax 授权，请粘贴 Subscription Key";
   if (provider === "zai") return "存在未完成的 Z.ai 授权，请粘贴 API Key";
+  if (provider === "deepseek")
+    return "存在未完成的 DeepSeek 授权，请粘贴 API Key";
   if (provider === "cursor" || provider === "kimi")
     return "存在未完成的设备授权；完成浏览器登录后将自动连接";
   if (provider === "copilot")
@@ -95,6 +99,8 @@ function startedStatus(
     return mode === "present"
       ? "关闭控制台后，把 API Key 粘贴到下方并提交"
       : "已打开 API Key 控制台，复制 Key 后粘贴到下方并提交";
+  if (provider === "deepseek")
+    return "粘贴 DeepSeek API Key 即可连接；没有 Key 可按需前往开放平台获取。";
   if (provider === "workbuddy") {
     const site = providerInput === "cn" ? "国内站" : "国际站";
     return mode === "present"
@@ -173,6 +179,13 @@ export function createAuthCoordinator(
     }
     const authorizationRegion =
       dependencies.getConsoleAuthorizationRegion?.(pending.provider) || null;
+    const authorizationUrl = authorizationRegion
+      ? dependencies.getConsoleAuthorizationUrl?.(
+          pending.provider,
+          authorizationRegion,
+        ) || undefined
+      : dependencies.getProviderAuthorizationUrl?.(pending.provider) ||
+        undefined;
     return stamp(
       withAutoComplete(
         {
@@ -181,12 +194,7 @@ export function createAuthCoordinator(
           authorizationInput: "",
           status: pendingStatus(pending.provider),
           authorizationRegion: authorizationRegion || undefined,
-          authorizationUrl: authorizationRegion
-            ? dependencies.getConsoleAuthorizationUrl?.(
-                pending.provider,
-                authorizationRegion,
-              ) || undefined
-            : undefined,
+          authorizationUrl,
         },
         pending.provider,
       ),
@@ -307,6 +315,20 @@ export function createAuthCoordinator(
           ok: true,
           sheet: stamp(copilotSheet(state, false)),
           resumed: false,
+        };
+      }
+
+      if (options.provider === "deepseek") {
+        return {
+          ok: true,
+          resumed: false,
+          sheet: stamp({
+            provider: options.provider,
+            profileId: account.id,
+            authorizationInput: "",
+            authorizationUrl: url,
+            status: startedStatus(options.provider, "openURL"),
+          }),
         };
       }
 

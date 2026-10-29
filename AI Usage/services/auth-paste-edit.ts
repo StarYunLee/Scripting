@@ -1,6 +1,13 @@
 import type { ProviderId } from "../models";
 import { looksLikeAuthorizationInput } from "./auth-callback-input";
 
+/** 粘贴即验证的 API Key 平台：短于此长度的整段替换不当作完整密钥。 */
+const API_KEY_PASTE_PROVIDERS: ReadonlySet<ProviderId> = new Set<ProviderId>([
+  "zai",
+  "minimax",
+  "deepseek",
+]);
+
 /** A bulk edit is only a paste candidate; the UI must also match the clipboard. */
 export function isAuthorizationPasteCandidate(
   provider: ProviderId,
@@ -25,7 +32,7 @@ export function isAuthorizationPasteCandidate(
     suffix++;
   return (
     next.length - prefix - suffix > 1 &&
-    ((provider !== "zai" && provider !== "minimax") ||
+    (!API_KEY_PASTE_PROVIDERS.has(provider) ||
       next.trim().replace(/^Bearer\s+/i, "").length >= 8)
   );
 }

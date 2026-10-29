@@ -11,6 +11,7 @@ export const LOGO_BASE_NAME: Record<ProviderId, string> = {
   zai: "zai",
   minimax: "minimax",
   workbuddy: "workbuddy",
+  deepseek: "deepseek",
 };
 
 export function providerLogoBaseName(provider: ProviderId): string {

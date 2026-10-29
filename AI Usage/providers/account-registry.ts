@@ -8,6 +8,7 @@ import * as CopilotAccounts from "./copilot/accounts";
 import * as ZaiAccounts from "./zai/accounts";
 import * as MinimaxAccounts from "./minimax/accounts";
 import * as WorkbuddyAccounts from "./workbuddy/accounts";
+import * as DeepseekAccounts from "./deepseek/accounts";
 import type { ProviderId } from "../models";
 import type { AccountLookupProvider } from "./contracts";
 
@@ -61,6 +62,11 @@ export const ACCOUNT_PROVIDERS = {
     id: "workbuddy",
     list: WorkbuddyAccounts.listAccounts,
     token: WorkbuddyAccounts.getProfileAccessToken,
+  },
+  deepseek: {
+    id: "deepseek",
+    list: DeepseekAccounts.listAccounts,
+    token: DeepseekAccounts.getProfileAccessToken,
   },
 } satisfies Record<ProviderId, AccountLookupProvider>;
 

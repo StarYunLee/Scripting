@@ -11,6 +11,7 @@ export const PROVIDER_IDS = [
   "zai",
   "minimax",
   "workbuddy",
+  "deepseek",
 ] as const;
 
 export type ProviderId = (typeof PROVIDER_IDS)[number];
@@ -32,6 +33,14 @@ export type AuthSheet = {
 
 export type UsageWindowKind = "quota" | "balance" | "status" | "notice";
 
+export type UsageBalanceView = {
+  currency: string;
+  total: string;
+  paid: string | null;
+  granted: string | null;
+  isAvailable: boolean;
+};
+
 export type UsageWindowView = {
   id: string;
   label: string;
@@ -40,6 +49,7 @@ export type UsageWindowView = {
   resetAt: string | null;
   kind?: UsageWindowKind;
   detail?: string | null;
+  balance?: UsageBalanceView;
 };
 
 export type UsageCard = {
@@ -180,6 +190,16 @@ export const PROVIDER_META: Record<ProviderId, ProviderMeta> = {
     accent: "#00B3A4",
     pasteHint: "无需粘贴，完成 WorkBuddy 浏览器登录后会自动连接。",
     pastePlaceholder: "无需填写，完成浏览器登录后会自动连接",
+    capabilities: { widget: true, fixedWidgetLayout: true },
+  },
+  deepseek: {
+    id: "deepseek",
+    title: "DeepSeek",
+    connectTitle: "连接 DeepSeek API 账户",
+    subtitle: "使用 API Key 查看账户余额、充值余额与赠金余额。",
+    accent: "#4D6BFE",
+    pasteHint: "在 DeepSeek 开放平台创建或复制 API Key，粘贴后将查询余额完成验证。",
+    pastePlaceholder: "粘贴 DeepSeek API Key",
     capabilities: { widget: true, fixedWidgetLayout: true },
   },
 };

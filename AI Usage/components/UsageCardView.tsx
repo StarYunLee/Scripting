@@ -21,6 +21,7 @@ import { PlanBadge } from "./PlanBadge";
 import { ProviderLogo } from "./ProviderLogo";
 import { maskEmailAddress } from "../services/account-privacy";
 import { WorkbuddyUsageCardBody } from "./WorkbuddyUsageCardBody";
+import { DeepseekUsageCardBody } from "./DeepseekUsageCardBody";
 
 const CARD_RADIUS = 20;
 
@@ -200,12 +201,14 @@ export function UsageCardView(props: {
         </HStack>
       ) : null}
 
-      {props.card.provider === "workbuddy" && !props.card.authorized ? (
+      {((props.card.provider === "workbuddy" || props.card.provider === "deepseek") && !props.card.authorized) ? (
         <Text font={13} foregroundStyle="secondaryLabel">尚未授权</Text>
       ) : props.card.windows.length === 0 ? (
         <Text font={13} foregroundStyle="secondaryLabel">
           {props.card.authorized ? "暂无用量窗口" : "尚未授权"}
         </Text>
+      ) : props.card.provider === "deepseek" ? (
+        <DeepseekUsageCardBody card={props.card} />
       ) : props.card.provider === "workbuddy" ? (
         <WorkbuddyUsageCardBody
           card={props.card}

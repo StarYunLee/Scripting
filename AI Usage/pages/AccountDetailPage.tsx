@@ -32,6 +32,7 @@ import {
   isWindowShownInOverview,
   setWindowShownInOverview,
 } from "../services/app-overview-prefs";
+import { updateProfileIdentity as updateDeepseekProfileIdentity } from "../providers/deepseek/accounts";
 import {
   isWindowSelectedForWidget,
   toggleWidgetWindowSelection,
@@ -88,9 +89,30 @@ export function AccountDetailPage(props: {
   const [overviewTick, setOverviewTick] = useState(0);
   const [widgetTick, setWidgetTick] = useState(0);
   const [parameterCopied, setParameterCopied] = useState(false);
+  const [accountName, setAccountName] = useState(props.account.name);
   const meta = providerMeta(props.provider);
   const fixedLayout = Boolean(meta.capabilities.fixedWidgetLayout);
-  const title = props.account.email || props.account.name;
+  const title = props.account.email ||
+    (props.provider === "deepseek" ? accountName : props.account.name);
+
+  async function renameDeepseekAccount() {
+    const value = await Dialog.prompt({
+      title: "账户名称",
+      message: "API Key 不返回账户邮箱，可设置名称区分多个账户。",
+      defaultValue: accountName,
+      cancelLabel: "取消",
+      confirmLabel: "保存",
+    });
+    if (value == null || !value.trim()) return;
+    try {
+      const saved = updateDeepseekProfileIdentity(props.account.id, { name: value.trim() });
+      setAccountName(saved.name);
+      props.onOverviewChange();
+      changed();
+    } catch {
+      await Dialog.alert({ title: "保存失败", message: "账户名称未保存，请稍后重试。", buttonLabel: "关闭" });
+    }
+  }
 
   function changed() {
     requestWidgetReloadAfterStorage();
@@ -192,6 +214,12 @@ export function AccountDetailPage(props: {
             <>
               <GlassDivider />
               <DetailActionRow title="重新授权" action={props.onReauthorize} />
+              {props.provider === "deepseek" ? (
+                <>
+                  <GlassDivider />
+                  <DetailActionRow title="修改账户名称" action={renameDeepseekAccount} />
+                </>
+              ) : null}
             </>
           )}
         </GlassGroup>

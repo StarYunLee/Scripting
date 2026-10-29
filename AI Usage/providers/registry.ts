@@ -149,6 +149,21 @@ import {
 } from "./workbuddy/oauth";
 import { normalizeUsageSnapshot as normalizeWorkbuddyUsage } from "./workbuddy/normalize";
 import { clearProfileSettings as clearWorkbuddySettings } from "./workbuddy/widget-settings";
+import * as DeepseekAccounts from "./deepseek/accounts";
+import {
+  fetchUsage as fetchDeepseekUsage,
+  getCachedUsage as getDeepseekCache,
+  clearUsageCache as clearDeepseekCache,
+} from "./deepseek/api";
+import {
+  startDeepseekLogin,
+  completeDeepseekLogin,
+  clearPendingAuth as clearDeepseekPending,
+  getPendingAuthProfileId as getDeepseekPending,
+  hasPendingAuth as hasDeepseekPending,
+} from "./deepseek/auth";
+import { normalizeUsageSnapshot as normalizeDeepseekUsage } from "./deepseek/normalize";
+import { clearWidgetSettings as clearDeepseekSettings } from "./deepseek/widget-settings";
 import type { ProviderId } from "../models";
 import type { ProviderCore } from "./contracts";
 
@@ -372,6 +387,28 @@ export const PROVIDER_REGISTRY = {
       clearCache: clearWorkbuddyCache,
     },
     clearSettings: clearWorkbuddySettings,
+  },
+  deepseek: {
+    ...ACCOUNT_PROVIDERS.deepseek,
+    ensure: DeepseekAccounts.ensureAccountMigration,
+    create: DeepseekAccounts.createAccount,
+    remove: DeepseekAccounts.deleteAccount,
+    auth: {
+      start: startDeepseekLogin,
+      complete: completeDeepseekLogin,
+      clearPending: clearDeepseekPending,
+      pendingId: getDeepseekPending,
+      hasPending: hasDeepseekPending,
+    },
+    usage: {
+      fetch: fetchDeepseekUsage,
+      cache: (profileId: string) => {
+        const snapshot = getDeepseekCache(profileId);
+        return snapshot ? normalizeDeepseekUsage(snapshot) : null;
+      },
+      clearCache: clearDeepseekCache,
+    },
+    clearSettings: clearDeepseekSettings,
   },
 } satisfies Record<ProviderId, ProviderCore>;
 

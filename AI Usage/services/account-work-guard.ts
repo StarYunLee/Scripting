@@ -19,6 +19,17 @@ export function captureAccountWork(
   const generation = generations.get(id) || 0;
   return () => generation === (generations.get(id) || 0);
 }
+/** Credential comparison stays inside a short-lived closure, never in task keys or logs. */
+export function captureAccountCredentialWork(
+  provider: ProviderId,
+  profileId: string,
+  readCredential: () => string | null,
+): () => boolean {
+  const current = captureAccountWork(provider, profileId);
+  const credential = readCredential();
+  return () => current() && readCredential() === credential;
+}
+
 export function assertCurrentAccountWork(
   current: () => boolean,
   sameCredential: boolean,

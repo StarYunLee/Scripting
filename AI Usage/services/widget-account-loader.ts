@@ -1,4 +1,4 @@
-import { captureAccountWork } from "./account-work-guard";
+import { captureAccountWork, captureAccountCredentialWork } from "./account-work-guard";
 import { invalidateUsageRuntime } from "./runtime-consistency";
 import type { ProviderId } from "../models";
 import { getSnapshotProvider } from "../providers/snapshot-registry";
@@ -17,11 +17,17 @@ export function loadWidgetAccountSnapshot(input: {
   profileId: string;
   reloadMinutes: number;
 }): Promise<LoadedWidgetSnapshot> {
-  const currentWork = captureAccountWork(input.provider, input.profileId);
+  const refreshProvider = getWidgetRefreshProvider(input.provider);
+  const currentWork = input.provider === "deepseek"
+    ? captureAccountCredentialWork(input.provider, input.profileId,
+        () => refreshProvider.token(input.profileId))
+    : captureAccountWork(input.provider, input.profileId);
   invalidateUsageRuntime();
   const snapshotProvider = getSnapshotProvider(input.provider);
-  const refreshProvider = getWidgetRefreshProvider(input.provider);
-  return loadWidgetAccountSnapshotWith(input, {
+  return loadWidgetAccountSnapshotWith({
+    ...input,
+    force: input.provider === "deepseek" && !refreshProvider.token(input.profileId),
+  }, {
     readSnapshot: () => snapshotProvider.cache(input.profileId),
     fetch: () =>
       refreshProvider.fetchSnapshot({
