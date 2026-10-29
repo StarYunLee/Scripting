@@ -8,7 +8,7 @@ const API_KEY_PASTE_PROVIDERS: ReadonlySet<ProviderId> = new Set<ProviderId>([
   "deepseek",
 ]);
 
-/** A bulk edit is only a paste candidate; the UI must also match the clipboard. */
+/** A valid bulk replacement is handled as pasted input without reading the clipboard again. */
 export function isAuthorizationPasteCandidate(
   provider: ProviderId,
   previous: string,

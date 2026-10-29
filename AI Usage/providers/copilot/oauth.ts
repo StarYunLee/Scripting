@@ -1,10 +1,15 @@
 import { activePendingAuthorization } from "../../services/oauth-pending";
 import {
   createAuthorizationGuard,
+  isAuthorizationCancelledError,
   throwIfAuthorizationCancelled,
   waitForAuthorization,
   type AuthorizationSignal,
 } from "../../services/auth-errors";
+import {
+  AuthorizationCheckDeferred,
+  checkAuthorizationOnce,
+} from "../../services/auth-single-check";
 import { fetch, Response } from "scripting";
 
 import {
@@ -25,7 +30,16 @@ const SCOPES = "read:user user:email";
 const PENDING_KEY = "ai_usage_copilot_oauth_pending_v1";
 const PENDING_TTL_MS = 15 * 60_000;
 const DEFAULT_POLL_INTERVAL_MS = 5_000;
-const POLL_MAX_ATTEMPTS = 180;
+/**
+ * 单次「检查授权结果」的时间预算：只覆盖等待网页端完成 GitHub 登录的 token 轮询阶段。
+ * 预算内确认到就返回 token，到点仍未确认就抛 AuthorizationCheckDeferred 并保留 pending，
+ * 授权页因此不会被一次检查卡住。读取身份不在这个预算内，只受当前授权会话 guard 约束。
+ */
+const CHECK_BUDGET_MS = 10_000;
+/** GitHub 设备流协议：收到 slow_down 后轮询间隔至少再加 5 秒。 */
+const SLOW_DOWN_STEP_MS = 5_000;
+const DEFERRED_MESSAGE = "暂时无法确认授权结果，请稍后继续授权";
+const INTERVAL_MESSAGE = "尚未到下次允许的检查时间，请稍后继续授权";
 const COPILOT_VERSION = "0.26.7";
 
 type PendingOAuth = {
@@ -43,6 +57,34 @@ type TokenPayload = {
   error_description?: string;
   interval?: number;
 };
+
+/**
+ * 同一次设备授权的轮询节奏，跨多次「检查授权结果」保留，
+ * 保证不会早于协议间隔（含 slow_down 之后的新间隔）发请求。
+ * 只在进程内记忆；重启后重新使用服务端返回的初始 interval，不修改 pending 格式。
+ */
+type PollSchedule = {
+  deviceCode: string;
+  nextAt: number;
+  intervalMs: number;
+};
+
+let pollSchedule: PollSchedule | null = null;
+
+function resetPollSchedule(): void {
+  pollSchedule = null;
+}
+
+function scheduleFor(pending: PendingOAuth): PollSchedule {
+  if (!pollSchedule || pollSchedule.deviceCode !== pending.deviceCode) {
+    pollSchedule = {
+      deviceCode: pending.deviceCode,
+      nextAt: pending.createdAt + pending.intervalMs,
+      intervalMs: pending.intervalMs,
+    };
+  }
+  return pollSchedule;
+}
 
 function asObject(value: unknown): Record<string, unknown> | null {
   return value && typeof value === "object" && !Array.isArray(value)
@@ -85,6 +127,7 @@ function readPending(): PendingOAuth | null {
 }
 
 function clearPending(): void {
+  resetPollSchedule();
   try {
     Keychain.remove(PENDING_KEY);
   } catch {
@@ -187,17 +230,26 @@ export async function startCopilotLogin(profileId: string): Promise<string> {
   return verificationUri;
 }
 
-async function pollForToken(
+type TokenPollOutcome =
+  | { kind: "token"; accessToken: string }
+  | { kind: "pending" }
+  | { kind: "slow_down"; intervalMs: number | null }
+  | { kind: "retryable"; message: string }
+  | { kind: "terminal"; message: string };
+
+/**
+ * 单次设备流 token 请求，只做分类不做重试：
+ * - 明确终态（expired_token / access_denied / 成功响应缺 token / 其它协议错误）→ terminal
+ * - 可继续检查（网络异常、响应读不出、非 JSON、408/429/5xx）→ retryable
+ * - 协议内的继续等待（authorization_pending / slow_down）→ 对应分支
+ */
+async function requestDeviceToken(
   pending: PendingOAuth,
-  signal?: AuthorizationSignal,
-): Promise<TokenPayload> {
-  let intervalMs = pending.intervalMs;
-  for (let attempt = 0; attempt < POLL_MAX_ATTEMPTS; attempt++) {
-    await waitForAuthorization(intervalMs, signal);
-    throwIfAuthorizationCancelled(signal);
-    if (Date.now() - pending.createdAt > PENDING_TTL_MS)
-      throw new Error("GitHub 授权会话已超时，请重新开始");
-    const response = await fetch(TOKEN_URL, {
+  remainingMs: number,
+): Promise<TokenPollOutcome> {
+  let response: Response;
+  try {
+    response = await fetch(TOKEN_URL, {
       method: "POST",
       headers: {
         Accept: "application/json",
@@ -208,28 +260,132 @@ async function pollForToken(
         device_code: pending.deviceCode,
         grant_type: DEVICE_GRANT,
       }),
-      timeout: 20,
+      // 请求自身也不允许把等待拖出本次检查的剩余预算。
+      timeout: Math.max(1, Math.ceil(remainingMs / 1000)),
       debugLabel: "CopilotTokenPoll",
     });
-    throwIfAuthorizationCancelled(signal);
-    const data = (await jsonObject(response)) as TokenPayload;
-    if (response.ok && data.access_token) return data;
-    if (data.error === "authorization_pending") continue;
-    if (data.error === "slow_down") {
-      intervalMs = Math.min(intervalMs + 1000, 15_000);
+  } catch {
+    return { kind: "retryable", message: DEFERRED_MESSAGE };
+  }
+  let payload: Record<string, unknown> | null;
+  try {
+    payload = asObject(JSON.parse(await response.text()));
+  } catch {
+    payload = null;
+  }
+  if (!payload)
+    return {
+      kind: "retryable",
+      message: `GitHub Token 响应异常（HTTP ${response.status}），请稍后继续授权`,
+    };
+  const error = typeof payload.error === "string" ? payload.error : null;
+  if (
+    response.ok &&
+    typeof payload.access_token === "string" &&
+    payload.access_token
+  )
+    return { kind: "token", accessToken: payload.access_token };
+  if (error === "authorization_pending") return { kind: "pending" };
+  if (error === "slow_down")
+    return {
+      kind: "slow_down",
+      intervalMs:
+        typeof payload.interval === "number" && payload.interval > 0
+          ? payload.interval * 1000
+          : null,
+    };
+  if (error === "expired_token")
+    return { kind: "terminal", message: "GitHub 设备授权码已过期，请重新开始" };
+  if (error === "access_denied")
+    return { kind: "terminal", message: "GitHub 登录被拒绝" };
+  if (
+    response.status === 408 ||
+    response.status === 429 ||
+    response.status >= 500
+  )
+    return { kind: "retryable", message: DEFERRED_MESSAGE };
+  if (response.ok)
+    return { kind: "terminal", message: "GitHub Token 响应缺少 access_token" };
+  const description =
+    typeof payload.error_description === "string"
+      ? payload.error_description
+      : error;
+  return {
+    kind: "terminal",
+    message: description || `GitHub Token 轮询失败（HTTP ${response.status}）`,
+  };
+}
+
+/**
+ * 预算内的设备流检查：等待与请求都不会越过 deadline，到点即 Deferred。
+ * 发请求前先按 schedule 对齐协议间隔（含 slow_down 抬高的间隔）。
+ */
+async function checkDeviceToken(
+  pending: PendingOAuth,
+  schedule: PollSchedule,
+  deadline: number,
+  checkSignal: AuthorizationSignal,
+): Promise<TokenPayload> {
+  for (;;) {
+    const now = Date.now();
+    if (now - pending.createdAt > PENDING_TTL_MS)
+      throw new Error("GitHub 授权会话已超时，请重新开始");
+    if (now >= deadline)
+      throw new AuthorizationCheckDeferred(DEFERRED_MESSAGE);
+    // 下一次允许的检查时间落在预算之外：本次不再等待，也不发请求。
+    if (schedule.nextAt >= deadline)
+      throw new AuthorizationCheckDeferred(INTERVAL_MESSAGE);
+    if (schedule.nextAt > now) {
+      await waitForAuthorization(schedule.nextAt - now, checkSignal);
+      throwIfAuthorizationCancelled(checkSignal);
       continue;
     }
-    if (data.error === "expired_token")
-      throw new Error("GitHub 设备授权码已过期，请重新开始");
-    if (data.error === "access_denied") throw new Error("GitHub 登录被拒绝");
-    if (response.status >= 500) continue;
-    throw new Error(
-      data.error_description ||
-        data.error ||
-        `GitHub Token 轮询失败（HTTP ${response.status}）`,
+    schedule.nextAt = now + schedule.intervalMs;
+    const outcome = await requestDeviceToken(
+      pending,
+      Math.max(0, deadline - Date.now()),
     );
+    // 预算到点会 abort child，晚回的响应不得被当成结果继续保存凭据。
+    throwIfAuthorizationCancelled(checkSignal);
+    if (outcome.kind === "token") return { access_token: outcome.accessToken };
+    if (outcome.kind === "terminal") throw new Error(outcome.message);
+    if (outcome.kind === "retryable")
+      throw new AuthorizationCheckDeferred(outcome.message);
+    if (outcome.kind === "slow_down") {
+      schedule.intervalMs = Math.max(
+        schedule.intervalMs + SLOW_DOWN_STEP_MS,
+        outcome.intervalMs || 0,
+      );
+      schedule.nextAt = Date.now() + schedule.intervalMs;
+      continue;
+    }
+    // authorization_pending：按 schedule 节奏继续，超出预算由循环顶部收口。
   }
-  throw new Error("等待 GitHub 授权超时，请确认已在浏览器完成登录后重试");
+}
+
+async function pollForToken(
+  pending: PendingOAuth,
+  signal?: AuthorizationSignal,
+): Promise<TokenPayload> {
+  if (Date.now() - pending.createdAt > PENDING_TTL_MS)
+    throw new Error("GitHub 授权会话已超时，请重新开始");
+  const schedule = scheduleFor(pending);
+  const deadline = Date.now() + CHECK_BUDGET_MS;
+  return checkAuthorizationOnce(
+    async (checkSignal) => {
+      try {
+        return await checkDeviceToken(pending, schedule, deadline, checkSignal);
+      } catch (error) {
+        // child 只会因父取消或本次预算到期而中止：父未取消时按「待继续」收口，
+        // 否则预算到期会被误判成用户取消，连带清掉仍在等待的 pending。
+        if (isAuthorizationCancelledError(error) && !signal?.aborted)
+          throw new AuthorizationCheckDeferred(DEFERRED_MESSAGE);
+        throw error;
+      }
+    },
+    signal,
+    CHECK_BUDGET_MS,
+  );
 }
 
 async function fetchIdentity(token: string): Promise<{
@@ -341,7 +497,8 @@ export async function completeCopilotLogin(
     clearPending();
   } catch (error) {
     assertCurrent();
-    clearPending();
+    // 只有真正终态才清 pending；Deferred 保留设备授权，供「检查授权结果」继续。
+    if (!(error instanceof AuthorizationCheckDeferred)) clearPending();
     throw error;
   }
 }

@@ -16,8 +16,6 @@ import {
 } from "./widget-refresh-metadata";
 import type { ProviderCore } from "../providers/contracts";
 
-export type AuthorizationPageMode = "present" | "openURL";
-
 type CopilotAuthorizationState = {
   profileId: string;
   verificationUri: string;
@@ -39,7 +37,6 @@ export type AuthCoordinatorDependencies = {
   providerIds: readonly ProviderId[];
   getProvider(provider: ProviderId): ProviderCore;
   isDemoMode(): boolean;
-  openAuthorizationPage(url: string): Promise<AuthorizationPageMode>;
   getCopilotAuthorizationState(): CopilotAuthorizationState | null;
   getConsoleAuthorizationRegion?(provider: ProviderId): "intl" | "cn" | null;
   getConsoleAuthorizationUrl?(
@@ -52,7 +49,7 @@ export type AuthCoordinatorDependencies = {
 };
 
 export type AuthStartResult =
-  | { ok: true; sheet: AuthSheet; resumed: boolean }
+  | { ok: true; sheet: AuthSheet }
   | { ok: false; message: string; sheet?: AuthSheet };
 
 export type AuthCompletion = {
@@ -65,55 +62,32 @@ function errorText(error: unknown): string {
   return String(error);
 }
 
-function isPollingProvider(provider: ProviderId): boolean {
-  return provider === "cursor" || provider === "kimi" || provider === "copilot" || provider === "workbuddy";
+/**
+ * 取消已经生效（会话推进、旧任务已中止），但账号/缓存清理失败。
+ * 携带当前会话的引导页，供页面显示原因并“重试取消”，
+ * 而不是把失败吞掉或留在恒假的可用按钮上。
+ */
+export class AuthorizationCancelError extends Error {
+  readonly sheet: AuthSheet;
+
+  constructor(sheet: AuthSheet) {
+    super(sheet.status);
+    this.name = "AuthorizationCancelError";
+    this.sheet = sheet;
+  }
 }
 
-function pendingStatus(provider: ProviderId): string {
-  if (provider === "minimax")
-    return "存在未完成的 MiniMax 授权，请粘贴 Subscription Key";
-  if (provider === "zai") return "存在未完成的 Z.ai 授权，请粘贴 API Key";
-  if (provider === "deepseek")
-    return "存在未完成的 DeepSeek 授权，请粘贴 API Key";
-  if (provider === "cursor" || provider === "kimi")
-    return "存在未完成的设备授权；完成浏览器登录后将自动连接";
-  if (provider === "copilot")
-    return "存在未完成的 GitHub 设备授权；请先复制设备码，再打开授权页";
-  if (provider === "workbuddy")
-    return "存在未完成的 WorkBuddy 授权；完成浏览器登录后将自动连接";
-  return "存在未完成的授权，请粘贴回调地址或授权码";
-}
+/** Internal markers only; the guide sheet renders its own copy. */
+const PENDING_STATUS = "pending";
+const PREPARED_STATUS = "prepared";
 
-function startedStatus(
+function regionFor(
   provider: ProviderId,
-  mode: AuthorizationPageMode,
   providerInput?: string,
-): string {
-  if (provider === "minimax") {
-    const site = providerInput === "cn" ? "国内站" : "国际站";
-    return mode === "present"
-      ? `关闭 ${site}控制台后，粘贴 Subscription Key`
-      : `已打开 MiniMax ${site}控制台，复制 Subscription Key 后粘贴`;
-  }
-  if (provider === "zai")
-    return mode === "present"
-      ? "关闭控制台后，把 API Key 粘贴到下方并提交"
-      : "已打开 API Key 控制台，复制 Key 后粘贴到下方并提交";
-  if (provider === "deepseek")
-    return "粘贴 DeepSeek API Key 即可连接；没有 Key 可按需前往开放平台获取。";
-  if (provider === "workbuddy") {
-    const site = providerInput === "cn" ? "国内站" : "国际站";
-    return mode === "present"
-      ? `已打开 WorkBuddy ${site}登录页，完成登录后返回应用即可自动连接`
-      : `已在系统 Safari 打开 WorkBuddy ${site}登录页，完成登录后返回即可自动连接`;
-  }
-  if (provider === "cursor" || provider === "kimi")
-    return mode === "present"
-      ? "关闭授权页后将自动完成连接"
-      : "已在系统 Safari 打开授权页，完成后返回即可自动连接";
-  return mode === "present"
-    ? "关闭授权页后，把回调地址或授权码粘贴到下方"
-    : "已在系统 Safari 打开授权页，完成后把回调地址或授权码粘贴到下方";
+): "intl" | "cn" | undefined {
+  if (provider !== "zai" && provider !== "minimax" && provider !== "workbuddy")
+    return undefined;
+  return providerInput === "cn" ? "cn" : "intl";
 }
 
 function copilotSheet(
@@ -126,15 +100,9 @@ function copilotSheet(
     authorizationInput: "",
     authorizationUrl: state.verificationUri,
     deviceCode: state.userCode,
-    status: resumed
-      ? "存在未完成的 GitHub 设备授权；请先复制设备码，再打开授权页"
-      : "设备码已生成；请先复制，再打开 GitHub 授权页",
-    autoComplete: true,
+    status: resumed ? PENDING_STATUS : "device_code",
+    ...(resumed ? { resumed: true } : {}),
   };
-}
-
-function withAutoComplete(sheet: AuthSheet, provider: ProviderId): AuthSheet {
-  return isPollingProvider(provider) ? { ...sheet, autoComplete: true } : sheet;
 }
 
 export function createAuthCoordinator(
@@ -186,65 +154,31 @@ export function createAuthCoordinator(
         ) || undefined
       : dependencies.getProviderAuthorizationUrl?.(pending.provider) ||
         undefined;
-    return stamp(
-      withAutoComplete(
-        {
-          provider: pending.provider,
-          profileId: pending.profileId,
-          authorizationInput: "",
-          status: pendingStatus(pending.provider),
-          authorizationRegion: authorizationRegion || undefined,
-          authorizationUrl,
-        },
-        pending.provider,
-      ),
-    );
+    return stamp({
+      provider: pending.provider,
+      profileId: pending.profileId,
+      authorizationInput: "",
+      status: PENDING_STATUS,
+      authorizationRegion: authorizationRegion || undefined,
+      authorizationUrl,
+      resumed: true,
+    });
   }
 
-  async function openSheet(
+  function preparedSheet(
     provider: ProviderId,
     accountId: string,
     url: string,
     providerInput?: string,
-  ): Promise<AuthSheet> {
-    try {
-      const mode = await dependencies.openAuthorizationPage(url);
-      return withAutoComplete(
-        {
-          provider,
-          profileId: accountId,
-          authorizationInput: "",
-          authorizationUrl: url,
-          status: startedStatus(provider, mode, providerInput),
-          authorizationPageOpened: true,
-          authorizationRegion:
-            provider === "zai" || provider === "minimax" || provider === "workbuddy"
-              ? providerInput === "cn"
-                ? "cn"
-                : "intl"
-              : undefined,
-        },
-        provider,
-      );
-    } catch (error) {
-      return withAutoComplete(
-        {
-          provider,
-          profileId: accountId,
-          authorizationInput: "",
-          authorizationUrl: url,
-          status: `无法打开授权页：${errorText(error)}。可点击下方按钮重试。`,
-          authorizationPageOpened: false,
-          authorizationRegion:
-            provider === "zai" || provider === "minimax" || provider === "workbuddy"
-              ? providerInput === "cn"
-                ? "cn"
-                : "intl"
-              : undefined,
-        },
-        provider,
-      );
-    }
+  ): AuthSheet {
+    return {
+      provider,
+      profileId: accountId,
+      authorizationInput: "",
+      authorizationUrl: url,
+      status: PREPARED_STATUS,
+      authorizationRegion: regionFor(provider, providerInput),
+    };
   }
 
   async function performStart(options: {
@@ -256,7 +190,7 @@ export function createAuthCoordinator(
       return { ok: false, message: "演示模式不会发起真实授权" };
 
     const existing = resume();
-    if (existing) return { ok: true, sheet: existing, resumed: true };
+    if (existing) return { ok: true, sheet: existing };
 
     const attemptSession = ++sessionId;
     const api = dependencies.getProvider(options.provider);
@@ -314,32 +248,20 @@ export function createAuthCoordinator(
         return {
           ok: true,
           sheet: stamp(copilotSheet(state, false)),
-          resumed: false,
         };
       }
 
-      if (options.provider === "deepseek") {
-        return {
-          ok: true,
-          resumed: false,
-          sheet: stamp({
-            provider: options.provider,
-            profileId: account.id,
-            authorizationInput: "",
-            authorizationUrl: url,
-            status: startedStatus(options.provider, "openURL"),
-          }),
-        };
-      }
-
-      const sheet = await openSheet(
-        options.provider,
-        account.id,
-        url,
-        options.providerInput,
-      );
-      if (attemptSession !== sessionId) throw new AuthorizationCancelledError();
-      return { ok: true, resumed: false, sheet: stamp(sheet) };
+      return {
+        ok: true,
+        sheet: stamp(
+          preparedSheet(
+            options.provider,
+            account.id,
+            url,
+            options.providerInput,
+          ),
+        ),
+      };
     } catch (error) {
       let cleanupFailed = false;
       if (
@@ -482,6 +404,7 @@ export function createAuthCoordinator(
       startingAccount.profileId === sheet.profileId &&
       startingAccount.previousSessionId === sheet.sessionId;
     if (!isCurrent(sheet) && !cancellingStart) return;
+    // 会话推进与旧任务中止保持现有顺序且不可回滚；清理失败只能通过错误 sheet 暴露。
     sessionId += 1;
     retireAccountWork(sheet.provider, sheet.profileId);
     const abort = completeAbort;
@@ -489,14 +412,27 @@ export function createAuthCoordinator(
     completeInFlight = null;
     completingAccount = null;
     abort?.abort();
-    const api = dependencies.getProvider(sheet.provider);
-    if (api.auth.pendingId() === sheet.profileId) api.auth.clearPending();
-    if (api.token(sheet.profileId)) return;
-    const removed = api.remove(sheet.profileId);
-    if (!removed.ok) throw new Error("授权已取消，但未授权账号清理失败");
-    api.usage.clearCache(sheet.profileId);
-    clearWidgetRefreshMetadata(sheet.provider, sheet.profileId);
-    api.clearSettings(sheet.profileId);
+    try {
+      const api = dependencies.getProvider(sheet.provider);
+      if (api.auth.pendingId() === sheet.profileId) api.auth.clearPending();
+      if (api.token(sheet.profileId)) return;
+      const removed = api.remove(sheet.profileId);
+      if (!removed.ok && removed.reason !== "account_not_found") throw new Error("未授权账号清理失败");
+      api.usage.clearCache(sheet.profileId);
+      clearWidgetRefreshMetadata(sheet.provider, sheet.profileId);
+      api.clearSettings(sheet.profileId);
+    } catch (error) {
+      throw new AuthorizationCancelError(
+        stamp({
+          ...sheet,
+          authorizationInput: "",
+          authorizationUrl: undefined,
+          deviceCode: undefined,
+          resumed: false,
+          status: `取消授权失败：${errorText(error)}`,
+        }),
+      );
+    }
   }
 
   function restart(

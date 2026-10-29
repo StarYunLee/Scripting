@@ -67,7 +67,7 @@ https://raw.githubusercontent.com/StarYunLee/Scripting/main/AI-Usage.scripting
 
 ## OAuth 登录
 
-在用量页点击右上角 `+` 并选择平台。应用会根据平台引导完成授权：回调地址、一次性授权码、API Key 或 Subscription Key 粘贴后会自动验证并连接；Cursor、Kimi Code、GitHub Copilot 与 WorkBuddy 会在关闭授权页后自动检查结果。
+在用量页点击右上角 `+` 并选择平台，先进入连接引导页，再按步骤点击按钮打开授权页。回调地址、一次性授权码、API Key 或 Subscription Key 粘贴后会自动验证并连接。Cursor、Kimi Code、GitHub Copilot 与 WorkBuddy 在内嵌授权页关闭后自动检查结果；如果使用外部浏览器，完成后返回引导页点击“检查授权结果”。授权失败时页面只保留“无法完成授权”与“重新授权”。
 
 ### Codex
 
@@ -104,22 +104,22 @@ https://raw.githubusercontent.com/StarYunLee/Scripting/main/AI-Usage.scripting
 ### GitHub Copilot
 
 - 先复制应用显示的设备码，再打开 GitHub 授权页完成设备授权
-- 关闭授权页后应用会持续检查，并在成功后自动连接
+- 关闭授权页后自动检查网页授权结果，等待确认最多 10 秒；尚未完成时保留设备码，可重新打开授权页继续
 
 ### Z.ai
 
-- 先选择国际站 Z.ai 或国内站智谱开放平台
+- 站点在授权卡第 0 步选择，默认国内站（智谱开放平台），可切到国际站 Z.ai；切换会重新准备引导
 - 从对应控制台复制 API Key，粘贴后自动验证；密钥错误时可以原地重新粘贴
 
 ### MiniMax
 
-- 先选择国际站 `minimax.io` 或国内站 `minimaxi.com`
+- 站点在授权卡第 0 步选择，默认国内站 `minimaxi.com`，可切到国际站 `minimax.io`；切换会重新准备引导
 - 从对应站点复制 Subscription Key，粘贴后自动验证；密钥错误时可以原地重新粘贴
 
 ### WorkBuddy
 
-- 先选择国内站 `workbuddy.cn` 或国际站 `workbuddy.ai`
-- 在打开的 WorkBuddy 登录页完成浏览器登录，返回应用后会自动轮询并连接
+- 站点在授权卡第 0 步选择，默认国内站 `workbuddy.cn`，可切到国际站 `workbuddy.ai`；切换会重新准备引导
+- 点击引导页按钮打开 WorkBuddy 登录页完成浏览器登录；关闭内嵌页面后自动检查结果，外部浏览器授权需返回后点击“检查授权结果”
 - 只接入浏览器账户授权；WorkBuddy desktop 的本地登录在 5.6+ 已加密，API Key 也读不到积分，因此不提供这两种方式
 - 账户徽章显示国内版 / 国际版，不再显示 Free / Pro 套餐类型；国内版使用青绿，国际版使用深蓝
 - 组件采用固定布局：Small 显示套餐剩余百分比、已用积分、总积分与刷新时间；Medium 显示剩余百分比、重置时间、剩余 / 总积分与单行签到状态；不提供窗口选择

@@ -19,7 +19,6 @@ import { clearAccountOverviewPreferences } from "./app-overview-prefs";
 import { clearAccountWidgetPreferences } from "./widget-prefs";
 import { clearDashboardWidgetAccountPreferences } from "./dashboard-widget-prefs";
 import { createAuthCoordinator } from "./auth-coordinator";
-import { openAuthorizationPage } from "./browser";
 import { getPendingAuthorizationState } from "../providers/copilot/oauth";
 import {
   consoleUrlForRegion as zaiConsoleUrlForRegion,
@@ -49,7 +48,6 @@ export const authCoordinator = createAuthCoordinator({
   providerIds: PROVIDER_IDS,
   getProvider,
   isDemoMode,
-  openAuthorizationPage,
   getCopilotAuthorizationState: getPendingAuthorizationState,
   getConsoleAuthorizationRegion: (provider) => {
     if (provider === "zai") return getZaiPendingRegion();

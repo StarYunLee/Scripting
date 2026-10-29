@@ -1,4 +1,5 @@
 import { AuthorizationCheckDeferred } from "../services/auth-single-check";
+import { AuthorizationCancelError } from "../services/auth-coordinator";
 import {
   List,
   NavigationStack,
@@ -31,7 +32,6 @@ import { PageBackground } from "../components/PageBackground";
 import { buildPageToolbar } from "../components/PageToolbar";
 import { UsageCardView } from "../components/UsageCardView";
 import { type AuthSheet, type ProviderId, type UsageCard } from "../models";
-import { parseConsoleAuthChoice } from "../providers/console-auth-choice";
 import { refreshAccounts } from "../services/refresh";
 import {
   requestWidgetReload,
@@ -92,6 +92,7 @@ export function StatusPage(props: StatusPageProps) {
     };
   }, []);
   const [busy, setBusy] = useState(false);
+  const [completing, setCompleting] = useState(false);
   const [openedCard, setOpenedCard] = useState<UsageCard | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [filterProvider, setFilterProvider] = useState<ProviderId | null>(null);
@@ -243,6 +244,7 @@ export function StatusPage(props: StatusPageProps) {
       revision === authView.revision &&
       authCoordinator.isCurrent(target);
     setBusy(true);
+    setCompleting(true);
     setSheet({ ...target, status: "正在完成连接…" });
     try {
       await authCoordinator.complete(target);
@@ -281,6 +283,7 @@ export function StatusPage(props: StatusPageProps) {
       if (authView.active && revision === authView.revision) {
         authView.running = false;
         setBusy(false);
+        setCompleting(false);
       }
     }
   }
@@ -289,10 +292,12 @@ export function StatusPage(props: StatusPageProps) {
     target: ProviderId,
     profileId?: string,
     restartSheet?: AuthSheet,
+    region?: "intl" | "cn",
   ) {
     if (busy || authView.running) return;
     const revision = ++authView.revision;
     authView.running = true;
+    setCompleting(false);
     const current = () => authView.active && revision === authView.revision;
     setBusy(true);
     try {
@@ -300,68 +305,20 @@ export function StatusPage(props: StatusPageProps) {
       if (pendingSheet) {
         setProvider(pendingSheet.provider);
         setSheet(pendingSheet);
-        if (
-          pendingSheet.autoComplete &&
-          !pendingSheet.deviceCode &&
-          pendingSheet.authorizationPageOpened !== false
-        ) {
-          await finishAuth(pendingSheet);
-          return;
-        }
         return;
       }
-      const consoleRegion =
+      // The site is chosen on step 0 of the guide sheet; a fresh start defaults to the domestic site.
+      const consoleRegion: "intl" | "cn" | undefined =
         target === "minimax" || target === "zai" || target === "workbuddy"
-          ? parseConsoleAuthChoice(
-              (await Dialog.actionSheet({
-                title:
-                  target === "minimax"
-                    ? "选择 MiniMax 站点"
-                    : target === "workbuddy"
-                      ? "选择 WorkBuddy 站点"
-                      : "选择 Z.ai 站点",
-                message:
-                  target === "minimax"
-                    ? "Subscription Key 必须从对应站点获取；稍后仍会用真实额度行校验区域。"
-                    : target === "workbuddy"
-                      ? "国内站与国际站使用不同账号和接口；完成浏览器登录后会自动连接。"
-                      : "API Key 必须从对应控制台获取；稍后仍会自动校验国际站或国内站。",
-                actions:
-                  target === "minimax"
-                    ? [
-                        { label: "国际站 · minimax.io" },
-                        { label: "国内站 · minimaxi.com" },
-                      ]
-                    : target === "workbuddy"
-                      ? [
-                          { label: "国际站 · workbuddy.ai" },
-                          { label: "国内站 · workbuddy.cn" },
-                        ]
-                      : [
-                          { label: "国际站 · Z.ai" },
-                          { label: "国内站 · 智谱开放平台" },
-                        ],
-                cancelButton: true,
-              })) ?? -1,
-            )
-          : null;
+          ? region ?? restartSheet?.authorizationRegion ?? "cn"
+          : undefined;
       if (!current()) return;
-      if (
-        (target === "minimax" ||
-          target === "zai" ||
-          target === "workbuddy") &&
-        !consoleRegion
-      )
-        return;
       const result = restartSheet
-        ? await authCoordinator.restart(
-            restartSheet,
-            consoleRegion || undefined,
-          )
+        ? await authCoordinator.restart(restartSheet, consoleRegion)
         : await authCoordinator.start({
             provider: target,
             profileId,
-            providerInput: consoleRegion || undefined,
+            providerInput: consoleRegion,
           });
       if (!current()) {
         if (result.ok) authCoordinator.cancel(result.sheet);
@@ -370,14 +327,6 @@ export function StatusPage(props: StatusPageProps) {
       if (result.ok) {
         setProvider(result.sheet.provider);
         setSheet(result.sheet);
-        if (
-          result.sheet.autoComplete &&
-          !result.sheet.deviceCode &&
-          result.sheet.authorizationPageOpened !== false
-        ) {
-          await finishAuth(result.sheet);
-          return;
-        }
         return;
       }
       if (result.sheet) setSheet(result.sheet);
@@ -388,10 +337,17 @@ export function StatusPage(props: StatusPageProps) {
           buttonLabel: "关闭",
         });
       }
+    } catch (error) {
+      if (error instanceof AuthorizationCancelError && authView.active && authCoordinator.isCurrent(error.sheet)) {
+        setSheet(error.sheet);
+      } else if (current()) {
+        await Dialog.alert({ title: "无法开始授权", message: errorText(error), buttonLabel: "关闭" });
+      }
     } finally {
       if (authView.active && revision === authView.revision) {
         authView.running = false;
         setBusy(false);
+        setCompleting(false);
       }
     }
   }
@@ -411,6 +367,7 @@ export function StatusPage(props: StatusPageProps) {
     authView.revision += 1;
     authView.running = false;
     setBusy(false);
+    setCompleting(false);
     try {
       authCoordinator.cancel(sheet);
       setSheet(null);
@@ -421,7 +378,7 @@ export function StatusPage(props: StatusPageProps) {
         reloadCards();
         return;
       }
-      setSheet({
+      setSheet(error instanceof AuthorizationCancelError ? error.sheet : {
         ...sheet,
         status: "取消授权失败：" + errorText(error),
       });
@@ -578,15 +535,14 @@ export function StatusPage(props: StatusPageProps) {
       <AuthSheetView
         authSheet={sheet}
         backgroundTheme={props.backgroundTheme}
-        completing={busy}
+        completing={completing}
+        preparing={busy && !completing}
         onChangeInput={(value) =>
           setSheet((current) =>
             current ? { ...current, authorizationInput: value } : current,
           )
         }
-        onRestart={() => {
-          void startAuth(sheet.provider, sheet.profileId, sheet);
-        }}
+        onRestart={region => startAuth(sheet.provider, sheet.profileId, sheet, region)}
         onSubmit={submitAuth}
         onCancel={cancelAuth}
       />
