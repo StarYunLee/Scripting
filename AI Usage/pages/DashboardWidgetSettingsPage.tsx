@@ -133,6 +133,7 @@ export function DashboardWidgetSettingsPage(props: {
       {props.cards.length > 0 ? (
         props.cards.map((card, index) => {
           const meta = providerMeta(card.provider);
+          const fixedLayout = Boolean(meta.capabilities.fixedWidgetLayout);
           const visible = !preferences.hiddenAccountKeys.includes(card.key);
           const configured = preferences.windowIdsByAccount[card.key];
           const primary = configured?.[0] || card.windows[0]?.id || "";
@@ -194,7 +195,7 @@ export function DashboardWidgetSettingsPage(props: {
                     }}
                   />
                 </HStack>
-                {visible && card.windows.length > 0 ? (
+                {visible && !fixedLayout && card.windows.length > 0 ? (
                   <VStack spacing={0} frame={{ maxWidth: "infinity" }}>
                     <GlassDivider />
                     <Picker

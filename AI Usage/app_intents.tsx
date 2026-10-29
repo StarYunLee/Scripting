@@ -64,6 +64,12 @@ export const RefreshAIUsageMinimaxIntent = AppIntentManager.register({
   perform: async () => refreshProviderIntent("minimax"),
 });
 
+export const RefreshAIUsageWorkbuddyIntent = AppIntentManager.register({
+  name: "RefreshAIUsageWorkbuddyIntent",
+  protocol: AppIntentProtocol.AppIntent,
+  perform: async () => refreshProviderIntent("workbuddy"),
+});
+
 export const RefreshAIUsageAllIntent = AppIntentManager.register({
   name: "RefreshAIUsageAllIntent",
   protocol: AppIntentProtocol.AppIntent,

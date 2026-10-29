@@ -1,4 +1,4 @@
-import type { ProviderId, UsageWindowView } from "../models";
+import { providerMeta, type ProviderId, type UsageWindowView } from "../models";
 
 const LIVE_STORAGE_KEY = "ai_usage_widget_window_preferences_v1";
 const DEMO_STORAGE_KEY = "ai_usage_demo_widget_window_preferences_v1";
@@ -114,6 +114,8 @@ export function getEffectiveWidgetWindows(
   allWindows: UsageWindowView[],
 ): UsageWindowView[] {
   if (!allWindows || allWindows.length === 0) return [];
+  if (providerMeta(provider).capabilities.fixedWidgetLayout)
+    return allWindows.slice(0, 4);
   const key = accountKey(provider, accountId);
   const selectedIds = readPreferences(accountId).selectedWindows?.[key];
 
@@ -151,6 +153,7 @@ export function toggleWidgetWindowSelection(
   windowId: string,
   enabled: boolean,
 ): boolean {
+  if (providerMeta(provider).capabilities.fixedWidgetLayout) return true;
   const key = accountKey(provider, accountId);
   const current = getEffectiveWidgetWindows(provider, accountId, allWindows);
   const currentIds = current.map((w) => w.id);

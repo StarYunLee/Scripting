@@ -64,7 +64,7 @@ function errorText(error: unknown): string {
 }
 
 function isPollingProvider(provider: ProviderId): boolean {
-  return provider === "cursor" || provider === "kimi" || provider === "copilot";
+  return provider === "cursor" || provider === "kimi" || provider === "copilot" || provider === "workbuddy";
 }
 
 function pendingStatus(provider: ProviderId): string {
@@ -75,6 +75,8 @@ function pendingStatus(provider: ProviderId): string {
     return "存在未完成的设备授权；完成浏览器登录后将自动连接";
   if (provider === "copilot")
     return "存在未完成的 GitHub 设备授权；请先复制设备码，再打开授权页";
+  if (provider === "workbuddy")
+    return "存在未完成的 WorkBuddy 授权；完成浏览器登录后将自动连接";
   return "存在未完成的授权，请粘贴回调地址或授权码";
 }
 
@@ -93,6 +95,12 @@ function startedStatus(
     return mode === "present"
       ? "关闭控制台后，把 API Key 粘贴到下方并提交"
       : "已打开 API Key 控制台，复制 Key 后粘贴到下方并提交";
+  if (provider === "workbuddy") {
+    const site = providerInput === "cn" ? "国内站" : "国际站";
+    return mode === "present"
+      ? `已打开 WorkBuddy ${site}登录页，完成登录后返回应用即可自动连接`
+      : `已在系统 Safari 打开 WorkBuddy ${site}登录页，完成登录后返回即可自动连接`;
+  }
   if (provider === "cursor" || provider === "kimi")
     return mode === "present"
       ? "关闭授权页后将自动完成连接"
@@ -202,7 +210,7 @@ export function createAuthCoordinator(
           status: startedStatus(provider, mode, providerInput),
           authorizationPageOpened: true,
           authorizationRegion:
-            provider === "zai" || provider === "minimax"
+            provider === "zai" || provider === "minimax" || provider === "workbuddy"
               ? providerInput === "cn"
                 ? "cn"
                 : "intl"
@@ -220,7 +228,7 @@ export function createAuthCoordinator(
           status: `无法打开授权页：${errorText(error)}。可点击下方按钮重试。`,
           authorizationPageOpened: false,
           authorizationRegion:
-            provider === "zai" || provider === "minimax"
+            provider === "zai" || provider === "minimax" || provider === "workbuddy"
               ? providerInput === "cn"
                 ? "cn"
                 : "intl"

@@ -3,7 +3,7 @@ import { RefreshAIUsageAllIntent } from "../../app_intents";
 import { PlanBadge } from "../../components/PlanBadge";
 import { formatResetCountdown } from "../../services/usage-format";
 import { parseWidgetFamily } from "../family";
-import { providerMeta, type UsageWindowView } from "../../models";
+import { providerMeta, type ProviderId, type UsageWindowView } from "../../models";
 import { WidgetProgress } from "../WidgetProgress";
 import type { WidgetChromeStyle } from "../chrome-style";
 import { widgetTheme as C } from "../transparent";
@@ -39,7 +39,20 @@ function Progress(props: {
   );
 }
 
+function workbuddyCreditParts(detail: string): {
+  used: string;
+  total: string;
+} {
+  const text = detail.replace(/积分/g, "").trim();
+  const [used, total] = text.split("/").map((part) => part.trim());
+  return {
+    used: used || "—",
+    total: total || "—",
+  };
+}
+
 function WindowRow(props: {
+  provider: ProviderId;
   window: UsageWindowView;
   width: number;
   compact: boolean;
@@ -47,6 +60,13 @@ function WindowRow(props: {
 }) {
   const countdown = formatResetCountdown(props.window.resetAt);
   const shadow = C.textShadow;
+  const workbuddyCredits =
+    props.provider === "workbuddy" &&
+    props.window.id === "workbuddy:credits" &&
+    Boolean(props.window.detail);
+  const workbuddyParts = workbuddyCredits
+    ? workbuddyCreditParts(props.window.detail || "")
+    : null;
   return (
     <VStack alignment="leading" spacing={props.compact ? 2 : 3}>
       <HStack spacing={4} frame={{ width: props.width }}>
@@ -89,6 +109,41 @@ function WindowRow(props: {
         width={props.width}
         chromeStyle={props.chromeStyle}
       />
+      {workbuddyParts ? (
+        <HStack spacing={0} frame={{ width: props.width }}>
+          <Text
+            font={9.5}
+            foregroundStyle={C.primary}
+            lineLimit={1}
+            minScaleFactor={0.75}
+            monospacedDigit
+            {...(shadow ? { shadow } : {})}
+          >
+            已用 {workbuddyParts.used}
+          </Text>
+          <Spacer minLength={8} />
+          <Text
+            font={8.5}
+            foregroundStyle={C.secondary}
+            lineLimit={1}
+            minScaleFactor={0.75}
+            monospacedDigit
+            {...(shadow ? { shadow } : {})}
+          >
+            总积分 {workbuddyParts.total}
+          </Text>
+        </HStack>
+      ) : props.window.detail ? (
+        <Text
+          font={9}
+          foregroundStyle={C.secondary}
+          lineLimit={1}
+          minScaleFactor={0.75}
+          {...(shadow ? { shadow } : {})}
+        >
+          {props.window.detail}
+        </Text>
+      ) : null}
     </VStack>
   );
 }
@@ -101,7 +156,8 @@ function AccountCell(props: {
   chromeStyle?: WidgetChromeStyle;
 }) {
   const meta = providerMeta(props.account.provider);
-  const windows = props.account.windows.slice(0, 2);
+  const fixedLayout = Boolean(meta.capabilities.fixedWidgetLayout);
+  const windows = props.account.windows.slice(0, fixedLayout ? 1 : 2);
   return (
     <VStack
       alignment="leading"
@@ -141,6 +197,7 @@ function AccountCell(props: {
       {windows.map((window) => (
         <WindowRow
           key={window.id}
+          provider={props.account.provider}
           window={window}
           width={props.width}
           compact={props.compact}

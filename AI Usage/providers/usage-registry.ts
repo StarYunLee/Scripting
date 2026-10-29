@@ -9,6 +9,7 @@ import { fetchUsage as fetchKimiUsage } from "./kimi/api";
 import { fetchUsage as fetchCopilotUsage } from "./copilot/api";
 import { fetchUsage as fetchZaiUsage } from "./zai/api";
 import { fetchUsage as fetchMinimaxUsage } from "./minimax/api";
+import { fetchUsage as fetchWorkbuddyUsage } from "./workbuddy/api";
 import { normalizeUsageSnapshot as normalizeCodexUsage } from "./codex/normalize";
 import { normalizeUsageSnapshot as normalizeGrokUsage } from "./grok/normalize";
 import { normalizeUsageSnapshot as normalizeClaudeUsage } from "./claude/normalize";
@@ -18,6 +19,7 @@ import { normalizeUsageSnapshot as normalizeKimiUsage } from "./kimi/normalize";
 import { normalizeUsageSnapshot as normalizeCopilotUsage } from "./copilot/normalize";
 import { normalizeUsageSnapshot as normalizeZaiUsage } from "./zai/normalize";
 import { normalizeUsageSnapshot as normalizeMinimaxUsage } from "./minimax/normalize";
+import { normalizeUsageSnapshot as normalizeWorkbuddyUsage } from "./workbuddy/normalize";
 import type { ProviderId } from "../models";
 import type { ProviderUsageError, UsageProvider } from "./contracts";
 import type { NormalizedUsageSnapshot } from "../services/usage-model";
@@ -58,6 +60,10 @@ export const USAGE_PROVIDERS = {
   minimax: {
     ...ACCOUNT_PROVIDERS.minimax,
     fetch: fetchMinimaxUsage,
+  },
+  workbuddy: {
+    ...ACCOUNT_PROVIDERS.workbuddy,
+    fetch: fetchWorkbuddyUsage,
   },
 } satisfies Record<ProviderId, UsageProvider>;
 
@@ -117,6 +123,7 @@ export const WIDGET_REFRESH_PROVIDERS = {
   copilot: withSnapshot(USAGE_PROVIDERS.copilot, normalizeCopilotUsage),
   zai: withSnapshot(USAGE_PROVIDERS.zai, normalizeZaiUsage),
   minimax: withSnapshot(USAGE_PROVIDERS.minimax, normalizeMinimaxUsage),
+  workbuddy: withSnapshot(USAGE_PROVIDERS.workbuddy, normalizeWorkbuddyUsage),
 } satisfies Record<ProviderId, WidgetRefreshProvider>;
 
 export function getUsageProvider(provider: ProviderId): UsageProvider {

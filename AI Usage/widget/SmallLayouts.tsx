@@ -59,6 +59,8 @@ export function FocusSingleSmallLayout(props: {
   remainingText: string;
   fetchedText: string;
   resetText: string;
+  resetLabel?: string;
+  infoEmphasis?: "default" | "values";
   optionalMeta: SmallOptionalMeta;
   chromeStyle?: WidgetChromeStyle;
 }) {
@@ -66,6 +68,7 @@ export function FocusSingleSmallLayout(props: {
   const verticalOffset = Math.max(0, (displayHeight() - 158) / 2);
   const optionalMeta = props.optionalMeta;
   const hasOptional = optionalMeta != null;
+  const emphasizeValues = props.infoEmphasis === "values";
 
   // 根据是否有额外重置包，自适应最佳垂直排版
   const pos = hasOptional
@@ -223,16 +226,16 @@ export function FocusSingleSmallLayout(props: {
         <HStack frame={{ width: contentWidth }}>
           <Text
             font={10}
-            fontWeight="bold"
+            fontWeight={emphasizeValues ? "medium" : "bold"}
             foregroundStyle={C.secondary}
             lineLimit={1}
           >
-            重置时间
+            {props.resetLabel || "重置时间"}
           </Text>
           <Spacer minLength={6} />
           <Text
             font={10}
-            fontWeight="medium"
+            fontWeight={emphasizeValues ? "semibold" : "medium"}
             foregroundStyle={C.primary}
             lineLimit={1}
           >
@@ -245,7 +248,7 @@ export function FocusSingleSmallLayout(props: {
           <HStack frame={{ width: contentWidth }}>
             <Text
               font={10}
-              fontWeight="bold"
+              fontWeight={emphasizeValues ? "medium" : "bold"}
               foregroundStyle={C.secondary}
               lineLimit={1}
             >
@@ -254,7 +257,7 @@ export function FocusSingleSmallLayout(props: {
             <Spacer minLength={6} />
             <Text
               font={10}
-              fontWeight="medium"
+              fontWeight={emphasizeValues ? "semibold" : "medium"}
               foregroundStyle={C.primary}
               lineLimit={1}
             >
@@ -267,7 +270,7 @@ export function FocusSingleSmallLayout(props: {
         <HStack frame={{ width: contentWidth }}>
           <Text
             font={10}
-            fontWeight="bold"
+            fontWeight={emphasizeValues ? "medium" : "bold"}
             foregroundStyle={C.secondary}
             lineLimit={1}
           >
@@ -276,8 +279,8 @@ export function FocusSingleSmallLayout(props: {
           <Spacer minLength={6} />
           <Text
             font={10}
-            fontWeight="medium"
-            foregroundStyle={C.secondary}
+            fontWeight={emphasizeValues ? "semibold" : "medium"}
+            foregroundStyle={emphasizeValues ? C.primary : C.secondary}
             lineLimit={1}
           >
             {props.fetchedText}

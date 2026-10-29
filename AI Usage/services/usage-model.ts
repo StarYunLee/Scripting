@@ -20,7 +20,17 @@ type UsageWindowLike = {
   usedPercent: number | null;
   remainingPercent: number | null;
   resetAt: string | null;
+  kind?: UsageWindowView["kind"];
+  detail?: string | null;
 };
+
+const WINDOW_KINDS = new Set(["quota", "balance", "status", "notice"]);
+
+function windowKind(value: unknown): UsageWindowView["kind"] | undefined {
+  return typeof value === "string" && WINDOW_KINDS.has(value)
+    ? (value as UsageWindowView["kind"])
+    : undefined;
+}
 
 export function sanitizeNormalizedUsageSnapshot(
   value: unknown,
@@ -39,6 +49,10 @@ export function sanitizeNormalizedUsageSnapshot(
     (window): window is UsageWindowView => {
       if (!window || typeof window !== "object") return false;
       const item = window as Partial<UsageWindowView>;
+      const detail =
+        typeof item.detail === "string" && item.detail.trim()
+          ? item.detail.trim()
+          : null;
       return (
         typeof item.id === "string" &&
         item.id.trim().length > 0 &&
@@ -52,10 +66,29 @@ export function sanitizeNormalizedUsageSnapshot(
             Number.isFinite(item.remainingPercent))) &&
         (item.resetAt == null ||
           (typeof item.resetAt === "string" &&
-            Number.isFinite(new Date(item.resetAt).getTime())))
+            Number.isFinite(new Date(item.resetAt).getTime()))) &&
+        (item.usedPercent != null ||
+          item.remainingPercent != null ||
+          item.resetAt != null ||
+          detail != null)
       );
     },
-  );
+  ).map((window) => {
+    const detail =
+      typeof window.detail === "string" && window.detail.trim()
+        ? window.detail.trim()
+        : null;
+    const kind = windowKind(window.kind);
+    return {
+      id: window.id,
+      label: window.label,
+      usedPercent: window.usedPercent ?? null,
+      remainingPercent: window.remainingPercent ?? null,
+      resetAt: window.resetAt ?? null,
+      ...(kind ? { kind } : {}),
+      ...(detail ? { detail } : {}),
+    };
+  });
   const rawCredits = snapshot.resetCredits;
   const rawExpirations = Array.isArray(rawCredits?.expirations)
     ? rawCredits.expirations
@@ -130,18 +163,26 @@ export function isUsageWindowView(
 export function toUsageWindowView(
   window: UsageWindowLike,
 ): UsageWindowView | null {
+  const detail =
+    typeof window.detail === "string" && window.detail.trim()
+      ? window.detail.trim()
+      : null;
   if (
     window.usedPercent == null &&
     window.remainingPercent == null &&
-    !window.resetAt
+    !window.resetAt &&
+    !detail
   ) {
     return null;
   }
+  const kind = windowKind(window.kind);
   return {
     id: window.id,
     label: window.label,
     usedPercent: window.usedPercent,
     remainingPercent: window.remainingPercent,
     resetAt: window.resetAt,
+    ...(kind ? { kind } : {}),
+    ...(detail ? { detail } : {}),
   };
 }

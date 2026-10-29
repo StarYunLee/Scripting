@@ -134,6 +134,21 @@ import {
 } from "./minimax/oauth";
 import { normalizeUsageSnapshot as normalizeMinimaxUsage } from "./minimax/normalize";
 import { clearProfileSettings as clearMinimaxSettings } from "./minimax/credentials";
+import * as WorkbuddyAccounts from "./workbuddy/accounts";
+import {
+  fetchUsage as fetchWorkbuddyUsage,
+  getCachedUsage as getWorkbuddyCache,
+  clearUsageCache as clearWorkbuddyCache,
+} from "./workbuddy/api";
+import {
+  startWorkbuddyLogin,
+  completeWorkbuddyLogin,
+  clearPendingOAuth as clearWorkbuddyPending,
+  getPendingOAuthProfileId as getWorkbuddyPending,
+  hasPendingOAuth as hasWorkbuddyPending,
+} from "./workbuddy/oauth";
+import { normalizeUsageSnapshot as normalizeWorkbuddyUsage } from "./workbuddy/normalize";
+import { clearProfileSettings as clearWorkbuddySettings } from "./workbuddy/widget-settings";
 import type { ProviderId } from "../models";
 import type { ProviderCore } from "./contracts";
 
@@ -335,6 +350,28 @@ export const PROVIDER_REGISTRY = {
       clearCache: clearMinimaxCache,
     },
     clearSettings: clearMinimaxSettings,
+  },
+  workbuddy: {
+    ...ACCOUNT_PROVIDERS.workbuddy,
+    ensure: WorkbuddyAccounts.ensureAccountMigration,
+    create: WorkbuddyAccounts.createAccount,
+    remove: WorkbuddyAccounts.deleteAccount,
+    auth: {
+      start: startWorkbuddyLogin,
+      complete: completeWorkbuddyLogin,
+      clearPending: clearWorkbuddyPending,
+      pendingId: getWorkbuddyPending,
+      hasPending: hasWorkbuddyPending,
+    },
+    usage: {
+      fetch: fetchWorkbuddyUsage,
+      cache: (profileId: string) => {
+        const snapshot = getWorkbuddyCache(profileId);
+        return snapshot ? normalizeWorkbuddyUsage(snapshot) : null;
+      },
+      clearCache: clearWorkbuddyCache,
+    },
+    clearSettings: clearWorkbuddySettings,
   },
 } satisfies Record<ProviderId, ProviderCore>;
 

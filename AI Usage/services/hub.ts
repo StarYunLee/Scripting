@@ -26,6 +26,10 @@ import {
   getPendingRegion as getZaiPendingRegion,
 } from "../providers/zai/oauth";
 import { getPendingRegion as getMinimaxPendingRegion } from "../providers/minimax/oauth";
+import {
+  getPendingAuthorizationUrl as getWorkbuddyPendingUrl,
+  getPendingRegion as getWorkbuddyPendingRegion,
+} from "../providers/workbuddy/oauth";
 import { consoleUrlForRegion as minimaxConsoleUrlForRegion } from "../providers/minimax/regions";
 import { clearWidgetRefreshMetadata } from "./widget-refresh-metadata";
 import { deleteAccountData } from "./account-deletion";
@@ -49,11 +53,13 @@ export const authCoordinator = createAuthCoordinator({
   getConsoleAuthorizationRegion: (provider) => {
     if (provider === "zai") return getZaiPendingRegion();
     if (provider === "minimax") return getMinimaxPendingRegion();
+    if (provider === "workbuddy") return getWorkbuddyPendingRegion();
     return null;
   },
   getConsoleAuthorizationUrl: (provider, region) => {
     if (provider === "zai") return zaiConsoleUrlForRegion(region);
     if (provider === "minimax") return minimaxConsoleUrlForRegion(region);
+    if (provider === "workbuddy") return getWorkbuddyPendingUrl();
     return null;
   },
   writeLog,

@@ -7,6 +7,7 @@ import * as KimiAccounts from "./kimi/accounts";
 import * as CopilotAccounts from "./copilot/accounts";
 import * as ZaiAccounts from "./zai/accounts";
 import * as MinimaxAccounts from "./minimax/accounts";
+import * as WorkbuddyAccounts from "./workbuddy/accounts";
 import type { ProviderId } from "../models";
 import type { AccountLookupProvider } from "./contracts";
 
@@ -55,6 +56,11 @@ export const ACCOUNT_PROVIDERS = {
     id: "minimax",
     list: MinimaxAccounts.listAccounts,
     token: MinimaxAccounts.getProfileAccessToken,
+  },
+  workbuddy: {
+    id: "workbuddy",
+    list: WorkbuddyAccounts.listAccounts,
+    token: WorkbuddyAccounts.getProfileAccessToken,
   },
 } satisfies Record<ProviderId, AccountLookupProvider>;
 

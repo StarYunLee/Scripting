@@ -48,10 +48,12 @@ function isOAuthCallbackPasteProvider(
 }
 
 function isSingleCheckProvider(provider: AuthSheet["provider"]): boolean {
-  return provider === "cursor" || provider === "kimi";
+  return provider === "cursor" || provider === "kimi" || provider === "workbuddy";
 }
 
 function singleCheckInstruction(provider: AuthSheet["provider"]): string {
+  if (provider === "workbuddy")
+    return "完成 WorkBuddy 浏览器登录后，返回应用即可自动连接。";
   return provider === "kimi"
     ? "完成 Kimi Code 设备授权后，返回应用即可自动连接。"
     : "完成 Cursor 网页登录后，返回应用即可自动连接。";

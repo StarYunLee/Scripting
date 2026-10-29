@@ -17,6 +17,8 @@ import { normalizeUsageSnapshot as normalizeZaiUsage } from "./zai/normalize";
 import type { UsageSnapshot as ZaiSnapshot } from "./zai/types";
 import { normalizeUsageSnapshot as normalizeMinimaxUsage } from "./minimax/normalize";
 import type { UsageSnapshot as MinimaxSnapshot } from "./minimax/types";
+import { normalizeUsageSnapshot as normalizeWorkbuddyUsage } from "./workbuddy/normalize";
+import type { UsageSnapshot as WorkbuddySnapshot } from "./workbuddy/types";
 import type { ProviderId } from "../models";
 import type { AccountLookupProvider } from "./contracts";
 import {
@@ -83,7 +85,68 @@ const DEFINITIONS = {
     prefix: "ai_usage_minimax_cache_v1",
     normalize: normalizeMinimaxUsage,
   } satisfies CacheDefinition<MinimaxSnapshot>,
+  workbuddy: {
+    prefix: "ai_usage_workbuddy_cache_v2",
+    normalize: normalizeWorkbuddyUsage,
+  } satisfies CacheDefinition<WorkbuddySnapshot>,
 };
+
+function cachePrefix(provider: ProviderId): string | null {
+  const definition = DEFINITIONS[provider] as
+    | { prefix?: unknown }
+    | undefined;
+  if (!definition) return null;
+  const prefix = definition.prefix;
+  return typeof prefix === "string" ? prefix : null;
+}
+
+/**
+ * 缓存键的唯一事实来源。备份恢复等需要清理缓存的路径必须复用本函数，
+ * 不得再按平台自行硬编码版本号（历史上 WorkBuddy 因此漏清 v2 缓存）。
+ */
+export function snapshotCacheKey(
+  provider: ProviderId,
+  profileId: string,
+): string | null {
+  const prefix = cachePrefix(provider);
+  return prefix ? `${prefix}_${profileId}` : null;
+}
+
+/**
+ * 历史遗留缓存前缀：仅用于恢复备份时清掉旧版本键。
+ * 只登记真实存在过的旧版本，不扩大其他平台的清理范围。
+ */
+const LEGACY_CACHE_PREFIXES: Partial<Record<ProviderId, readonly string[]>> = {
+  workbuddy: ["ai_usage_workbuddy_cache_v1"],
+};
+
+/** 当前版本键 + 历史版本键，均限定在同一 provider/profileId 上。 */
+export function snapshotCacheKeys(
+  provider: ProviderId,
+  profileId: string,
+): string[] {
+  const current = snapshotCacheKey(provider, profileId);
+  const legacy = (LEGACY_CACHE_PREFIXES[provider] ?? []).map(
+    (prefix) => `${prefix}_${profileId}`,
+  );
+  return current ? [current, ...legacy] : legacy;
+}
+
+/** 清理该 provider 账号的缓存；Storage 不可用时静默降级，不影响恢复主流程。 */
+export function clearSnapshotCache(
+  provider: ProviderId,
+  profileId: string,
+): string[] {
+  const keys = snapshotCacheKeys(provider, profileId);
+  for (const key of keys) {
+    try {
+      Storage.remove(key);
+    } catch {
+      /* ignore Storage failures */
+    }
+  }
+  return keys;
+}
 
 export const SNAPSHOT_PROVIDERS = {
   codex: {
@@ -122,6 +185,10 @@ export const SNAPSHOT_PROVIDERS = {
   minimax: {
     ...ACCOUNT_PROVIDERS.minimax,
     cache: (profileId: string) => readSnapshot(profileId, DEFINITIONS.minimax),
+  },
+  workbuddy: {
+    ...ACCOUNT_PROVIDERS.workbuddy,
+    cache: (profileId: string) => readSnapshot(profileId, DEFINITIONS.workbuddy),
   },
 } satisfies Record<ProviderId, SnapshotProvider>;
 

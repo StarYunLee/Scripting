@@ -89,6 +89,7 @@ export function AccountDetailPage(props: {
   const [widgetTick, setWidgetTick] = useState(0);
   const [parameterCopied, setParameterCopied] = useState(false);
   const meta = providerMeta(props.provider);
+  const fixedLayout = Boolean(meta.capabilities.fixedWidgetLayout);
   const title = props.account.email || props.account.name;
 
   function changed() {
@@ -196,7 +197,7 @@ export function AccountDetailPage(props: {
         </GlassGroup>
       </Section>
 
-      {props.overviewWindows.length > 0 ? (
+      {!fixedLayout && props.overviewWindows.length > 0 ? (
         <Section
           listRowBackground={glassRowBackground}
           header={<GlassSectionHeader title="用量总览" />}
@@ -252,7 +253,7 @@ export function AccountDetailPage(props: {
         </Section>
       ) : null}
 
-      {meta.capabilities.widget && props.overviewWindows.length > 0 ? (
+      {!fixedLayout && meta.capabilities.widget && props.overviewWindows.length > 0 ? (
         <Section
           listRowBackground={glassRowBackground}
           header={<GlassSectionHeader title="桌面小组件" />}

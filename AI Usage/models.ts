@@ -10,6 +10,7 @@ export const PROVIDER_IDS = [
   "copilot",
   "zai",
   "minimax",
+  "workbuddy",
 ] as const;
 
 export type ProviderId = (typeof PROVIDER_IDS)[number];
@@ -29,12 +30,16 @@ export type AuthSheet = {
   sessionId?: number;
 };
 
+export type UsageWindowKind = "quota" | "balance" | "status" | "notice";
+
 export type UsageWindowView = {
   id: string;
   label: string;
   usedPercent: number | null;
   remainingPercent: number | null;
   resetAt: string | null;
+  kind?: UsageWindowKind;
+  detail?: string | null;
 };
 
 export type UsageCard = {
@@ -67,6 +72,7 @@ export type ProviderMeta = {
   pastePlaceholder: string;
   capabilities: {
     widget: boolean;
+    fixedWidgetLayout?: boolean;
   };
 };
 
@@ -165,6 +171,16 @@ export const PROVIDER_META: Record<ProviderId, ProviderMeta> = {
       "先选择 international minimax.io 或国内 minimaxi.com，再从对应控制台复制 Subscription Key。应用会以非空真实额度行校验站点，跨区空响应不会被视为成功。",
     pastePlaceholder: "粘贴所选站点的 MiniMax Subscription Key",
     capabilities: { widget: true },
+  },
+  workbuddy: {
+    id: "workbuddy",
+    title: "WorkBuddy",
+    connectTitle: "连接 WorkBuddy 账户",
+    subtitle: "连接 WorkBuddy 国内版或国际版，查看套餐积分、今日到期与签到状态。",
+    accent: "#00B3A4",
+    pasteHint: "无需粘贴，完成 WorkBuddy 浏览器登录后会自动连接。",
+    pastePlaceholder: "无需填写，完成浏览器登录后会自动连接",
+    capabilities: { widget: true, fixedWidgetLayout: true },
   },
 };
 

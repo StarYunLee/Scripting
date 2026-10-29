@@ -10,6 +10,7 @@ export const LOGO_BASE_NAME: Record<ProviderId, string> = {
   copilot: "copilot",
   zai: "zai",
   minimax: "minimax",
+  workbuddy: "workbuddy",
 };
 
 export function providerLogoBaseName(provider: ProviderId): string {

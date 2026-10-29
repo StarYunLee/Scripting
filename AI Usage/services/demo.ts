@@ -13,6 +13,8 @@ type DemoAccount = {
     label: string;
     usedPercent: number | null;
     resetOffsetMs: number;
+    kind?: UsageWindowView["kind"];
+    detail?: string | null;
   }>;
   resetCredits: {
     available: number;
@@ -460,6 +462,51 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
     ],
     resetCredits: null,
   },
+  {
+    id: "demo_workbuddy_pro",
+    provider: "workbuddy",
+    title: "demo@workbuddy.demo",
+    planLabel: "国内版",
+    windows: [
+      {
+        id: "workbuddy:credits",
+        name: "credits",
+        label: "套餐积分",
+        usedPercent: 25,
+        resetOffsetMs: 8 * 86_400_000 + 12 * 3_600_000,
+        kind: "quota",
+        detail: "2500 / 10000 积分",
+      },
+      {
+        id: "workbuddy:checkin",
+        name: "checkin",
+        label: "今日签到",
+        usedPercent: null,
+        resetOffsetMs: 12 * 3_600_000,
+        kind: "status",
+        detail: "已签 +100 积分 · 连续 4 天",
+      },
+      {
+        id: "workbuddy:prepaid",
+        name: "prepaid",
+        label: "预付费积分",
+        usedPercent: null,
+        resetOffsetMs: 20 * 86_400_000,
+        kind: "balance",
+        detail: "余额 750 积分",
+      },
+      {
+        id: "workbuddy:expiring",
+        name: "expiring",
+        label: "即将到期",
+        usedPercent: null,
+        resetOffsetMs: 5 * 86_400_000,
+        kind: "notice",
+        detail: "232.4 积分 · 10-13 到期",
+      },
+    ],
+    resetCredits: null,
+  },
 ];
 
 function futureIso(offsetMs: number): string {
@@ -468,12 +515,14 @@ function futureIso(offsetMs: number): string {
 
 function toWindows(account: DemoAccount): UsageWindowView[] {
   return account.windows.map((window) => ({
-    id: `${account.id}:${window.id}`,
+    id: window.id.includes(":") ? window.id : `${account.id}:${window.id}`,
     label: window.label,
     usedPercent: window.usedPercent,
     remainingPercent:
       window.usedPercent == null ? null : 100 - window.usedPercent,
     resetAt: futureIso(window.resetOffsetMs),
+    ...(window.kind ? { kind: window.kind } : {}),
+    ...(window.detail ? { detail: window.detail } : {}),
   }));
 }
 

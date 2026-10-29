@@ -1,4 +1,4 @@
-import type { UsageCard } from "../models";
+import { providerMeta, type UsageCard } from "../models";
 
 const LIVE_STORAGE_KEY = "ai_usage_dashboard_widget_preferences_v1";
 const DEMO_STORAGE_KEY = "ai_usage_demo_dashboard_widget_preferences_v1";
@@ -261,6 +261,13 @@ export function applyDashboardWidgetPreferences(
   return cards
     .filter((card) => !hidden.has(card.key))
     .map((card) => {
+      const fixed = providerMeta(card.provider).capabilities.fixedWidgetLayout;
+      if (fixed) {
+        const windows = card.provider === "workbuddy"
+          ? card.windows.filter((window) => window.id === "workbuddy:credits")
+          : card.windows.slice(0, 1);
+        return { ...card, windows: windows.slice(0, 1) };
+      }
       const hasSelection = Object.prototype.hasOwnProperty.call(
         effectivePreferences.windowIdsByAccount,
         card.key,

@@ -10,6 +10,7 @@ const WATERMARK_MAP: Record<ProviderId, string> = {
   copilot: "assets/watermark-copilot.png",
   zai: "assets/watermark-zai.png",
   minimax: "assets/watermark-minimax.png",
+  workbuddy: "assets/watermark-workbuddy.png",
 };
 
 export function providerWatermarkPath(provider: ProviderId): string {

@@ -204,33 +204,47 @@ export function SettingsPage(props: {
         return;
       }
       const consoleRegion =
-        provider === "minimax" || provider === "zai"
+        provider === "minimax" || provider === "zai" || provider === "workbuddy"
           ? parseConsoleAuthChoice(
               (await Dialog.actionSheet({
                 title:
                   provider === "minimax"
                     ? "选择 MiniMax 站点"
-                    : "选择 Z.ai 站点",
+                    : provider === "workbuddy"
+                      ? "选择 WorkBuddy 站点"
+                      : "选择 Z.ai 站点",
                 message:
                   provider === "minimax"
                     ? "Subscription Key 必须从对应站点获取；稍后仍会用真实额度行校验区域。"
-                    : "API Key 必须从对应控制台获取；稍后仍会自动校验国际站或国内站。",
+                    : provider === "workbuddy"
+                      ? "国内站与国际站使用不同账号和接口；完成浏览器登录后会自动连接。"
+                      : "API Key 必须从对应控制台获取；稍后仍会自动校验国际站或国内站。",
                 actions:
                   provider === "minimax"
                     ? [
                         { label: "国际站 · minimax.io" },
                         { label: "国内站 · minimaxi.com" },
                       ]
-                    : [
-                        { label: "国际站 · Z.ai" },
-                        { label: "国内站 · 智谱开放平台" },
-                      ],
+                    : provider === "workbuddy"
+                      ? [
+                          { label: "国际站 · workbuddy.ai" },
+                          { label: "国内站 · workbuddy.cn" },
+                        ]
+                      : [
+                          { label: "国际站 · Z.ai" },
+                          { label: "国内站 · 智谱开放平台" },
+                        ],
                 cancelButton: true,
               })) ?? -1,
             )
           : null;
       if (!current()) return;
-      if ((provider === "minimax" || provider === "zai") && !consoleRegion)
+      if (
+        (provider === "minimax" ||
+          provider === "zai" ||
+          provider === "workbuddy") &&
+        !consoleRegion
+      )
         return;
       const result = restartSheet
         ? await authCoordinator.restart(

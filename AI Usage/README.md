@@ -21,7 +21,7 @@
   </tr>
 </table>
 
-面向 [Scripting App](https://scriptingapp.github.io/) 的非官方多平台用量查看应用。在一个项目里管理 Codex、Grok、Claude、Antigravity、Cursor、Kimi Code、GitHub Copilot、Z.ai 与 MiniMax 的多账号用量、主屏幕小组件和自动化刷新。
+面向 [Scripting App](https://scriptingapp.github.io/) 的非官方多平台用量查看应用。在一个项目里管理 Codex、Grok、Claude、Antigravity、Cursor、Kimi Code、GitHub Copilot、Z.ai、MiniMax 与 WorkBuddy 的多账号用量、主屏幕小组件和自动化刷新。
 
 当前版本：`1.8.1`
 
@@ -29,13 +29,13 @@
 
 ## 功能
 
-- **多平台用量集中聚合**：统一连接并追踪 Codex、Grok、Claude、Antigravity、Cursor、Kimi Code、GitHub Copilot、Z.ai 与 MiniMax 多平台账号，支持同平台多账号并行管理与多窗口额度独立跟踪。
+- **多平台用量集中聚合**：统一连接并追踪 Codex、Grok、Claude、Antigravity、Cursor、Kimi Code、GitHub Copilot、Z.ai、MiniMax 与 WorkBuddy 多平台账号，支持同平台多账号并行管理与多窗口额度独立跟踪。
 - **可选的 Scripting 主页入口（需要 Scripting Pro）**：可将 AI Usage 固定在 Scripting Home Tab，直接查看用量并进入设置；不启用该入口不影响独立应用、主屏幕小组件及其他原有功能。
 - **全尺寸主屏幕小组件**：
   - 覆盖单账号（Small / Medium）与多账号聚合看板（Small / Medium / Large / ExtraLarge），支持集中配置展示账号、额度窗口与账号标识。
   - **默认彩色风格**：保留经典彩色品牌胶囊徽章，配备绿 / 橙 / 红三段式用量风险预警进度条（剩余 ≤40% 预警，≤15% 紧急），主数值固定显示剩余额度。
   - **Clear 简约风格**：内置独立外观开关。在普通桌面上呈现黑白反差的高级线框极简风；在透明桌面上呈现纯粹通透的白线框极简风。
-  - **透明小组件深度适配**：解绑系统固定背景，采用 15% 黄金微透暗底托底，配合全天候通透纯白高亮字、苹果亮绿用量色与抗杂色文字微阴影（_受限于无实时模糊的系统切图机制，不保证在所有高反差、强光或复杂壁纸下视觉效果均佳_）。
+  - **透明小组件深度适配**：解绑系统固定背景，不铺额外底板，配合全天候通透纯白高亮字、苹果亮绿用量色与抗杂色文字微阴影（_受限于无实时模糊的系统切图机制，不保证在所有高反差、强光或复杂壁纸下视觉效果均佳_）。
 - **文件级加密备份与恢复**：采用 PBKDF2-HMAC-SHA256 密钥派生与 AES-256-GCM 强加密算法，安全导出与跨设备迁移 Keychain 凭据、默认平台选择与小组件布局偏好；支持原地增量合并与过期残留字段清理。
 - **平滑离线缓存回退**：遭遇网络波动、服务宕机或官方接口限流时，小组件与应用内自动平滑回退至最近一次成功缓存，避免白屏与报错跳动。
 - **开箱只读演示模式**：内置完整 Demo 数据集，无需绑定真实密钥即可直接在应用内与主屏幕小组件上预览全部尺寸与布局效果。
@@ -67,7 +67,7 @@ https://raw.githubusercontent.com/StarYunLee/Scripting/main/AI-Usage.scripting
 
 ## OAuth 登录
 
-在用量页点击右上角 `+` 并选择平台。应用会根据平台引导完成授权：回调地址、一次性授权码、API Key 或 Subscription Key 粘贴后会自动验证并连接；Cursor、Kimi Code 与 GitHub Copilot 会在关闭授权页后自动检查结果。
+在用量页点击右上角 `+` 并选择平台。应用会根据平台引导完成授权：回调地址、一次性授权码、API Key 或 Subscription Key 粘贴后会自动验证并连接；Cursor、Kimi Code、GitHub Copilot 与 WorkBuddy 会在关闭授权页后自动检查结果。
 
 ### Codex
 
@@ -115,6 +115,17 @@ https://raw.githubusercontent.com/StarYunLee/Scripting/main/AI-Usage.scripting
 
 - 先选择国际站 `minimax.io` 或国内站 `minimaxi.com`
 - 从对应站点复制 Subscription Key，粘贴后自动验证；密钥错误时可以原地重新粘贴
+
+### WorkBuddy
+
+- 先选择国内站 `workbuddy.cn` 或国际站 `workbuddy.ai`
+- 在打开的 WorkBuddy 登录页完成浏览器登录，返回应用后会自动轮询并连接
+- 只接入浏览器账户授权；WorkBuddy desktop 的本地登录在 5.6+ 已加密，API Key 也读不到积分，因此不提供这两种方式
+- 账户徽章显示国内版 / 国际版，不再显示 Free / Pro 套餐类型；国内版使用青绿，国际版使用深蓝
+- 组件采用固定布局：Small 显示套餐剩余百分比、已用积分、总积分与刷新时间；Medium 显示剩余百分比、重置时间、剩余 / 总积分与单行签到状态；不提供窗口选择
+- 多账号看板固定显示主积分额度及已用 / 总积分，不会用签到状态替代主额度
+- 用量卡显示剩余 / 总积分与单行签到状态，并在有数据时显示预付费余额和积分包到期提示；不展示今日已用或每日免费切片
+- 国内版支持只读签到状态；查询失败会明确提示获取失败，和未开放区分；奖励数值跟随接口，国际版不查询签到
 
 回调型 OAuth 临时状态有效期为 10 分钟，设备授权与控制台密钥验证通常为 15 分钟。Authorization Code 通常只能交换一次；授权失败或超时后请按页面提示继续或重新开始。
 
@@ -207,6 +218,7 @@ dashboard
 - GitHub Copilot：GitHub 设备授权与 Copilot 用量接口
 - Z.ai：Z.ai / 智谱 API Key 与用量接口
 - MiniMax：MiniMax Subscription Key 与 Token Plan 用量接口
+- WorkBuddy：WorkBuddy 国内版 / 国际版浏览器账户授权与积分接口
 
 服务端更新后，路径、字段或访问策略可能变化。
 
@@ -251,7 +263,7 @@ AI Usage/
 ├── assets/                   平台 Logo、水印与展示图
 ├── components/               共享 UI 与用量卡片
 ├── pages/                    用量、设置、账号详情、日志页
-├── providers/                Codex / Grok / Claude / Antigravity / Cursor / Kimi / Copilot / Z.ai / MiniMax 适配
+├── providers/                Codex / Grok / Claude / Antigravity / Cursor / Kimi / Copilot / Z.ai / MiniMax / WorkBuddy 适配
 ├── services/                 刷新编排、配色、设置、演示与存储
 ├── widget/                   小组件分发、Loader 与平台布局
 ├── app_intents.tsx           系统 App Intent

@@ -9,6 +9,7 @@ import {
   formatSmallDate,
   formatTimeOnly,
 } from "../services/usage-format";
+import { formatCredits } from "../providers/workbuddy/format";
 import { parseWidgetFamily, widgetDispatcherFallbackWidth } from "./family";
 import {
   FocusSingleSmallLayout,
@@ -25,6 +26,24 @@ import {
 } from "./MediumLayouts";
 import type { NormalizedResetCredits } from "../services/usage-model";
 import type { WidgetChromeStyle } from "./chrome-style";
+import { WorkbuddyMediumLayout } from "./workbuddy-layouts";
+
+function workbuddyCreditParts(detail: string | null | undefined): {
+  used: string;
+  total: string;
+} | null {
+  const text = (detail || "").replace(/积分/g, "").trim();
+  const [usedRaw, totalRaw] = text.split("/").map((part) => part.trim());
+  const used = Number(usedRaw);
+  const total = Number(totalRaw);
+  if (!Number.isFinite(used) || !Number.isFinite(total) || total <= 0) {
+    return null;
+  }
+  return {
+    used: formatCredits(used),
+    total: formatCredits(total),
+  };
+}
 
 type Props = {
   provider: ProviderId;
@@ -88,6 +107,50 @@ export function WidgetDispatcher(props: Props) {
   const timeText = formatTimeOnly(props.fetchedAt);
   const fetchedText = timeText === "—" ? "—" : `${timeText} 刷新`;
   const optionalMeta = resolveOptionalMeta(props.resetCredits);
+
+  if (props.provider === "workbuddy") {
+    if (isSmall) {
+      const credits = props.windows.find(
+        (window) => window.id === "workbuddy:credits",
+      );
+      const creditParts = workbuddyCreditParts(credits?.detail);
+      return (
+        <FocusSingleSmallLayout
+          width={width}
+          provider={props.provider}
+          planLabel={planLabel}
+          watermarkPath={watermarkPath}
+          title={credits?.label || "暂无套餐额度"}
+          usedPercent={credits?.usedPercent}
+          remainingPercent={credits?.remainingPercent}
+          usedText={formatPercent(credits?.usedPercent)}
+          remainingText={formatPercent(credits?.remainingPercent)}
+          fetchedText={props.errorText || timeText}
+          resetLabel="已用积分"
+          resetText={creditParts?.used || "—"}
+          infoEmphasis="values"
+          optionalMeta={
+            creditParts
+              ? { label: "总积分", value: creditParts.total }
+              : null
+          }
+          chromeStyle={props.chromeStyle}
+        />
+      );
+    }
+    return (
+      <WorkbuddyMediumLayout
+        width={width}
+        provider={props.provider}
+        planLabel={planLabel}
+        watermarkPath={watermarkPath}
+        windows={props.windows}
+        fetchedText={fetchedText}
+        errorText={props.errorText}
+        chromeStyle={props.chromeStyle}
+      />
+    );
+  }
 
   // 兜底一个空窗口避免无数据时崩溃
   const activeWindows =

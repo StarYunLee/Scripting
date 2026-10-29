@@ -20,6 +20,7 @@ import { usageTint } from "../services/usage-colors";
 import { PlanBadge } from "./PlanBadge";
 import { ProviderLogo } from "./ProviderLogo";
 import { maskEmailAddress } from "../services/account-privacy";
+import { WorkbuddyUsageCardBody } from "./WorkbuddyUsageCardBody";
 
 const CARD_RADIUS = 20;
 
@@ -199,10 +200,17 @@ export function UsageCardView(props: {
         </HStack>
       ) : null}
 
-      {props.card.windows.length === 0 ? (
+      {props.card.provider === "workbuddy" && !props.card.authorized ? (
+        <Text font={13} foregroundStyle="secondaryLabel">尚未授权</Text>
+      ) : props.card.windows.length === 0 ? (
         <Text font={13} foregroundStyle="secondaryLabel">
           {props.card.authorized ? "暂无用量窗口" : "尚未授权"}
         </Text>
+      ) : props.card.provider === "workbuddy" ? (
+        <WorkbuddyUsageCardBody
+          card={props.card}
+          displayMode={props.displayMode}
+        />
       ) : (
         props.card.windows.map((window) => {
           const value =

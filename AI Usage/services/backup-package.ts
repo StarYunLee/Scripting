@@ -6,6 +6,8 @@ import { retireAccountWork } from "./account-work-guard";
 import { invalidateUsageRuntime } from "./runtime-consistency";
 import { clearWidgetRefreshMetadata } from "./widget-refresh-metadata";
 import { invalidateDashboardWidgetPreferences } from "./dashboard-widget-prefs";
+import { clearSnapshotCache } from "../providers/snapshot-registry";
+import { normalizeRegion } from "../providers/workbuddy/regions";
 
 // 各平台 secret 字段映射，与各 provider accounts.ts 中的定义严格对齐
 const PROVIDER_SECRET_FIELDS: Record<ProviderId, string[]> = {
@@ -42,6 +44,18 @@ const PROVIDER_SECRET_FIELDS: Record<ProviderId, string[]> = {
   copilot: ["access_token", "account_id"],
   zai: ["access_token", "region", "account_id"],
   minimax: ["access_token", "region", "account_id"],
+  workbuddy: [
+    "access_token",
+    "refresh_token",
+    "expires_at",
+    "refresh_expires_at",
+    "domain",
+    "token_type",
+    "uid",
+    "enterprise_id",
+    "region",
+    "account_id",
+  ],
 };
 
 const PROVIDER_SECRET_PREFIXES: Record<ProviderId, string> = {
@@ -54,6 +68,7 @@ const PROVIDER_SECRET_PREFIXES: Record<ProviderId, string> = {
   copilot: "ai_usage_copilot_profile",
   zai: "ai_usage_zai_profile",
   minimax: "ai_usage_minimax_profile",
+  workbuddy: "ai_usage_workbuddy_profile",
 };
 
 const PROVIDER_REGISTRY_KEYS: Record<ProviderId, string> = {
@@ -66,6 +81,7 @@ const PROVIDER_REGISTRY_KEYS: Record<ProviderId, string> = {
   copilot: "ai_usage_copilot_account_registry_v1",
   zai: "ai_usage_zai_account_registry_v1",
   minimax: "ai_usage_minimax_account_registry_v1",
+  workbuddy: "ai_usage_workbuddy_account_registry_v1",
 };
 
 type StoredRegistry = {
@@ -201,12 +217,147 @@ export type RestoreSummary = {
   updatedAccounts: number;
 };
 
+function secretText(value: unknown): string | null {
+  return typeof value === "string" && value.trim().length > 0
+    ? value.trim()
+    : null;
+}
+
+/** Keychain 读取一律吞掉宿主错误，且绝不上抛或打印凭据内容。 */
+function readSecretField(
+  prefix: string,
+  profileId: string,
+  field: string,
+): string | null {
+  try {
+    return secretText(Keychain.get(`${prefix}_${profileId}_${field}`));
+  } catch {
+    return null;
+  }
+}
+
+type WorkbuddyIdentity = {
+  region: "cn" | "intl";
+  uid: string;
+  enterpriseId: string | null;
+};
+
+/**
+ * WorkBuddy 跨设备备份没有邮箱，稳定身份是 region + uid（回退 accountId）+ enterprise_id。
+ * 任一维度缺失都不构成可合并身份，避免把国内版/国际版或不同企业租户合并成同一账号。
+ */
+function workbuddyIdentity(input: {
+  region?: unknown;
+  uid?: unknown;
+  enterpriseId?: unknown;
+  accountId?: unknown;
+}): WorkbuddyIdentity | null {
+  const region = normalizeRegion(secretText(input.region));
+  const uid = secretText(input.uid) ?? secretText(input.accountId);
+  if (!region || !uid) return null;
+  return { region, uid, enterpriseId: secretText(input.enterpriseId) };
+}
+
+function sameWorkbuddyIdentity(
+  a: WorkbuddyIdentity,
+  b: WorkbuddyIdentity,
+): boolean {
+  return (
+    a.region === b.region &&
+    a.uid === b.uid &&
+    a.enterpriseId === b.enterpriseId
+  );
+}
+
+function localWorkbuddyIdentity(
+  prefix: string,
+  account: StoredRegistry["accounts"][number],
+): WorkbuddyIdentity | null {
+  return workbuddyIdentity({
+    region: readSecretField(prefix, account.id, "region"),
+    uid: readSecretField(prefix, account.id, "uid"),
+    enterpriseId: readSecretField(prefix, account.id, "enterprise_id"),
+    accountId:
+      secretText(account.accountId) ??
+      readSecretField(prefix, account.id, "account_id"),
+  });
+}
+
+function incomingWorkbuddyIdentity(
+  incoming: BackupAccountItem,
+): WorkbuddyIdentity | null {
+  const secrets = incoming.secrets || {};
+  return workbuddyIdentity({
+    region: secrets.region,
+    uid: secrets.uid,
+    enterpriseId: secrets.enterprise_id,
+    accountId: secretText(incoming.accountId) ?? secrets.account_id,
+  });
+}
+
+/**
+ * 定位备份账号对应的本地账号：
+ * 1. 同 id 一律原地恢复（保留本地 profile id 及引用）；
+ * 2. WorkBuddy 只按 region + uid + enterprise 合并，不使用邮箱；
+ * 3. 其他平台保持原有 id / email 合并语义。
+ */
+function findExistingAccountIndex(options: {
+  provider: ProviderId;
+  prefix: string;
+  accounts: StoredRegistry["accounts"];
+  incoming: BackupAccountItem;
+}): number {
+  const { provider, prefix, accounts, incoming } = options;
+  const sameId = accounts.findIndex((account) => account.id === incoming.id);
+  if (sameId >= 0) return sameId;
+
+  if (provider === "workbuddy") {
+    const incomingIdentity = incomingWorkbuddyIdentity(incoming);
+    if (!incomingIdentity) return -1;
+    return accounts.findIndex((account) => {
+      const local = localWorkbuddyIdentity(prefix, account);
+      return local ? sameWorkbuddyIdentity(local, incomingIdentity) : false;
+    });
+  }
+
+  const email = secretText(incoming.email)?.toLowerCase();
+  if (!email) return -1;
+  return accounts.findIndex(
+    (account) => secretText(account.email)?.toLowerCase() === email,
+  );
+}
+
+function remapPreferenceAccounts<T extends object>(
+  preferences: T,
+  accountKeys: Map<string, string>,
+): T {
+  const next = { ...preferences } as Record<string, unknown>;
+  for (const field of ["hiddenAccountKeys", "accountOrder"]) {
+    const values = next[field];
+    if (Array.isArray(values)) {
+      next[field] = [...new Set(values.map((key) =>
+        typeof key === "string" ? accountKeys.get(key) ?? key : key,
+      ))];
+    }
+  }
+  for (const field of ["selectedWindows", "windowIdsByAccount"]) {
+    const values = next[field];
+    if (values && typeof values === "object" && !Array.isArray(values)) {
+      next[field] = Object.fromEntries(Object.entries(values).map(([key, value]) =>
+        [accountKeys.get(key) ?? key, value],
+      ));
+    }
+  }
+  return next as T;
+}
+
 /**
  * 增量合并还原备份 Payload
  */
 export function restoreBackupPayload(payload: BackupPayload): RestoreSummary {
   let added = 0;
   let updated = 0;
+  const restoredWorkbuddyKeys = new Map<string, string>();
 
   const accountsByProvider = new Map<ProviderId, BackupAccountItem[]>();
   for (const item of payload.data.accounts || []) {
@@ -239,19 +390,24 @@ export function restoreBackupPayload(payload: BackupPayload): RestoreSummary {
 
     const currentAccounts = [...registry.accounts];
     const fields = PROVIDER_SECRET_FIELDS[provider];
+    /** 备份账号 id → 实际落库 id（身份合并后两者可能不同），供默认账号映射使用。 */
+    const restoredIds = new Map<string, string>();
 
     for (const incoming of incomingList) {
-      const existingIndex = currentAccounts.findIndex(
-        (a) =>
-          a.id === incoming.id ||
-          (incoming.email &&
-            a.email &&
-            a.email.toLowerCase() === incoming.email.toLowerCase()),
-      );
+      const existingIndex = findExistingAccountIndex({
+        provider,
+        prefix,
+        accounts: currentAccounts,
+        incoming,
+      });
 
       const now = new Date().toISOString();
       const targetId =
         existingIndex >= 0 ? currentAccounts[existingIndex].id : incoming.id;
+      restoredIds.set(incoming.id, targetId);
+      if (provider === "workbuddy" && incoming.id !== targetId) {
+        restoredWorkbuddyKeys.set(`workbuddy:${incoming.id}`, `workbuddy:${targetId}`);
+      }
 
       if (existingIndex >= 0) {
         // 更新现有账号
@@ -296,9 +452,8 @@ export function restoreBackupPayload(payload: BackupPayload): RestoreSummary {
       // 清理旧缓存与调度元数据，并注销正在执行的后台任务
       retireAccountWork(provider, targetId);
       clearWidgetRefreshMetadata(provider, targetId);
-      Storage.remove(
-        `ai_usage_${provider}_cache_${provider === "cursor" ? "v3" : "v1"}_${targetId}`,
-      );
+      // 缓存键版本由 snapshot-registry 的 definition 统一提供，避免恢复路径再次漏清
+      clearSnapshotCache(provider, targetId);
     }
 
     registry.accounts = currentAccounts;
@@ -308,11 +463,15 @@ export function restoreBackupPayload(payload: BackupPayload): RestoreSummary {
     );
     if (!localDefaultValid) {
       const backedDefault = payload.data.defaultAccountIds?.[provider];
+      // 备份里的默认账号可能已被身份合并到本地 id，需先映射再校验
+      const mappedDefault = backedDefault
+        ? restoredIds.get(backedDefault) ?? backedDefault
+        : null;
       if (
-        backedDefault &&
-        currentAccounts.some((a) => a.id === backedDefault)
+        mappedDefault &&
+        currentAccounts.some((a) => a.id === mappedDefault)
       ) {
-        registry.defaultAccountId = backedDefault;
+        registry.defaultAccountId = mappedDefault;
       } else {
         registry.defaultAccountId = currentAccounts[0]?.id || null;
       }
@@ -345,7 +504,8 @@ export function restoreBackupPayload(payload: BackupPayload): RestoreSummary {
 
     if (prefs.appOverview) {
       try {
-        Storage.set("ai_usage_app_overview_preferences_v1", prefs.appOverview);
+        Storage.set("ai_usage_app_overview_preferences_v1",
+          remapPreferenceAccounts(prefs.appOverview, restoredWorkbuddyKeys));
       } catch {
         /* ignore */
       }
@@ -355,7 +515,7 @@ export function restoreBackupPayload(payload: BackupPayload): RestoreSummary {
       try {
         Storage.set(
           "ai_usage_widget_window_preferences_v1",
-          prefs.widgetWindows,
+          remapPreferenceAccounts(prefs.widgetWindows, restoredWorkbuddyKeys),
         );
       } catch {
         /* ignore */
@@ -366,7 +526,7 @@ export function restoreBackupPayload(payload: BackupPayload): RestoreSummary {
       try {
         Storage.set(
           "ai_usage_dashboard_widget_preferences_v1",
-          prefs.dashboardWidget,
+          remapPreferenceAccounts(prefs.dashboardWidget, restoredWorkbuddyKeys),
         );
       } catch {
         /* ignore */
