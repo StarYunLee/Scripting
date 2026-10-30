@@ -148,7 +148,7 @@ function StatusMark(props: { tone: BalanceTone; font?: number }) {
 
 function Watermark(props: { path: string }) {
   // 透明/模糊模式不绘制水印，避免在系统背景上留下污斑。
-  if (isWidgetTransparent() || !props.path) return null;
+  if (!props.path) return null;
   return (
     <Image
       filePath={`${Script.directory}/${props.path}`}

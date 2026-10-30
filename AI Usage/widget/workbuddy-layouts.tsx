@@ -31,7 +31,7 @@ export type WorkbuddyLayoutProps = {
 };
 
 function Watermark(props: { path: string }) {
-  if (isWidgetTransparent()) return null;
+
   return (
     <Image
       filePath={`${Script.directory}/${props.path}`}

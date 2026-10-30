@@ -20,9 +20,6 @@ export type MediumOptionalMeta = {
 } | null;
 
 function Watermark(props: { path: string }) {
-  // 透明模式下彻底不渲染水印，保持背景纯净无污斑
-  if (isWidgetTransparent()) return null;
-
   return (
     <Image
       filePath={`${Script.directory}/${props.path}`}
