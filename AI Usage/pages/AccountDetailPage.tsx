@@ -208,7 +208,7 @@ export function AccountDetailPage(props: {
           {props.demo ? (
             <>
               <GlassDivider />
-              <GlassNoteRow text="演示账号使用本地样例数据，不发起授权或网络请求。" />
+              <GlassNoteRow text="仅展示样例数据，不会授权或联网。" />
             </>
           ) : (
             <>
@@ -276,7 +276,7 @@ export function AccountDetailPage(props: {
               </VStack>
             ))}
             <GlassDivider />
-            <GlassNoteRow text="只影响 App 用量页，不影响桌面小组件。" />
+            <GlassNoteRow text="仅影响用量页，不影响桌面小组件。" />
           </GlassGroup>
         </Section>
       ) : null}
@@ -339,7 +339,7 @@ export function AccountDetailPage(props: {
               );
             })}
             <GlassDivider />
-            <GlassNoteRow text="小尺寸最多 2 项，中尺寸最多 4 项。同一账号共用。" />
+            <GlassNoteRow text="Small 最多显示 2 项，Medium 最多显示 4 项。" />
           </GlassGroup>
         </Section>
       ) : null}
@@ -394,8 +394,8 @@ export function AccountDetailPage(props: {
                     }
                   >
                     {parameterCopied
-                      ? "小组件参数已复制到剪贴板"
-                      : "小组件参数（点击复制）"}
+                      ? "已复制"
+                      : "小组件参数"}
                   </Text>
                   <Text
                     font="subheadline"
@@ -415,7 +415,7 @@ export function AccountDetailPage(props: {
               </HStack>
             </Button>
             <GlassDivider />
-            <GlassNoteRow text="复制后长按主屏幕小组件，在“编辑小组件”中粘贴到“参数”。" />
+            <GlassNoteRow text="长按桌面小组件，在“编辑小组件”的“参数”中粘贴。" />
           </GlassGroup>
         </Section>
       ) : null}

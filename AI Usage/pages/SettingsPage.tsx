@@ -509,7 +509,7 @@ export function SettingsPage(props: {
             </HStack>
           )}
           <GlassDivider />
-          <GlassNoteRow text="账号开关仅控制是否在 App 用量页显示，不影响单账号或多账号桌面小组件。" />
+          <GlassNoteRow text="仅影响用量页，不影响桌面小组件。" />
         </GlassGroup>
       </Section>
 
@@ -604,8 +604,8 @@ export function SettingsPage(props: {
                   }
                 >
                   {dashboardParameterCopied
-                    ? "小组件参数已复制到剪贴板"
-                    : "小组件参数（点击复制）"}
+                    ? "已复制"
+                    : "小组件参数"}
                 </Text>
                 <Text font="subheadline" fontWeight="medium">
                   {props.demoMode ? "dashboard:demo" : "dashboard"}
@@ -619,8 +619,6 @@ export function SettingsPage(props: {
               />
             </HStack>
           </Button>
-          <GlassDivider />
-          <GlassNoteRow text="账号标识显示在套餐标签右侧，默认关闭以减少主屏幕隐私暴露。" />
         </GlassGroup>
       </Section>
 
@@ -672,7 +670,7 @@ export function SettingsPage(props: {
           <GlassDivider />
           <GlassNoteRow
             text={
-              "• 默认（彩色）：专属彩色套餐徽章，进度条根据额度消耗动态切换色彩预警。\n• Clear（简约）：轻量无底色套餐徽章与镂空进度条；专为透明桌面适配，普通桌面上亦呈现通透简约质感。"
+              "彩色：彩色徽标与额度预警色。\n简约：无底色徽标与镂空进度条。"
             }
           />
         </GlassGroup>
@@ -707,7 +705,7 @@ export function SettingsPage(props: {
             ))}
           </Picker>
           <GlassDivider />
-          <GlassNoteRow text="控制 App 启动自动刷新与小组件自动联网最短间隔；选「手动」则仅下拉/点刷新时联网。系统实际调度小组件可能延后。" />
+          <GlassNoteRow text={"设置自动刷新的最短间隔，选择“手动”可关闭自动联网。\n多账号小组件读取本地缓存，需在 App 或通过刷新按钮更新。\n小组件刷新可能因系统调度延后。"} />
         </GlassGroup>
       </Section>
 
@@ -762,7 +760,7 @@ export function SettingsPage(props: {
             </HStack>
           </Button>
           <GlassDivider />
-          <GlassNoteRow text="备份包含所有已授权账号凭据及小组件偏好。采用 AES-GCM 256 强加密，请牢记设置的密码，密码丢失将无法恢复。" />
+          <GlassNoteRow text="备份包含账号凭据及小组件设置。请妥善保存文件和密码，密码丢失无法恢复。" />
         </GlassGroup>
       </Section>
 
