@@ -3,17 +3,9 @@ import {
   displayAntigravityPlanLabel,
   knownAntigravityPlanLabel,
 } from "./plan-label";
-import { antigravityWindowTitle } from "./window-titles";
+import { quotaPeriod, quotaWindowTitle, sortQuotaWindows, type QuotaIdentity } from "./window-titles";
 
 export type JsonObject = Record<string, unknown>;
-
-type ModelCandidate = {
-  id: string;
-  displayName: string;
-  remainingFraction: unknown;
-  reset: unknown;
-  order: number;
-};
 
 export function asObject(value: unknown): JsonObject | null {
   return value && typeof value === "object" && !Array.isArray(value)
@@ -64,118 +56,12 @@ function parseDate(value: unknown): { iso: string | null; ms: number | null } {
     : { iso: null, ms: null };
 }
 
-function windowSeconds(window: string, bucketId: string): number | null {
-  const normalize = (value: string) =>
-    value
-      .toLowerCase()
-      .trim()
-      .replace(/[_\- ]/g, "");
-  for (const candidate of [normalize(window), normalize(bucketId)]) {
-    if (!candidate) continue;
-    if (candidate.includes("week")) return 7 * 86400;
-    if (candidate.includes("month")) return 30 * 86400;
-    if (candidate.includes("day") || candidate.includes("daily")) return 86400;
-    for (const match of candidate.matchAll(/(\d+)h/g)) {
-      const hours = Number(match[1]);
-      if (Number.isFinite(hours) && hours > 0 && hours <= 24 * 31) {
-        return hours * 3600;
-      }
-    }
-  }
-  return null;
+function quotaKey(value: string): string {
+  return value.toLowerCase().trim().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
 }
 
 function windowName(seconds: number | null): LimitWindow["name"] {
-  if (seconds === 5 * 3600) return "five_hour";
-  if (seconds === 7 * 86400) return "weekly";
-  return "unknown";
-}
-
-function localWindowLabel(seconds: number | null, fallback: string): string {
-  if (seconds === 5 * 3600) return "5 小时";
-  if (seconds === 7 * 86400) return "每周";
-  if (seconds === 30 * 86400) return "每月";
-  if (seconds === 86400) return "每天";
-  return fallback || "额度";
-}
-
-function displayGroupName(groupName: string, bucketId: string): string {
-  const bucket = bucketId.toLowerCase();
-  if (bucket.startsWith("gemini-")) return "Gemini";
-  if (bucket.startsWith("3p-")) return "Claude/GPT";
-  return groupName;
-}
-
-function windowLabel(
-  groupName: string,
-  bucketId: string,
-  seconds: number | null,
-): string {
-  const bucket = bucketId.toLowerCase();
-  if (bucket.startsWith("gemini-")) {
-    if (seconds === 5 * 3600) return antigravityWindowTitle("gemini_five_hour");
-    if (seconds === 7 * 86400) return antigravityWindowTitle("gemini_weekly");
-  }
-  if (bucket.startsWith("3p-")) {
-    if (seconds === 5 * 3600)
-      return antigravityWindowTitle("third_party_five_hour");
-    if (seconds === 7 * 86400)
-      return antigravityWindowTitle("third_party_weekly");
-  }
-  const local = localWindowLabel(seconds, bucketId);
-  const group = displayGroupName(groupName, bucketId);
-  return group ? `${group} ${local}` : local;
-}
-
-function sortWindows(left: LimitWindow, right: LimitWindow): number {
-  const rank = (window: LimitWindow): number => {
-    const id = window.id.toLowerCase();
-    if (id.includes("gemini_5h")) return 0;
-    if (id.includes("gemini_weekly")) return 1;
-    if (id.includes("3p_5h")) return 2;
-    if (id.includes("3p_weekly")) return 3;
-    if (window.name === "five_hour") return 4;
-    if (window.name === "weekly") return 5;
-    return 6;
-  };
-  return rank(left) - rank(right) || left.label.localeCompare(right.label);
-}
-
-function makeWindow(
-  id: string,
-  groupName: string,
-  bucketId: string,
-  window: string,
-  fraction: unknown,
-  reset: unknown,
-  source: LimitWindow["source"],
-): LimitWindow | null {
-  const remainingFraction = parseFraction(fraction);
-  const resetAt = parseDate(reset);
-  if (remainingFraction == null && !resetAt.iso) return null;
-  const seconds = windowSeconds(window, bucketId);
-  const remainingPercent =
-    remainingFraction == null ? null : remainingFraction * 100;
-  return {
-    id,
-    name: windowName(seconds),
-    label: windowLabel(groupName, bucketId, seconds),
-    usedPercent:
-      remainingPercent == null ? null : Math.max(0, 100 - remainingPercent),
-    remainingPercent,
-    resetAt: resetAt.iso,
-    resetAtMs: resetAt.ms,
-    windowSeconds: seconds,
-    source,
-  };
-}
-
-function quotaKey(value: string): string {
-  return value
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, "_")
-    .replace(/^_+|_+$/g, "");
+  return seconds === 18000 ? "five_hour" : seconds === 604800 ? "weekly" : "unknown";
 }
 
 export function parseQuotaSummary(payload: JsonObject): LimitWindow[] {
@@ -183,186 +69,46 @@ export function parseQuotaSummary(payload: JsonObject): LimitWindow[] {
   if (!Array.isArray(groups)) return [];
   const windows: LimitWindow[] = [];
   const seen = new Set<string>();
+  const usedIds = new Set<string>();
   groups.forEach((value, groupIndex) => {
     const group = asObject(value);
-    const groupName =
-      textValue(firstValue(group, ["displayName", "display_name"])) || "";
-    const buckets = firstValue(group, [
-      "buckets",
-      "quotaBuckets",
-      "quota_buckets",
-    ]);
+    const groupName = textValue(firstValue(group, ["displayName", "display_name"])) || "";
+    const buckets = firstValue(group, ["buckets", "quotaBuckets", "quota_buckets"]);
     if (!Array.isArray(buckets)) return;
-    buckets.forEach((bucketValue, bucketIndex) => {
-      const bucket = asObject(bucketValue);
+    buckets.forEach((rawBucket, bucketIndex) => {
+      const bucket = asObject(rawBucket);
       if (!bucket) return;
-      const bucketId =
-        textValue(firstValue(bucket, ["bucketId", "bucket_id", "id"])) || "";
-      const window = textValue(bucket.window) || "";
-      const stableKey =
-        quotaKey(bucketId) ||
-        quotaKey(window) ||
-        `g${groupIndex}_b${bucketIndex}`;
-      if (seen.has(stableKey)) return;
-      const parsed = makeWindow(
-        `antigravity:${stableKey}`,
-        groupName,
-        bucketId,
-        window,
-        firstValue(bucket, [
-          "remainingFraction",
-          "remaining_fraction",
-          "remaining",
-        ]),
-        firstValue(bucket, ["resetTime", "reset_time"]),
-        "quota_summary",
-      );
-      if (!parsed) return;
-      seen.add(stableKey);
-      windows.push(parsed);
+      const bucketId = textValue(firstValue(bucket, ["bucketId", "bucket_id", "id"])) || "";
+      const rawWindow = textValue(bucket.window) || "";
+      const bucketName = textValue(firstValue(bucket, ["displayName", "display_name"]));
+      const quota: QuotaIdentity = { groupName, bucketId, window: rawWindow,
+        ...(bucketName ? { bucketName } : {}) };
+      const period = quotaPeriod(rawWindow, bucketId);
+      const fraction = parseFraction(firstValue(bucket, ["remainingFraction", "remaining_fraction", "remaining"]));
+      const reset = parseDate(firstValue(bucket, ["resetTime", "reset_time"]));
+      if (fraction == null && !reset.iso) return;
+      const identity = JSON.stringify(bucketId
+        ? [bucketId, period.key]
+        : ["position", groupIndex, bucketIndex]);
+      if (seen.has(identity)) return;
+      seen.add(identity);
+      const base = quotaKey(bucketId) || quotaKey(rawWindow) || `g${groupIndex}_b${bucketIndex}`;
+      let id = `antigravity:${base}`;
+      if (usedIds.has(id)) {
+        // Keep the previous first occurrence's ID; only newly retained collisions get a suffix.
+        const suffix = quotaKey(period.key) || "quota";
+        id = `antigravity:${base}__${suffix}`;
+        if (usedIds.has(id)) id += `_${encodeURIComponent(identity)}`;
+      }
+      usedIds.add(id);
+      const remainingPercent = fraction == null ? null : fraction * 100;
+      windows.push({ id, name: windowName(period.seconds), label: quotaWindowTitle(quota),
+        usedPercent: remainingPercent == null ? null : Math.max(0, 100 - remainingPercent),
+        remainingPercent, resetAt: reset.iso, resetAtMs: reset.ms,
+        windowSeconds: period.seconds, quota, source: "quota_summary" });
     });
   });
-  return windows.sort(sortWindows);
-}
-
-const MODEL_FAMILY_ORDER = [
-  "gemini_pro",
-  "gemini_flash",
-  "gemini_image",
-  "claude",
-  "other",
-] as const;
-
-type ModelFamily = (typeof MODEL_FAMILY_ORDER)[number];
-
-const MODEL_PREFERENCES: Record<Exclude<ModelFamily, "other">, string[]> = {
-  gemini_pro: ["gemini-pro-agent", "gemini-3.1-pro-high", "gemini-3.1-pro-low"],
-  gemini_flash: ["gemini-3-flash-agent", "gemini-3-flash"],
-  gemini_image: ["gemini-3.1-flash-image", "gemini-3-pro-image"],
-  claude: ["claude-sonnet-4-6", "claude-opus-4-6-thinking"],
-};
-
-function normalizeModelId(value: string): string {
-  return value
-    .toLowerCase()
-    .trim()
-    .replace(/^models\//, "");
-}
-
-function isInternalModel(id: string): boolean {
-  return id.startsWith("chat_") || id.startsWith("tab_");
-}
-
-function modelFamily(id: string): ModelFamily {
-  if (
-    (id.startsWith("gemini") && id.includes("image")) ||
-    id.startsWith("image") ||
-    id.startsWith("imagen")
-  ) {
-    return "gemini_image";
-  }
-  if (id.startsWith("gemini") && id.includes("flash")) return "gemini_flash";
-  if (id.startsWith("gemini") && id.includes("pro")) return "gemini_pro";
-  if (["claude", "opus", "sonnet", "haiku"].some((part) => id.includes(part))) {
-    return "claude";
-  }
-  return "other";
-}
-
-function familyLabel(family: ModelFamily): string {
-  if (family === "gemini_pro") return "Gemini Pro";
-  if (family === "gemini_flash") return "Gemini Flash";
-  if (family === "gemini_image") return "Gemini Image";
-  if (family === "claude") return "Claude";
-  return "";
-}
-
-function preferenceRank(
-  family: ModelFamily,
-  id: string,
-  order: number,
-): number {
-  if (family === "other") return order;
-  const rank = MODEL_PREFERENCES[family].indexOf(id);
-  return rank < 0 ? MODEL_PREFERENCES[family].length + order : rank;
-}
-
-function modelWindow(
-  candidate: ModelCandidate,
-  family: ModelFamily,
-): LimitWindow | null {
-  const label =
-    family === "other"
-      ? candidate.displayName || candidate.id
-      : familyLabel(family);
-  const id =
-    family === "other"
-      ? `antigravity:model_${quotaKey(candidate.id)}`
-      : `antigravity:${family}`;
-  return makeWindow(
-    id,
-    label,
-    "5h",
-    "5h",
-    candidate.remainingFraction,
-    candidate.reset,
-    "available_models",
-  );
-}
-
-export function parseAvailableModels(payload: JsonObject): LimitWindow[] {
-  const models = asObject(payload.models) || payload;
-  const families = new Map<ModelFamily, ModelCandidate[]>();
-  let order = 0;
-  for (const [rawModelId, value] of Object.entries(models)) {
-    const id = normalizeModelId(rawModelId);
-    const model = asObject(value);
-    const quota = asObject(firstValue(model, ["quotaInfo", "quota_info"]));
-    if (!id || isInternalModel(id) || !quota) continue;
-    const remainingFraction = firstValue(quota, [
-      "remainingFraction",
-      "remaining_fraction",
-      "remaining",
-    ]);
-    const reset = firstValue(quota, ["resetTime", "reset_time"]);
-    if (parseFraction(remainingFraction) == null && !parseDate(reset).iso)
-      continue;
-    const family = modelFamily(id);
-    const candidate: ModelCandidate = {
-      id,
-      displayName:
-        textValue(
-          firstValue(model, ["displayName", "display_name", "modelName"]),
-        ) || id,
-      remainingFraction,
-      reset,
-      order: order++,
-    };
-    families.set(family, [...(families.get(family) || []), candidate]);
-  }
-
-  const windows: LimitWindow[] = [];
-  for (const family of MODEL_FAMILY_ORDER) {
-    const members = families.get(family) || [];
-    if (!members.length) continue;
-    if (family === "other") {
-      members
-        .sort((left, right) => left.id.localeCompare(right.id))
-        .forEach((candidate) => {
-          const window = modelWindow(candidate, family);
-          if (window) windows.push(window);
-        });
-      continue;
-    }
-    members.sort(
-      (left, right) =>
-        preferenceRank(family, left.id, left.order) -
-        preferenceRank(family, right.id, right.order),
-    );
-    const window = modelWindow(members[0], family);
-    if (window) windows.push(window);
-  }
-  return windows.sort(sortWindows);
+  return sortQuotaWindows(windows);
 }
 
 function tierCandidates(value: unknown): string[] {

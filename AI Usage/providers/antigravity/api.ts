@@ -19,9 +19,9 @@ import {
   resolveAntigravityPlanLabel,
 } from "./plan-label";
 import { fetchAccountInfo, refreshOAuthToken } from "./oauth";
+import { quotaSummaryWindows } from "./normalize";
 import {
   asObject,
-  parseAvailableModels,
   parseQuotaSummary,
   type JsonObject,
 } from "./parsing";
@@ -35,8 +35,7 @@ const CODE_ASSIST_HOSTS = [
   "https://cloudcode-pa.googleapis.com",
 ] as const;
 const QUOTA_SUMMARY_PATH = "/v1internal:retrieveUserQuotaSummary";
-const MODELS_PATH = "/v1internal:fetchAvailableModels";
-const CLIENT_USER_AGENT = "vscode/1.X.X (Antigravity/4.3.0)";
+const CLIENT_USER_AGENT = "antigravity/hub/2.19.1 windows/amd64";
 
 type UpstreamError = Error & { status?: number };
 
@@ -55,7 +54,27 @@ function readCache(profileId?: string | null): UsageSnapshot | null {
   if (!profile) return null;
   try {
     const value = Storage.get<UsageSnapshot>(cacheKey(profile.id));
-    return value?.fetchedAt ? { ...value, source: "cache" } : null;
+    if (!value || typeof value !== "object") return null;
+    if (typeof value.fetchedAt !== "string" || !value.fetchedAt) return null;
+    if (!Array.isArray(value.windows)) return null;
+    // 旧缓存可能来自已下线的 fetchAvailableModels 回退（或两类窗口混写）。
+    // 只在读取结果里过滤成真实 quota summary 窗口，不回写 Storage、不清偏好；
+    // 缺 source 的历史条目同样不猜来源，交给 quotaSummaryWindows 统一判定。
+    const windows = quotaSummaryWindows(
+      value.windows
+        .filter((window) => Boolean(window) && typeof window === "object")
+        .map((window) => ({ ...window })),
+    );
+    if (!windows.length) return null;
+    return {
+      windows,
+      planType: typeof value.planType === "string" ? value.planType : null,
+      planLabel: typeof value.planLabel === "string" ? value.planLabel : null,
+      projectId:
+        typeof value.projectId === "string" ? value.projectId : null,
+      fetchedAt: value.fetchedAt,
+      source: "cache",
+    };
   } catch {
     return null;
   }
@@ -151,22 +170,14 @@ async function fetchQuotaWindows(
   projectId: string | null,
   budget: RequestBudget,
 ): Promise<LimitWindow[]> {
-  try {
-    const summary = await postQuota(
-      token,
-      QUOTA_SUMMARY_PATH,
-      projectId,
-      budget,
-    );
-    const windows = parseQuotaSummary(summary);
-    if (windows.length) return windows;
-  } catch (error) {
-    const status = (error as UpstreamError).status;
-    if (status === 401 || status === 403 || status === 429) throw error;
-  }
-  return parseAvailableModels(
-    await postQuota(token, MODELS_PATH, projectId, budget),
+  // 只读取真实额度摘要；postQuota保留原host/project重试，401由fetchUsage刷新后重试。
+  const summary = await postQuota(
+    token,
+    QUOTA_SUMMARY_PATH,
+    projectId,
+    budget,
   );
+  return parseQuotaSummary(summary);
 }
 
 function shouldRefreshAccountInfo(planLabel: string | null): boolean {

@@ -26,6 +26,14 @@ export type LimitWindow = {
   resetAt: string | null;
   resetAtMs: number | null;
   windowSeconds: number | null;
+  /** Raw summary identity, retained so cached labels follow the same display rules. */
+  quota?: {
+    groupName: string;
+    bucketId: string;
+    window: string;
+    bucketName?: string;
+  };
+  /** available_models is accepted only to reject legacy caches; never produced by usage reads. */
   source: "quota_summary" | "available_models";
 };
 
