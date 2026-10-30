@@ -1,6 +1,6 @@
 import { Button, HStack, Image, Spacer, Text, VStack } from "scripting";
 import { RefreshAIUsageAllIntent } from "../../app_intents";
-import { PlanBadge } from "../../components/PlanBadge";
+import { DashboardAccountHeader } from "./DashboardAccountHeader";
 import { formatResetCountdown } from "../../services/usage-format";
 import { parseWidgetFamily } from "../family";
 import { providerMeta, type ProviderId, type UsageWindowView } from "../../models";
@@ -8,6 +8,8 @@ import { WidgetProgress } from "../WidgetProgress";
 import { DeepseekDashboardBalanceRow } from "../deepseek-layouts";
 import type { WidgetChromeStyle } from "../chrome-style";
 import { widgetTheme as C } from "../transparent";
+import { workbuddyDashboardCredits } from "./workbuddy-credits";
+import { dashboardWindowTitle } from "./window-titles";
 import {
   readDashboardWidgetPreferences,
   type DashboardWidgetDisplayPreferences,
@@ -17,6 +19,9 @@ import {
   type DashboardAccount,
   type DashboardPlan,
 } from "./model";
+
+// Match the body area of two quota rows; the badge/account header stays outside it.
+const TWO_WINDOW_CONTENT_HEIGHT = { compact: 43, regular: 49 } as const;
 
 function percent(value: number | null): string {
   return value == null || !Number.isFinite(value)
@@ -40,18 +45,6 @@ function Progress(props: {
   );
 }
 
-function workbuddyCreditParts(detail: string): {
-  used: string;
-  total: string;
-} {
-  const text = detail.replace(/积分/g, "").trim();
-  const [used, total] = text.split("/").map((part) => part.trim());
-  return {
-    used: used || "—",
-    total: total || "—",
-  };
-}
-
 function WindowRow(props: {
   provider: ProviderId;
   window: UsageWindowView;
@@ -72,14 +65,12 @@ function WindowRow(props: {
   const countdown = formatResetCountdown(props.window.resetAt);
   const shadow = C.textShadow;
   const workbuddyCredits =
-    props.provider === "workbuddy" &&
-    props.window.id === "workbuddy:credits" &&
-    Boolean(props.window.detail);
+    props.provider === "workbuddy" && props.window.id === "workbuddy:credits";
   const workbuddyParts = workbuddyCredits
-    ? workbuddyCreditParts(props.window.detail || "")
+    ? workbuddyDashboardCredits(props.window.detail)
     : null;
   return (
-    <VStack alignment="leading" spacing={props.compact ? 2 : 3}>
+    <VStack alignment="leading" spacing={workbuddyCredits ? (props.compact ? 6 : 9) : (props.compact ? 2 : 3)}>
       <HStack spacing={4} frame={{ width: props.width }}>
         <Text
           font={11}
@@ -89,7 +80,7 @@ function WindowRow(props: {
           minScaleFactor={0.75}
           {...(shadow ? { shadow } : {})}
         >
-          {props.window.label}
+          {dashboardWindowTitle(props.provider, props.window.label)}
         </Text>
         <Spacer minLength={0} />
         {countdown ? (
@@ -121,27 +112,21 @@ function WindowRow(props: {
         chromeStyle={props.chromeStyle}
       />
       {workbuddyParts ? (
-        <HStack spacing={0} frame={{ width: props.width }}>
-          <Text
-            font={9.5}
-            foregroundStyle={C.primary}
-            lineLimit={1}
-            minScaleFactor={0.75}
-            monospacedDigit
-            {...(shadow ? { shadow } : {})}
-          >
-            已用 {workbuddyParts.used}
+        <HStack alignment="lastTextBaseline" spacing={3} frame={{ width: props.width }}>
+          <Text font={11} fontWeight="semibold" foregroundStyle={C.secondary}
+            {...(shadow ? { shadow } : {})}>剩余</Text>
+          <Text font={11} fontWeight="semibold" foregroundStyle={C.primary}
+            lineLimit={1} minScaleFactor={0.75} monospacedDigit
+            {...(shadow ? { shadow } : {})}>
+            {workbuddyParts.remaining}
           </Text>
-          <Spacer minLength={8} />
-          <Text
-            font={8.5}
-            foregroundStyle={C.secondary}
-            lineLimit={1}
-            minScaleFactor={0.75}
-            monospacedDigit
-            {...(shadow ? { shadow } : {})}
-          >
-            总积分 {workbuddyParts.total}
+          <Spacer minLength={6} />
+          <Text font={11} fontWeight="semibold" foregroundStyle={C.secondary}
+            {...(shadow ? { shadow } : {})}>总计</Text>
+          <Text font={11} fontWeight="semibold" foregroundStyle={C.secondary}
+            lineLimit={1} minScaleFactor={0.75} monospacedDigit
+            {...(shadow ? { shadow } : {})}>
+            {workbuddyParts.total}
           </Text>
         </HStack>
       ) : props.window.detail ? (
@@ -169,53 +154,33 @@ function AccountCell(props: {
   const meta = providerMeta(props.account.provider);
   const fixedLayout = Boolean(meta.capabilities.fixedWidgetLayout);
   const windows = props.account.windows.slice(0, fixedLayout ? 1 : 2);
+  const fixedInformation = props.account.provider === "workbuddy" || props.account.provider === "deepseek";
+  const contentHeight = fixedInformation || windows.length === 2
+    ? TWO_WINDOW_CONTENT_HEIGHT[props.compact ? "compact" : "regular"]
+    : undefined;
   return (
     <VStack
       alignment="leading"
       spacing={props.compact ? 3 : 7}
       frame={{ width: props.width }}
     >
-      <HStack spacing={5} frame={{ width: props.width }}>
-        <PlanBadge
-          provider={props.account.provider}
-          label={props.account.provider === "deepseek" ? "DeepSeek" : props.account.planLabel || meta.title}
-          size="widget-dense"
-          chromeStyle={props.chromeStyle}
-        />
-        <Spacer minLength={0} />
-        {props.display.showAccountLabel ? (
-          <Text
-            font={10}
-            fontWeight="medium"
-            foregroundStyle={C.secondary}
-            lineLimit={1}
-            truncationMode="tail"
-            minScaleFactor={0.85}
-            layoutPriority={0}
-            {...(C.textShadow ? { shadow: C.textShadow } : {})}
-          >
-            {props.account.accountTitle}
-          </Text>
-        ) : null}
-        {props.account.source === "error" ? (
-          <Image
-            systemName="exclamationmark.triangle.fill"
-            font={8}
-            foregroundStyle={C.warn}
+      <DashboardAccountHeader provider={props.account.provider} planLabel={props.account.planLabel}
+        accountLabel={props.account.accountTitle} showAccountLabel={props.display.showAccountLabel}
+        width={props.width} hasError={props.account.source === "error"} chromeStyle={props.chromeStyle} />
+      <VStack alignment="leading" spacing={props.compact ? 3 : 7}
+        frame={{ maxWidth: "infinity", minHeight: contentHeight, alignment: "center" }}>
+        {windows.map((window) => (
+          <WindowRow
+            key={window.id}
+            provider={props.account.provider}
+            window={window}
+            width={props.width}
+            compact={props.compact}
+            chromeStyle={props.chromeStyle}
+            errorText={props.account.source === "error" ? "查询失败，显示缓存余额" : undefined}
           />
-        ) : null}
-      </HStack>
-      {windows.map((window) => (
-        <WindowRow
-          key={window.id}
-          provider={props.account.provider}
-          window={window}
-          width={props.width}
-          compact={props.compact}
-          chromeStyle={props.chromeStyle}
-          errorText={props.account.source === "error" ? "查询失败，显示缓存余额" : undefined}
-        />
-      ))}
+        ))}
+      </VStack>
     </VStack>
   );
 }
@@ -373,7 +338,7 @@ function MediumDashboard(props: {
   const compact = props.plan.rows === 2;
   const refreshText = latestCommonRefreshText(props.plan.accounts);
   const row = (accounts: DashboardAccount[], key: string) => (
-    <HStack key={key} spacing={columnGap} frame={{ maxWidth: "infinity" }}>
+    <HStack key={key} alignment="top" spacing={columnGap} frame={{ maxWidth: "infinity" }}>
       {accounts.map((account) => (
         <AccountCell
           key={account.key}
@@ -445,16 +410,16 @@ function LargeDashboard(props: {
     >
       <HStack frame={{ maxWidth: "infinity" }}>
         <Text
-          font={13}
+          font={15}
           fontWeight="bold"
           foregroundStyle={C.primary}
           {...(C.textShadow ? { shadow: C.textShadow } : {})}
         >
-          AI Usage
+          AI Usage Dashboard
         </Text>
         <Spacer minLength={0} />
         <Text
-          font={10.5}
+          font={12}
           foregroundStyle={C.secondary}
           monospacedDigit
           {...(C.textShadow ? { shadow: C.textShadow } : {})}
@@ -474,7 +439,7 @@ function LargeDashboard(props: {
               background={C.divider}
             />
           ) : null}
-          <HStack spacing={columnGap} frame={{ maxWidth: "infinity" }}>
+          <HStack alignment="top" spacing={columnGap} frame={{ maxWidth: "infinity" }}>
             {accounts.map((account) => (
               <AccountCell
                 key={account.key}
@@ -495,12 +460,12 @@ function LargeDashboard(props: {
           {props.hasErrors ? (
             <Image
               systemName="exclamationmark.triangle.fill"
-              font={9}
+              font={11}
               foregroundStyle={C.warn}
             />
           ) : null}
           <Text
-            font={10.5}
+            font={12}
             foregroundStyle={C.secondary}
             {...(C.textShadow ? { shadow: C.textShadow } : {})}
           >
@@ -512,7 +477,7 @@ function LargeDashboard(props: {
           >
             <Image
               systemName="arrow.triangle.2.circlepath"
-              font={10.5}
+              font={13}
               foregroundStyle={C.accent}
             />
           </Button>
@@ -561,22 +526,19 @@ function SparseLargeDashboard(props: {
   hasErrors?: boolean;
   display: DashboardWidgetDisplayPreferences;
   chromeStyle?: WidgetChromeStyle;
+  slotCount?: 8 | 12;
 }) {
   const padding = 16;
   const columnGap = 20;
   const cellWidth = (props.width - padding * 2 - columnGap) / 2;
-  const slots: SparseLargeSlot[] = Array.from({ length: 8 }, (_, index) => {
+  const slots: SparseLargeSlot[] = Array.from({ length: props.slotCount ?? 8 }, (_, index) => {
     const account = props.plan.accounts[index];
     return account
       ? { account, placeholder: false }
       : { account: placeholderLargeAccount(index), placeholder: true };
   });
-  const rows = [
-    slots.slice(0, 2),
-    slots.slice(2, 4),
-    slots.slice(4, 6),
-    slots.slice(6, 8),
-  ];
+  const rows: SparseLargeSlot[][] = [];
+  for (let i = 0; i < slots.length; i += 2) rows.push(slots.slice(i, i + 2));
   const refreshText = latestCommonRefreshText(props.plan.accounts);
   const visibleAccountCount = props.plan.accounts.length;
   const totalAccountCount = visibleAccountCount + props.plan.hiddenAccountCount;
@@ -588,23 +550,23 @@ function SparseLargeDashboard(props: {
   return (
     <VStack
       alignment="leading"
-      spacing={7}
+      spacing={(props.slotCount ?? 8) === 12 ? 12 : 7}
       padding={{ horizontal: padding, vertical: 9 }}
       frame={{ maxWidth: "infinity", maxHeight: "infinity" }}
       widgetBackground={C.bg}
     >
       <HStack frame={{ maxWidth: "infinity" }}>
         <Text
-          font={13}
+          font={15}
           fontWeight="bold"
           foregroundStyle={C.primary}
           {...(C.textShadow ? { shadow: C.textShadow } : {})}
         >
-          AI Usage
+          AI Usage Dashboard
         </Text>
         <Spacer minLength={0} />
         <Text
-          font={10.5}
+          font={12}
           foregroundStyle={C.secondary}
           monospacedDigit
           {...(C.textShadow ? { shadow: C.textShadow } : {})}
@@ -624,7 +586,7 @@ function SparseLargeDashboard(props: {
               background={C.divider}
             />
           ) : null}
-          <HStack spacing={columnGap} frame={{ maxWidth: "infinity" }}>
+          <HStack alignment="top" spacing={columnGap} frame={{ maxWidth: "infinity" }}>
             {slotsInRow.map((slot) =>
               slot.placeholder ? (
                 <VStack key={slot.account.key} opacity={0}>
@@ -656,12 +618,12 @@ function SparseLargeDashboard(props: {
           {props.hasErrors ? (
             <Image
               systemName="exclamationmark.triangle.fill"
-              font={9}
+              font={11}
               foregroundStyle={C.warn}
             />
           ) : null}
           <Text
-            font={10.5}
+            font={12}
             foregroundStyle={C.secondary}
             {...(C.textShadow ? { shadow: C.textShadow } : {})}
           >
@@ -673,7 +635,7 @@ function SparseLargeDashboard(props: {
           >
             <Image
               systemName="arrow.triangle.2.circlepath"
-              font={10.5}
+              font={13}
               foregroundStyle={C.accent}
             />
           </Button>
@@ -685,6 +647,7 @@ function SparseLargeDashboard(props: {
 
 export function DashboardWidgetView(props: {
   cards: import("../../models").UsageCard[];
+  labelAccounts?: import("../../models").UsageCard[];
   family: string;
   width: number;
   hasErrors?: boolean;
@@ -696,7 +659,7 @@ export function DashboardWidgetView(props: {
   if (!family) {
     return <EmptyDashboard message="暂不支持此小组件尺寸" />;
   }
-  const plan = planDashboard(props.cards, family);
+  const plan = planDashboard(props.cards, family, props.labelAccounts);
   if (!plan.accounts.length) {
     return (
       <EmptyDashboard
@@ -728,6 +691,12 @@ export function DashboardWidgetView(props: {
         display={display}
         chromeStyle={props.chromeStyle}
       />
+    );
+  }
+  if (family === "extraLargePortrait") {
+    return (
+      <SparseLargeDashboard plan={plan} width={props.width} hasErrors={props.hasErrors}
+        display={display} chromeStyle={props.chromeStyle} slotCount={12} />
     );
   }
   if (plan.accounts.length < 8) {

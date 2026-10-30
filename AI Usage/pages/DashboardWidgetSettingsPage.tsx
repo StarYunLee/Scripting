@@ -22,6 +22,7 @@ import { PageBackground } from "../components/PageBackground";
 import { providerMeta, type UsageCard } from "../models";
 import type { BackgroundThemeId } from "../services/settings";
 import {
+  applyDashboardWidgetPreferences,
   getDashboardWidgetPreferences,
   setDashboardWidgetAccountVisible,
   setDashboardWidgetAccountWindows,
@@ -35,9 +36,17 @@ export function DashboardWidgetSettingsPage(props: {
 }) {
   const [tick, setTick] = useState(0);
   const [previewFamily, setPreviewFamily] = useState<
-    "choose" | "systemSmall" | "systemMedium" | "systemLarge"
+    "choose" | "systemSmall" | "systemMedium" | "systemLarge" | "systemExtraLargePortrait"
   >("choose");
   const preferences = getDashboardWidgetPreferences(props.dataSource);
+
+  function currentWindows(card: UsageCard) {
+    return applyDashboardWidgetPreferences(
+      [card],
+      getDashboardWidgetPreferences(props.dataSource),
+      props.dataSource,
+    )[0]?.windows || [];
+  }
 
   function changed() {
     setTick((value) => value + 1);
@@ -53,7 +62,7 @@ export function DashboardWidgetSettingsPage(props: {
   }
 
   async function previewWidget(
-    family: "systemSmall" | "systemMedium" | "systemLarge",
+    family: "systemSmall" | "systemMedium" | "systemLarge" | "systemExtraLargePortrait",
   ): Promise<void> {
     try {
       await Widget.preview({
@@ -107,7 +116,8 @@ export function DashboardWidgetSettingsPage(props: {
               if (
                 value !== "systemSmall" &&
                 value !== "systemMedium" &&
-                value !== "systemLarge"
+                value !== "systemLarge" &&
+                value !== "systemExtraLargePortrait"
               ) {
                 return;
               }
@@ -124,9 +134,8 @@ export function DashboardWidgetSettingsPage(props: {
             <Text tag="systemSmall">Small 小组件</Text>
             <Text tag="systemMedium">Medium 小组件</Text>
             <Text tag="systemLarge">Large 小组件</Text>
+            <Text tag="systemExtraLargePortrait">Extra Large 整屏小组件</Text>
           </Picker>
-          <GlassDivider />
-          <GlassNoteRow text="按当前账号与额度设置预览所选尺寸。预览与主屏幕的实际尺寸、圆角和刷新时机可能略有差异。" />
         </GlassGroup>
       </Section>
 
@@ -135,9 +144,9 @@ export function DashboardWidgetSettingsPage(props: {
           const meta = providerMeta(card.provider);
           const fixedLayout = Boolean(meta.capabilities.fixedWidgetLayout);
           const visible = !preferences.hiddenAccountKeys.includes(card.key);
-          const configured = preferences.windowIdsByAccount[card.key];
-          const primary = configured?.[0] || card.windows[0]?.id || "";
-          const secondary = configured?.[1] || card.windows[1]?.id || "none";
+          const selectedWindows = currentWindows(card);
+          const primary = selectedWindows[0]?.id || "";
+          const secondary = selectedWindows[1]?.id || "none";
           return (
             <Section
               key={`${card.key}:${tick}`}
@@ -202,11 +211,14 @@ export function DashboardWidgetSettingsPage(props: {
                       title="额度窗口 1"
                       value={primary}
                       onChanged={(value: string) => {
-                        const nextSecondary =
-                          secondary !== "none" && secondary !== value
-                            ? secondary
-                            : card.windows.find((window) => window.id !== value)
-                                ?.id || "none";
+                        if (!card.windows.some(window => window.id === value)) return;
+                        const selected = currentWindows(card);
+                        const currentPrimary = selected[0]?.id;
+                        if (!currentPrimary) return;
+                        const currentSecondary = selected[1]?.id || "none";
+                        const nextSecondary = currentSecondary === "none"
+                          ? "none"
+                          : currentSecondary === value ? currentPrimary : currentSecondary;
                         const result = setDashboardWidgetAccountWindows(
                           card.key,
                           [
@@ -239,9 +251,12 @@ export function DashboardWidgetSettingsPage(props: {
                       title="额度窗口 2"
                       value={secondary}
                       onChanged={(value: string) => {
+                        const currentPrimary = currentWindows(card)[0]?.id;
+                        if (!currentPrimary || (value !== "none" &&
+                            (value === currentPrimary || !card.windows.some(window => window.id === value)))) return;
                         const result = setDashboardWidgetAccountWindows(
                           card.key,
-                          [primary, ...(value === "none" ? [] : [value])],
+                          [currentPrimary, ...(value === "none" ? [] : [value])],
                           props.dataSource,
                         );
                         if (!result.ok) {
@@ -267,7 +282,7 @@ export function DashboardWidgetSettingsPage(props: {
                   </VStack>
                 ) : null}
                 {visible && card.windows.length === 0 ? (
-                  <GlassNoteRow text="暂无额度窗口，请先刷新账号用量。" />
+                  <GlassNoteRow text="暂无额度，请先刷新账号用量。" />
                 ) : null}
               </GlassGroup>
             </Section>
@@ -279,7 +294,7 @@ export function DashboardWidgetSettingsPage(props: {
           header={<GlassSectionHeader title="账号与额度" />}
         >
           <GlassGroup>
-            <GlassNoteRow text="暂无可配置账号，请先连接账号并刷新用量。" />
+            <GlassNoteRow text="暂无账号，请先连接账号并刷新用量。" />
           </GlassGroup>
         </Section>
       )}

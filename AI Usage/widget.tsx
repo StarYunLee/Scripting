@@ -71,6 +71,7 @@ async function run() {
       Widget.present(
         <DashboardWidgetView
           cards={loaded.cards}
+          labelAccounts={loaded.labelAccounts}
           family={family}
           width={width}
           hasErrors={loaded.hasErrors}

@@ -15,6 +15,7 @@ import { resolveWidgetReloadPolicy } from "../services/widget-refresh-planner";
 
 export type DashboardWidgetData = {
   cards: UsageCard[];
+  labelAccounts: UsageCard[];
   hasErrors: boolean;
   display: ReturnType<typeof readDashboardWidgetPreferences>["display"];
   reloadPolicy: DashboardReloadPolicy;
@@ -56,6 +57,7 @@ export async function loadDashboardWidgetUsage(input: {
   if (input.dataSource === "demo") {
     return {
       cards: selected,
+      labelAccounts: raw,
       hasErrors: selected.some((card) => card.source === "error"),
       display: preferences.display,
       reloadPolicy: fallbackReloadPolicy(input.reloadMinutes),
@@ -64,6 +66,7 @@ export async function loadDashboardWidgetUsage(input: {
   if (!kind) {
     return {
       cards: selected,
+      labelAccounts: raw,
       hasErrors: selected.some((card) => card.source === "error"),
       display: preferences.display,
       reloadPolicy: { policy: "never" },
@@ -74,6 +77,7 @@ export async function loadDashboardWidgetUsage(input: {
   // 0ms 响应，改配置与样式秒级刷新；数据更新收口至 App 前台与桌面手动刷新按钮。
   return {
     cards: selected,
+    labelAccounts: raw,
     hasErrors: selected.some((card) => card.source === "error"),
     display: preferences.display,
     reloadPolicy: fallbackReloadPolicy(input.reloadMinutes),

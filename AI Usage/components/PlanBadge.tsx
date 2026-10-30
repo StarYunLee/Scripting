@@ -50,6 +50,8 @@ export function PlanBadge(props: {
   label: string;
   size?: PlanBadgeSize;
   chromeStyle?: WidgetChromeStyle;
+  /** Allow the dashboard header to share width with a fixed-size account label. */
+  flexible?: boolean;
 }) {
   const size = props.size ?? "regular";
   const recipe = resolvePlanBadge(props.provider, props.label);
@@ -101,7 +103,7 @@ export function PlanBadge(props: {
         spacing={spacing}
         padding={padding}
         layoutPriority={1}
-        fixedSize={true}
+        fixedSize={!props.flexible}
       >
         {logo}
         {label}
@@ -116,7 +118,7 @@ export function PlanBadge(props: {
       background={recipe.background}
       clipShape={clipShape}
       layoutPriority={1}
-      fixedSize={true}
+      fixedSize={!props.flexible}
     >
       {logo}
       {label}

@@ -562,10 +562,7 @@ export function DeepseekMediumLayout(props: DeepseekLayoutProps) {
   );
 }
 
-/**
- * Dashboard 钱包行：余额、充值/赠金简述与可用状态。
- * 只输出文本行，不生成进度条；请求失败状态与余额可用性分别表达。
- */
+/** Compact dashboard wallet row; account details remain in the dedicated layouts. */
 export function DeepseekDashboardBalanceRow(props: {
   window: UsageWindowView;
   width: number;
@@ -577,66 +574,49 @@ export function DeepseekDashboardBalanceRow(props: {
   const currency = balance?.currency ?? "";
   const status = balanceStatus(balance, props.errorText);
   const shadow = C.textShadow;
-  const labelFont = props.compact ? 10 : 10.5;
-  const detailFont = props.compact ? 8.5 : 9;
-  const amountFont = props.compact ? 13 : 14;
+  const detailFont = props.compact ? 10 : 11;
+  const warningFont = props.compact ? 8.5 : 9;
+  const mark = currencySymbol(currency);
+  const amountText = (value: string | null | undefined) => {
+    const amount = plainAmount(value, currency);
+    return amount === "—" ? amount : `${mark}${mark.length > 1 ? " " : ""}${amount}`;
+  };
 
   return (
-    <VStack
-      alignment="leading"
-      spacing={props.compact ? 2 : 3}
-      frame={{ width: props.width }}
-    >
-      <HStack
-        alignment="lastTextBaseline"
-        spacing={4}
-        frame={{ width: props.width }}
-      >
-        <Text
-          font={labelFont}
-          fontWeight="semibold"
-          foregroundStyle={C.secondary}
-          lineLimit={1}
-          {...(shadow ? { shadow } : {})}
-        >
+    <VStack alignment="leading"
+      spacing={status.tone === "ok" ? (props.compact ? 8 : 10) : (props.compact ? 2 : 3)}
+      frame={{ width: props.width }}>
+      <HStack alignment="lastTextBaseline" spacing={4} frame={{ width: props.width }}>
+        <Text font={11} fontWeight="semibold" foregroundStyle={C.secondary}
+          lineLimit={1} minScaleFactor={0.75} {...(shadow ? { shadow } : {})}>
           账户余额
         </Text>
         <Spacer minLength={0} />
-        <Money
-          value={balance?.total ?? null}
-          currency={currency}
-          symbolFont={8}
-          amountFont={amountFont}
-        />
+        <Money value={balance?.total ?? null} currency={currency}
+          symbolFont={props.compact ? 12 : 13} amountFont={props.compact ? 13 : 14}
+          fontWeight="semibold" />
       </HStack>
 
-      <Text
-        font={detailFont}
-        foregroundStyle={C.secondary}
-        lineLimit={1}
-        minScaleFactor={0.75}
-        monospacedDigit
-        {...(shadow ? { shadow } : {})}
-      >
-        {`充值 ${plainAmount(balance?.paid, currency)} · 赠金 ${plainAmount(
-          balance?.granted,
-          currency,
-        )}`}
-      </Text>
-
-      <HStack spacing={4}>
-        <StatusMark tone={status.tone} />
-        <Text
-          font={detailFont}
-          fontWeight="medium"
-          foregroundStyle={statusColor(status.tone)}
-          lineLimit={1}
-          minScaleFactor={0.75}
-          {...(shadow ? { shadow } : {})}
-        >
-          {status.short}
+      <HStack alignment="lastTextBaseline" spacing={6} frame={{ width: props.width }}>
+        <Text font={detailFont} fontWeight="medium" foregroundStyle={C.secondary}
+          lineLimit={1} minScaleFactor={0.75} monospacedDigit {...(shadow ? { shadow } : {})}>
+          {`充值 ${amountText(balance?.paid)}`}
+        </Text>
+        <Spacer minLength={2} />
+        <Text font={detailFont} fontWeight="medium" foregroundStyle={C.secondary}
+          lineLimit={1} minScaleFactor={0.75} monospacedDigit {...(shadow ? { shadow } : {})}>
+          {`赠金 ${amountText(balance?.granted)}`}
         </Text>
       </HStack>
+      {status.tone !== "ok" ? (
+        <HStack alignment="top" spacing={4} frame={{ width: props.width }}>
+          <StatusMark tone={status.tone} />
+          <Text font={warningFont} fontWeight="medium" foregroundStyle={statusColor(status.tone)}
+            lineLimit={2} {...(shadow ? { shadow } : {})}>
+            {status.long}
+          </Text>
+        </HStack>
+      ) : null}
     </VStack>
   );
 }

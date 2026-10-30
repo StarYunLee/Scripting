@@ -1,7 +1,8 @@
-export type WidgetFamilyKind = "small" | "medium" | "large";
+export type WidgetFamilyKind = "small" | "medium" | "large" | "extraLargePortrait";
 
 export function parseWidgetFamily(family: string): WidgetFamilyKind | null {
   const value = family.toLowerCase();
+  if (value === "systemextralargeportrait" || value === "extralargeportrait") return "extraLargePortrait";
   if (value.includes("small") && !value.includes("medium")) return "small";
   if (value.includes("large")) return "large";
   if (value.includes("medium")) return "medium";
@@ -11,7 +12,7 @@ export function parseWidgetFamily(family: string): WidgetFamilyKind | null {
 /** Dashboard / 入口回退：未知尺寸按 Small。 */
 export function widgetFallbackWidth(family: string): number {
   const kind = parseWidgetFamily(family);
-  if (kind === "large") return 364;
+  if (kind === "large" || kind === "extraLargePortrait") return 364;
   if (kind === "medium") return 338;
   return 158;
 }
