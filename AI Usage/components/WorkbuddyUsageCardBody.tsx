@@ -13,6 +13,14 @@ import { formatCredits } from "../providers/workbuddy/format";
 import { checkinView } from "../providers/workbuddy/checkin-view";
 import { formatPercent, formatResetDate } from "../services/usage-format";
 
+/**
+ * 信息行统一栅格：图标占固定宽度槽位（leading 对齐），文字块紧贴图标，
+ * 金额/日期由 Spacer 推到行尾。这样每行的「图标 + 文字块」整体从最左开始，
+ * 且各行文字块起始列一致。
+ */
+const INFO_ROW_ICON_SLOT = 20;
+const INFO_ROW_SPACING = 8;
+
 function byId(card: UsageCard, id: string): UsageWindowView | null {
   return card.windows.find((window) => window.id === id) || null;
 }
@@ -110,7 +118,7 @@ export function WorkbuddyUsageCardBody(props: {
         <VStack alignment="leading" spacing={0}>
           {credits ? <Divider padding={{ top: 10 }} /> : null}
 
-          <HStack spacing={8} padding={{ top: 8 }}>
+          <HStack spacing={INFO_ROW_SPACING} padding={{ top: 8 }}>
             <Image
               systemName={
                 checkinInfo.state === "signed"
@@ -129,11 +137,12 @@ export function WorkbuddyUsageCardBody(props: {
                     ? "systemOrange"
                     : "secondaryLabel"
               }
+              frame={{ width: INFO_ROW_ICON_SLOT, alignment: "leading" }}
             />
             <Text font={13} fontWeight="medium" lineLimit={1}>
               {checkinInfo.label}
             </Text>
-            <Spacer minLength={8} />
+            <Spacer minLength={INFO_ROW_SPACING} />
             {checkinInfo.amountLabel ? (
               <Text font={13} fontWeight="medium" lineLimit={1} monospacedDigit>
                 {checkinInfo.amountLabel}
@@ -146,14 +155,18 @@ export function WorkbuddyUsageCardBody(props: {
       {hasList ? <Divider padding={{ top: 9 }} /> : null}
 
       {prepaid ? (
-        <HStack spacing={10} frame={{ maxWidth: "infinity" }} padding={{ top: 8 }}>
+        <HStack
+          spacing={INFO_ROW_SPACING}
+          frame={{ maxWidth: "infinity" }}
+          padding={{ top: 8 }}
+        >
           <Image
             systemName="creditcard"
             font={14}
             foregroundStyle="secondaryLabel"
-            frame={{ width: 24, height: 24 }}
+            frame={{ width: INFO_ROW_ICON_SLOT, alignment: "leading" }}
           />
-          <VStack alignment="leading" spacing={1} frame={{ maxWidth: "infinity" }}>
+          <VStack alignment="leading" spacing={1}>
             <Text font={12.5} fontWeight="medium">
               预付费积分
             </Text>
@@ -163,6 +176,7 @@ export function WorkbuddyUsageCardBody(props: {
                 : "无总额 · 到期未知"}
             </Text>
           </VStack>
+          <Spacer minLength={INFO_ROW_SPACING} />
           <Text
             font={12.5}
             fontWeight="semibold"
@@ -179,14 +193,18 @@ export function WorkbuddyUsageCardBody(props: {
       ) : null}
 
       {expiring ? (
-        <HStack spacing={10} frame={{ maxWidth: "infinity" }} padding={{ top: 8 }}>
+        <HStack
+          spacing={INFO_ROW_SPACING}
+          frame={{ maxWidth: "infinity" }}
+          padding={{ top: 8 }}
+        >
           <Image
             systemName="exclamationmark.triangle"
             font={14}
             foregroundStyle="systemOrange"
-            frame={{ width: 24, height: 24 }}
+            frame={{ width: INFO_ROW_ICON_SLOT, alignment: "leading" }}
           />
-          <VStack alignment="leading" spacing={1} frame={{ maxWidth: "infinity" }}>
+          <VStack alignment="leading" spacing={1}>
             <Text font={12.5} fontWeight="medium">
               即将到期
             </Text>
@@ -194,6 +212,7 @@ export function WorkbuddyUsageCardBody(props: {
               积分包到期提示
             </Text>
           </VStack>
+          <Spacer minLength={INFO_ROW_SPACING} />
           <Text
             font={12}
             lineLimit={1}

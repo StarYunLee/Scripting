@@ -201,7 +201,7 @@ void run().catch((error) => {
   });
   try {
     Widget.present(
-      <ErrorWidget message="小组件渲染失败，请打开 AI Usage 查看运行记录" />,
+      <ErrorWidget message="小组件渲染失败，请打开 AI Usage 查看刷新记录" />,
     );
   } catch {
     /* WidgetKit 可能已经销毁当前执行上下文。 */

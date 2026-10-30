@@ -39,6 +39,12 @@ export type BackupPayload = {
       displaySettings?: {
         reloadMinutes: number;
         backgroundTheme: string;
+        /** 用量卡账号标识脱敏开关（当前键名）。 */
+        maskUsageCardIdentity?: boolean;
+        /**
+         * @deprecated 旧备份仍可能携带此键；导入时映射到 maskUsageCardIdentity，
+         * 导出只写新键。
+         */
         maskUsageCardEmail?: boolean;
         widgetChromeStyle: WidgetChromeStyle;
       };

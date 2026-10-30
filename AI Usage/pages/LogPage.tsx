@@ -185,8 +185,8 @@ export function LogPage(props: { backgroundTheme: BackgroundThemeId }) {
 
   async function clear() {
     const index = await Dialog.actionSheet({
-      title: "清空运行记录？",
-      message: "只删除运行记录，不影响账号、缓存或设置。",
+      title: "清空刷新记录？",
+      message: "只删除刷新记录，不影响账号、缓存或设置。",
       actions: [{ label: "清空", destructive: true }],
     });
     if (index === 0) {
@@ -198,7 +198,7 @@ export function LogPage(props: { backgroundTheme: BackgroundThemeId }) {
   return (
     <List
       onAppear={() => setItems(readRunRecords())}
-      navigationTitle="运行记录"
+      navigationTitle="刷新记录"
       navigationBarTitleDisplayMode="inline"
       scrollContentBackground="hidden"
       listStyle="plain"
@@ -231,7 +231,7 @@ export function LogPage(props: { backgroundTheme: BackgroundThemeId }) {
               padding={{ vertical: true }}
               frame={{ minHeight: 44, maxWidth: "infinity" }}
             >
-              暂无运行记录
+              暂无刷新记录
             </Text>
           </GlassGroup>
         </Section>

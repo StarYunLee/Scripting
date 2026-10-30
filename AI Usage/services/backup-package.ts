@@ -200,7 +200,7 @@ export function buildBackupPayload(): BackupPayload {
         displaySettings: {
           reloadMinutes: displaySettings.reloadMinutes,
           backgroundTheme: displaySettings.backgroundTheme,
-          maskUsageCardEmail: displaySettings.maskUsageCardEmail,
+          maskUsageCardIdentity: displaySettings.maskUsageCardIdentity,
           widgetChromeStyle: displaySettings.widgetChromeStyle,
         },
         appOverview:
@@ -355,6 +355,27 @@ function remapPreferenceAccounts<T extends object>(
 }
 
 /**
+ * 旧备份把用量卡脱敏开关写作 maskUsageCardEmail；导入时映射到新键并丢弃旧键，
+ * 保证落盘只有 maskUsageCardIdentity。新键已是布尔值时以新键为准。
+ */
+function normalizeRestoredDisplaySettings(
+  displaySettings: NonNullable<
+    BackupPayload["data"]["preferences"]["displaySettings"]
+  >,
+): Record<string, unknown> {
+  const restored: Record<string, unknown> = { ...displaySettings };
+  const legacy = restored.maskUsageCardEmail;
+  if (
+    typeof restored.maskUsageCardIdentity !== "boolean" &&
+    typeof legacy === "boolean"
+  ) {
+    restored.maskUsageCardIdentity = legacy;
+  }
+  delete restored.maskUsageCardEmail;
+  return restored;
+}
+
+/**
  * 增量合并还原备份 Payload
  */
 export function restoreBackupPayload(payload: BackupPayload): RestoreSummary {
@@ -498,7 +519,7 @@ export function restoreBackupPayload(payload: BackupPayload): RestoreSummary {
           ) || {};
         Storage.set("ai_usage_display_settings_v1", {
           ...currentDisplay,
-          ...prefs.displaySettings,
+          ...normalizeRestoredDisplaySettings(prefs.displaySettings),
         });
       } catch {
         /* ignore */

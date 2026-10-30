@@ -22,7 +22,6 @@ import {
 import { PROVIDERS, type ProviderId } from "../models";
 import {
   authCoordinator,
-  cachedPlanLabel,
   cachedUsageWindows,
   deleteAuthorizedAccount,
   isAuthorized,
@@ -35,7 +34,7 @@ import {
   RELOAD_MINUTE_LABELS,
   RELOAD_MINUTE_OPTIONS,
   setAppReloadMinutes,
-  setMaskUsageCardEmail,
+  setMaskUsageCardIdentity,
   setWidgetChromeStyle,
   snapReloadMinutes,
   type BackgroundThemeId,
@@ -49,11 +48,11 @@ import {
 } from "../components/GlassList";
 import { AuthSheetView } from "../components/AuthSheetView";
 import { PageBackground } from "../components/PageBackground";
-import { ProviderLogo } from "../components/ProviderLogo";
 import { buildPageToolbar } from "../components/PageToolbar";
 import { CURRENT_VERSION } from "../changelog";
 import { ChangelogPage } from "./ChangelogPage";
 import { AccountDetailPage } from "./AccountDetailPage";
+import { AccountsSettingsPage } from "./AccountsSettingsPage";
 import { DashboardWidgetSettingsPage } from "./DashboardWidgetSettingsPage";
 import { LogPage } from "./LogPage";
 import type { AuthSheet } from "../models";
@@ -63,10 +62,6 @@ import {
   setDashboardWidgetDisplayPreferences,
 } from "../services/dashboard-widget-prefs";
 import { requestWidgetReloadAfterStorage } from "../services/widgets";
-import {
-  isAccountShownInOverview,
-  setAccountShownInOverview,
-} from "../services/app-overview-prefs";
 import {
   runBackupExportFlow,
   runBackupImportFlow,
@@ -96,6 +91,7 @@ type SelectedDestination =
         planLabel?: string | null;
       };
     }
+  | { kind: "accounts" }
   | { kind: "dashboardWidget" }
   | { kind: "log" }
   | { kind: "changelog" };
@@ -376,6 +372,16 @@ export function SettingsPage(props: {
                 }
               }}
             />
+          ) : selectedDestination?.kind === "accounts" ? (
+            <AccountsSettingsPage
+              accountRows={accountRows}
+              backgroundTheme={props.backgroundTheme}
+              onOverviewChange={props.onOverviewChange}
+              onSaveFailure={showSettingsSaveFailure}
+              onOpenAccount={(provider, account) =>
+                setSelectedDestination({ kind: "account", provider, account })
+              }
+            />
           ) : selectedDestination?.kind === "dashboardWidget" ? (
             <DashboardWidgetSettingsPage
               cards={props.demoMode ? listDemoCards() : listAuthorizedCards()}
@@ -393,7 +399,7 @@ export function SettingsPage(props: {
     >
       <Section
         listRowBackground={glassRowBackground}
-        header={<GlassSectionHeader title="演示" />}
+        header={<GlassSectionHeader title="账号" />}
       >
         <GlassGroup>
           <Toggle
@@ -406,123 +412,12 @@ export function SettingsPage(props: {
             padding={{ vertical: true }}
             frame={{ minHeight: 44, maxWidth: "infinity" }}
           />
-        </GlassGroup>
-      </Section>
-
-      <Section
-        listRowBackground={glassRowBackground}
-        header={<GlassSectionHeader title="账号" />}
-      >
-        <GlassGroup>
-          {accountRows.length > 0 ? (
-            accountRows.map(({ meta, account }, index) => {
-              const title = account.email || account.name;
-              const planLabel =
-                "planLabel" in account
-                  ? account.planLabel
-                  : cachedPlanLabel(meta.id, account.id);
-              const shown = isAccountShownInOverview(meta.id, account.id);
-              return (
-                <VStack
-                  key={`${meta.id}:${account.id}`}
-                  alignment="leading"
-                  spacing={0}
-                  frame={{ maxWidth: "infinity" }}
-                >
-                  <HStack
-                    alignment="center"
-                    spacing={12}
-                    padding={{ vertical: true }}
-                    frame={{ minHeight: 56, maxWidth: "infinity" }}
-                  >
-                    <Button
-                      buttonStyle="plain"
-                      frame={{ maxWidth: "infinity" }}
-                      action={() =>
-                        setSelectedDestination({
-                          kind: "account",
-                          provider: meta.id,
-                          account: {
-                            id: account.id,
-                            name: account.name,
-                            email: account.email,
-                            planLabel,
-                          },
-                        })
-                      }
-                    >
-                      <HStack
-                        spacing={10}
-                        frame={{ maxWidth: "infinity" }}
-                        contentShape="rect"
-                      >
-                        <ProviderLogo provider={meta.id} size={24} />
-                        <VStack alignment="leading" spacing={3}>
-                          <Text font="body" lineLimit={1} truncationMode="tail">
-                            {title}
-                          </Text>
-                          <Text
-                            font={13}
-                            foregroundStyle="secondaryLabel"
-                            lineLimit={1}
-                            truncationMode="tail"
-                          >
-                            {planLabel && planLabel !== meta.title
-                              ? `${meta.title} · ${planLabel}`
-                              : meta.title}
-                          </Text>
-                        </VStack>
-                        <Spacer />
-                      </HStack>
-                    </Button>
-                    <Toggle
-                      title={`在用量总览中显示 ${title}`}
-                      labelsHidden
-                      toggleStyle="switch"
-                      value={shown}
-                      onChanged={(value: boolean) => {
-                        if (
-                          !setAccountShownInOverview(meta.id, account.id, value)
-                        ) {
-                          void showSettingsSaveFailure();
-                          refresh();
-                          return;
-                        }
-                        props.onOverviewChange();
-                        refresh();
-                      }}
-                    />
-                  </HStack>
-                  {index < accountRows.length - 1 ? <GlassDivider /> : null}
-                </VStack>
-              );
-            })
-          ) : (
-            <HStack
-              padding={{ vertical: true }}
-              frame={{ minHeight: 44, maxWidth: "infinity" }}
-            >
-              <Text font={13} foregroundStyle="secondaryLabel">
-                尚未连接账号
-              </Text>
-              <Spacer />
-            </HStack>
-          )}
           <GlassDivider />
-          <GlassNoteRow text="仅影响用量页，不影响桌面小组件。" />
-        </GlassGroup>
-      </Section>
-
-      <Section
-        listRowBackground={glassRowBackground}
-        header={<GlassSectionHeader title="隐私" />}
-      >
-        <GlassGroup>
           <Toggle
-            title="隐藏用量卡邮箱"
-            value={settings.maskUsageCardEmail}
+            title="隐藏账号标识"
+            value={settings.maskUsageCardIdentity}
             onChanged={(value: boolean) => {
-              const result = setMaskUsageCardEmail(value);
+              const result = setMaskUsageCardIdentity(value);
               if (!result.ok) {
                 void showSettingsSaveFailure();
                 refresh();
@@ -534,6 +429,40 @@ export function SettingsPage(props: {
             padding={{ vertical: true }}
             frame={{ minHeight: 44, maxWidth: "infinity" }}
           />
+          <GlassDivider />
+          {accountRows.length > 0 ? (
+            <Button
+              buttonStyle="plain"
+              frame={{ maxWidth: "infinity" }}
+              action={() => setSelectedDestination({ kind: "accounts" })}
+            >
+              <HStack
+                padding={{ vertical: true }}
+                frame={{ minHeight: 44, maxWidth: "infinity" }}
+                contentShape="rect"
+              >
+                <Text>用量页显示的账号</Text>
+                <Spacer />
+                <Text foregroundStyle="secondaryLabel">
+                  {`${accountRows.length} 个账号`}
+                </Text>
+                <Image
+                  systemName="chevron.right"
+                  foregroundStyle="tertiaryLabel"
+                />
+              </HStack>
+            </Button>
+          ) : (
+            <HStack
+              padding={{ vertical: true }}
+              frame={{ minHeight: 44, maxWidth: "infinity" }}
+            >
+              <Text font={13} foregroundStyle="secondaryLabel">
+                尚未连接账号
+              </Text>
+              <Spacer />
+            </HStack>
+          )}
         </GlassGroup>
       </Section>
 
@@ -624,27 +553,9 @@ export function SettingsPage(props: {
 
       <Section
         listRowBackground={glassRowBackground}
-        header={<GlassSectionHeader title="外观" />}
+        header={<GlassSectionHeader title="小组件" />}
       >
         <GlassGroup>
-          <Picker
-            title="背景主题"
-            value={props.backgroundTheme}
-            onChanged={(value: string) => {
-              props.onBackgroundThemeChange(value as BackgroundThemeId);
-              refresh();
-            }}
-            pickerStyle="menu"
-            padding={{ vertical: true }}
-            frame={{ minHeight: 44, maxWidth: "infinity" }}
-          >
-            {BACKGROUND_THEMES.map((theme) => (
-              <Text key={theme.id} tag={theme.id}>
-                {theme.title}
-              </Text>
-            ))}
-          </Picker>
-          <GlassDivider />
           <Picker
             title="小组件风格"
             value={settings.widgetChromeStyle}
@@ -668,19 +579,6 @@ export function SettingsPage(props: {
             <Text tag="clear">Clear (简约)</Text>
           </Picker>
           <GlassDivider />
-          <GlassNoteRow
-            text={
-              "彩色：彩色徽标与额度预警色。\n简约：无底色徽标与镂空进度条。"
-            }
-          />
-        </GlassGroup>
-      </Section>
-
-      <Section
-        listRowBackground={glassRowBackground}
-        header={<GlassSectionHeader title="刷新" />}
-      >
-        <GlassGroup>
           <Picker
             title="刷新间隔"
             value={String(snapReloadMinutes(settings.reloadMinutes))}
@@ -705,13 +603,38 @@ export function SettingsPage(props: {
             ))}
           </Picker>
           <GlassDivider />
-          <GlassNoteRow text={"设置自动刷新的最短间隔，选择“手动”可关闭自动联网。\n多账号小组件读取本地缓存，需在 App 或通过刷新按钮更新。\n小组件刷新可能因系统调度延后。"} />
+          <GlassNoteRow text={"彩色：彩色徽标与额度预警色。\n简约：无底色徽标与镂空进度条。\n\n设置自动刷新的最短间隔，选择“手动”可关闭自动联网。多账号小组件读取本地缓存，需在 App 或通过刷新按钮更新；小组件刷新可能因系统调度延后。"} />
         </GlassGroup>
       </Section>
 
       <Section
         listRowBackground={glassRowBackground}
-        header={<GlassSectionHeader title="数据与备份" />}
+        header={<GlassSectionHeader title="外观" />}
+      >
+        <GlassGroup>
+          <Picker
+            title="背景主题"
+            value={props.backgroundTheme}
+            onChanged={(value: string) => {
+              props.onBackgroundThemeChange(value as BackgroundThemeId);
+              refresh();
+            }}
+            pickerStyle="menu"
+            padding={{ vertical: true }}
+            frame={{ minHeight: 44, maxWidth: "infinity" }}
+          >
+            {BACKGROUND_THEMES.map((theme) => (
+              <Text key={theme.id} tag={theme.id}>
+                {theme.title}
+              </Text>
+            ))}
+          </Picker>
+        </GlassGroup>
+      </Section>
+
+      <Section
+        listRowBackground={glassRowBackground}
+        header={<GlassSectionHeader title="数据" />}
       >
         <GlassGroup>
           <Button
@@ -760,15 +683,6 @@ export function SettingsPage(props: {
             </HStack>
           </Button>
           <GlassDivider />
-          <GlassNoteRow text="备份包含账号凭据及小组件设置。请妥善保存文件和密码，密码丢失无法恢复。" />
-        </GlassGroup>
-      </Section>
-
-      <Section
-        listRowBackground={glassRowBackground}
-        header={<GlassSectionHeader title="关于" />}
-      >
-        <GlassGroup>
           <Button
             buttonStyle="plain"
             frame={{ maxWidth: "infinity" }}
@@ -779,7 +693,7 @@ export function SettingsPage(props: {
               frame={{ minHeight: 44, maxWidth: "infinity" }}
               contentShape="rect"
             >
-              <Text>运行记录</Text>
+              <Text>刷新记录</Text>
               <Spacer />
               <Image
                 systemName="chevron.right"
@@ -788,6 +702,15 @@ export function SettingsPage(props: {
             </HStack>
           </Button>
           <GlassDivider />
+          <GlassNoteRow text="备份包含账号凭据及小组件设置。请妥善保存文件和密码，密码丢失无法恢复。" />
+        </GlassGroup>
+      </Section>
+
+      <Section
+        listRowBackground={glassRowBackground}
+        header={<GlassSectionHeader title="关于" />}
+      >
+        <GlassGroup>
           <Button
             buttonStyle="plain"
             frame={{ maxWidth: "infinity" }}

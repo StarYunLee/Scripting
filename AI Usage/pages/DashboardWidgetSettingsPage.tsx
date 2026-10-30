@@ -81,7 +81,7 @@ export function DashboardWidgetSettingsPage(props: {
         message:
           error instanceof Error && error.message
             ? error.message
-            : "请查看运行记录，或在主屏幕重新添加小组件后重试。",
+            : "请查看刷新记录，或在主屏幕重新添加小组件后重试。",
         buttonLabel: "关闭",
       });
     }

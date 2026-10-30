@@ -26,8 +26,8 @@ export type AppDisplaySettings = {
   /** 0 = 手动（App 启动不自动联网；小组件也不自动拉新） */
   reloadMinutes: number;
   backgroundTheme: BackgroundThemeId;
-  /** 仅在 App 用量卡中隐藏邮箱本地部分。 */
-  maskUsageCardEmail: boolean;
+  /** 仅在 App 用量卡中隐藏账号标识（邮箱本地部分或纯数字手机号中段）。 */
+  maskUsageCardIdentity: boolean;
   /**
    * 小组件视觉风格：color = 默认彩色，clear = 简约通透。
    * 兼容旧版 widgetClearHomeScreen boolean。
@@ -74,10 +74,26 @@ const DEFAULT_SETTINGS: AppDisplaySettings = {
   // 贴近原先「打开几乎会刷一次」的体验，同时允许短时复用缓存秒开。
   reloadMinutes: 5,
   backgroundTheme: "system_default",
-  maskUsageCardEmail: false,
+  maskUsageCardIdentity: false,
   widgetChromeStyle: "color",
   widgetClearHomeScreen: false,
 };
+
+/**
+ * 历史数据里的旧键名，只读不写。
+ * 旧版本把「隐藏用量卡账号标识」存为 maskUsageCardEmail，读取时需沿用其值。
+ */
+type LegacyMaskSetting = { maskUsageCardEmail?: unknown };
+
+/** 新键优先；旧数据仅有旧键时沿用旧键布尔值（非 true 一律视为关闭）。 */
+function normalizeMaskUsageCardIdentity(
+  value: Partial<AppDisplaySettings> & LegacyMaskSetting,
+): boolean {
+  if (typeof value.maskUsageCardIdentity === "boolean") {
+    return value.maskUsageCardIdentity;
+  }
+  return value.maskUsageCardEmail === true;
+}
 
 /** 把任意遗留值吸附到最近档位，保证 Picker 有选中项。 */
 export function snapReloadMinutes(value: number): number {
@@ -133,7 +149,9 @@ export type StorageWriteResult<T> =
 export function getAppDisplaySettings(): AppDisplaySettings {
   migrateLegacyWidgetSettings();
   try {
-    const value = Storage.get<Partial<AppDisplaySettings>>(DISPLAY_KEY);
+    const value = Storage.get<
+      Partial<AppDisplaySettings> & LegacyMaskSetting
+    >(DISPLAY_KEY);
     if (!value || typeof value !== "object") {
       const fallback =
         getCodexSettings().reloadMinutes ||
@@ -149,7 +167,7 @@ export function getAppDisplaySettings(): AppDisplaySettings {
     return {
       reloadMinutes: clampMinutes(value.reloadMinutes),
       backgroundTheme: normalizeTheme(value.backgroundTheme),
-      maskUsageCardEmail: value.maskUsageCardEmail === true,
+      maskUsageCardIdentity: normalizeMaskUsageCardIdentity(value),
       widgetChromeStyle: chromeStyle,
       widgetClearHomeScreen: chromeStyle === "clear",
     };
@@ -195,12 +213,12 @@ export function setAppBackgroundTheme(
   }
 }
 
-export function setMaskUsageCardEmail(
+export function setMaskUsageCardIdentity(
   enabled: boolean,
 ): StorageWriteResult<AppDisplaySettings> {
   const next: AppDisplaySettings = {
     ...getAppDisplaySettings(),
-    maskUsageCardEmail: enabled === true,
+    maskUsageCardIdentity: enabled === true,
   };
   try {
     if (!Storage.set(DISPLAY_KEY, next)) return { ok: false, value: next };
