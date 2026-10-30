@@ -8,44 +8,48 @@
 
 | 项目 | 简介 | 版本 | 安装 |
 |---|---|---|---|
-| [AI Usage](./AI%20Usage/) | 多平台 AI 用量聚合与桌面看板 | `1.8.1` | [一键导入](https://www.scripting.fun/import_scripts/?urls=%5B%22https%3A%2F%2Fraw.githubusercontent.com%2FStarYunLee%2FScripting%2Fmain%2FAI-Usage.scripting%22%5D) |
+| [AI Usage](./AI%20Usage/) | 多平台 AI 用量聚合与桌面看板 | `1.9.0` | [一键导入](https://www.scripting.fun/import_scripts/?urls=%5B%22https%3A%2F%2Fraw.githubusercontent.com%2FStarYunLee%2FScripting%2Fmain%2FAI-Usage.scripting%22%5D) |
 | [GitHub Stars](./GitHub%20Stars/) | GitHub Stars 与仓库管理 | `1.1.1` | [一键导入](https://www.scripting.fun/import_scripts/?urls=%5B%22https%3A%2F%2Fraw.githubusercontent.com%2FStarYunLee%2FScripting%2Fmain%2FGitHub-Stars.scripting%22%5D) |
 | [Icon Library](./Icon%20Library/) | GitHub 公开图标库管理 | `1.1.2` | [一键导入](https://www.scripting.fun/import_scripts/?urls=%5B%22https%3A%2F%2Fraw.githubusercontent.com%2FStarYunLee%2FScripting%2Fmain%2FIcon-Library.scripting%22%5D) |
 | [Surge Metrics](./Surge%20Metrics/) | Surge iOS 运行指标小组件 | `1.1.1` | [一键导入](https://www.scripting.fun/import_scripts/?urls=%5B%22https%3A%2F%2Fraw.githubusercontent.com%2FStarYunLee%2FScripting%2Fmain%2FSurge-Metrics.scripting%22%5D) |
 
 ## AI Usage
 
-面向 Scripting App 的非官方多平台 AI 用量聚合与桌面看板工具。在一个应用中集中管理主流平台的多账号用量、主屏幕小组件与本地数据安全。
+面向 Scripting App 的非官方多平台 AI 用量聚合与桌面看板工具。在一个应用中集中管理 Codex、Grok、Claude、Antigravity、Cursor、Kimi Code、GitHub Copilot、Z.ai、MiniMax、WorkBuddy 与 DeepSeek 的多账号用量、主屏幕小组件与本地数据安全。
 
-当前版本：`1.8.1`
+当前版本：`1.9.0`
 
-- **多平台与多账号聚合**：统一连接 Codex、Grok、Claude、Antigravity、Cursor、Kimi Code、GitHub Copilot、Z.ai 与 MiniMax，支持同平台多账号及多额度窗口独立跟踪。
-- **可选的 Scripting 主页入口（需要 Scripting Pro）**：可将 AI Usage 固定在 Scripting Home Tab，直接查看用量并进入设置；不启用该入口不影响独立应用、主屏幕小组件及其他原有功能。
-- **全尺寸桌面看板**：提供单账号 Small / Medium 小组件，以及可展示 2、4 或 8 个账号的 Small / Medium / Large 多账号看板；可配置展示账号、额度窗口与账号标识。
+- **多平台与多账号聚合**：统一连接 11 个平台，支持同平台多账号及多额度窗口独立跟踪。
+- **全尺寸桌面看板**：单账号提供 Small / Medium；多账号看板提供 Small / Medium / Large，以及 iOS 竖向整屏 Extra Large（两列六行，最多 12 个账号）。
+- **可选的 Scripting 主页入口**：Scripting Pro 用户可将 AI Usage 固定在 Home Tab，直接查看用量并进入设置；不启用不影响独立应用和小组件。
 - **双重视觉风格**：默认彩色风格提供品牌徽章与绿 / 橙 / 红额度预警；Clear 简约风格在普通桌面呈现黑白线框，在透明桌面呈现通透白线框。
-- **透明小组件适配**：采用 15% 微透暗底、纯白高对比文字、苹果亮绿用量色与抗杂色微阴影（受静态壁纸切片且无实时模糊限制，不保证所有高反差、强光或复杂壁纸下效果均佳）。
-- **文件级加密备份与恢复**：使用 PBKDF2-HMAC-SHA256 与 AES-256-GCM 保护账号凭据、默认选择和小组件偏好，支持跨设备迁移与增量恢复。
-- **可靠缓存与本地隐私**：网络异常或接口限流时回退最近成功缓存；凭据保存在本机 Keychain，并提供无需真实账号的只读演示模式。
+- **透明小组件适配**：不铺额外底板，采用高对比白字、苹果亮绿用量色与抗杂色文字微阴影，品牌水印与普通组件一致。
+- **分步授权与本地隐私**：回调地址、设备码与 API Key 统一为分步引导；凭据保存在本机 Keychain，并提供无需真实账号的只读演示模式。
+- **加密备份与可靠缓存**：使用 PBKDF2-HMAC-SHA256 与 AES-256-GCM 保护账号凭据、默认选择和小组件偏好；网络异常或接口限流时回退最近成功缓存。
 
 <table>
-  <tr>
-    <td align="center" width="25%"><img src="./AI%20Usage/assets/ai-usage-preview-app-light.jpeg" alt="AI Usage 浅色应用预览" /></td>
-    <td align="center" width="25%"><img src="./AI%20Usage/assets/ai-usage-preview-widgets-light.jpeg" alt="AI Usage 浅色 Small 与 Medium 小组件" /></td>
-    <td align="center" width="25%"><img src="./AI%20Usage/assets/ai-usage-preview-layouts-light.jpeg" alt="AI Usage 浅色 Medium 布局" /></td>
-    <td align="center" width="25%"><img src="./AI%20Usage/assets/ai-usage-preview-dashboard-light.jpeg" alt="AI Usage 浅色多账号小组件" /></td>
-  </tr>
-  <tr>
-    <td align="center" width="25%"><img src="./AI%20Usage/assets/ai-usage-preview-app-dark.jpeg" alt="AI Usage 深色应用预览" /></td>
-    <td align="center" width="25%"><img src="./AI%20Usage/assets/ai-usage-preview-widgets-dark.jpeg" alt="AI Usage 深色 Small 与 Medium 小组件" /></td>
-    <td align="center" width="25%"><img src="./AI%20Usage/assets/ai-usage-preview-layouts-dark.jpeg" alt="AI Usage 深色 Medium 布局" /></td>
-    <td align="center" width="25%"><img src="./AI%20Usage/assets/ai-usage-preview-dashboard-dark.jpeg" alt="AI Usage 深色多账号小组件" /></td>
-  </tr>
-  <tr>
-    <td align="center" width="25%"><img src="./AI%20Usage/assets/ai-usage-preview-clear-standard.jpeg" alt="AI Usage 普通桌面 Clear 简约小组件" /></td>
-    <td align="center" width="25%"><img src="./AI%20Usage/assets/ai-usage-preview-clear-transparent.jpeg" alt="AI Usage 透明桌面 Clear 简约小组件" /></td>
-    <td align="center" width="25%"><img src="./AI%20Usage/assets/ai-usage-preview-transparent-widgets.jpeg" alt="AI Usage 透明单账号小组件" /></td>
-    <td align="center" width="25%"><img src="./AI%20Usage/assets/ai-usage-preview-transparent-dashboard.jpeg" alt="AI Usage 透明多账号看板小组件" /></td>
-  </tr>
+  <thead>
+    <tr>
+      <th align="center">应用界面</th>
+      <th align="center">普通彩色小组件</th>
+      <th align="center">透明小组件</th>
+      <th align="center">Clear 简约小组件</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td align="center"><img src="./AI%20Usage/assets/ai-usage-preview-app-interface.webp" width="210" alt="AI Usage 应用界面动态预览" /></td>
+      <td align="center"><img src="./AI%20Usage/assets/ai-usage-preview-widgets-colorful.webp" width="210" alt="AI Usage 普通彩色组件动态预览" /></td>
+      <td align="center"><img src="./AI%20Usage/assets/ai-usage-preview-widgets-transparent.webp" width="210" alt="AI Usage 透明小组件动态预览" /></td>
+      <td align="center"><img src="./AI%20Usage/assets/ai-usage-preview-widgets-clear.webp" width="210" alt="AI Usage Clear 简约小组件动态预览" /></td>
+    </tr>
+    <tr>
+      <td align="center"><sub>用量总览与设置页的浅色 / 深色界面</sub></td>
+      <td align="center"><sub>彩色风格的单账号组件与多账号看板</sub></td>
+      <td align="center"><sub>透明桌面下的彩色组件与多账号看板</sub></td>
+      <td align="center"><sub>透明桌面与Clear风格普通桌面组件</sub></td>
+    </tr>
+  </tbody>
 </table>
 
 远程导入地址：
@@ -53,7 +57,6 @@
 ```text
 https://raw.githubusercontent.com/StarYunLee/Scripting/main/AI-Usage.scripting
 ```
-
 
 ## GitHub Stars
 
