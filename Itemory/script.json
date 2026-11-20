@@ -1,0 +1,27 @@
+{
+  "permissions": null,
+  "icon": "shippingbox.fill",
+  "iconImage": null,
+  "runInApp": true,
+  "remoteResource": null,
+  "color": "rgba(10, 132, 255, 1)",
+  "contributors": [],
+  "author": {
+    "email": null,
+    "homepage": "https:\/\/github.com\/StarYunLee",
+    "name": "StarYunLee"
+  },
+  "description": "A personal catalog of belongings and ownership costs. Organize what you own and once owned, and revisit it through a timeline and shelf view.",
+  "name": "Itemory",
+  "version": "1.0.0",
+  "localizedNames": {
+    "en": "Itemory",
+    "zh": "Itemory"
+  },
+  "entry": "index.tsx",
+  "intentInputTypes": [],
+  "localizedDescriptions": {
+    "en": "A personal catalog of belongings and ownership costs. Organize what you own and once owned, and revisit it through a timeline and shelf view.",
+    "zh": "个人物品档案与成本记录。整理拥有与曾经拥有的物品，用时间线和置物架回顾它们的陪伴。"
+  }
+}
