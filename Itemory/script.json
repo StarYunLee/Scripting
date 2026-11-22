@@ -3,7 +3,10 @@
   "icon": "shippingbox.fill",
   "iconImage": null,
   "runInApp": true,
-  "remoteResource": null,
+  "remoteResource": {
+    "url": "https://raw.githubusercontent.com/StarYunLee/Scripting/main/Itemory.scripting",
+    "autoUpdateInterval": 86400
+  },
   "color": "rgba(10, 132, 255, 1)",
   "contributors": [],
   "author": {
@@ -11,7 +14,7 @@
     "homepage": "https:\/\/github.com\/StarYunLee",
     "name": "StarYunLee"
   },
-  "description": "A personal catalog of belongings and ownership costs. Organize what you own and once owned, and revisit it through a timeline and shelf view.",
+  "description": "Catalog your belongings, track purchases, repairs and resale proceeds, and see what each item costs per day. Browse your collection by purchase date or cover image.",
   "name": "Itemory",
   "version": "1.0.0",
   "localizedNames": {
@@ -21,7 +24,7 @@
   "entry": "index.tsx",
   "intentInputTypes": [],
   "localizedDescriptions": {
-    "en": "A personal catalog of belongings and ownership costs. Organize what you own and once owned, and revisit it through a timeline and shelf view.",
-    "zh": "个人物品档案与成本记录。整理拥有与曾经拥有的物品，用时间线和置物架回顾它们的陪伴。"
+    "en": "Catalog your belongings, track purchases, repairs and resale proceeds, and see what each item costs per day. Browse your collection by purchase date or cover image.",
+    "zh": "为每件物品记录购入价格、维修支出和转手收入，查看持有天数与日均成本，在时间线和置物架上回顾自己的物品。"
   }
 }

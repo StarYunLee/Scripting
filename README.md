@@ -4,13 +4,14 @@
 
 ## 项目
 
-点击项目名查看源码与使用说明，点击「一键导入」直接用 Scripting 安装。四个项目均已启用每日自动更新检查。
+点击项目名查看源码与使用说明，点击「一键导入」直接用 Scripting 安装。各项目均已启用每日自动更新检查。
 
 | 项目 | 简介 | 版本 | 安装 |
 |---|---|---|---|
 | [AI Usage](./AI%20Usage/) | 多平台 AI 用量聚合与桌面看板 | `1.9.0` | [一键导入](https://www.scripting.fun/import_scripts/?urls=%5B%22https%3A%2F%2Fraw.githubusercontent.com%2FStarYunLee%2FScripting%2Fmain%2FAI-Usage.scripting%22%5D) |
 | [GitHub Stars](./GitHub%20Stars/) | GitHub Stars 与仓库管理 | `1.1.1` | [一键导入](https://www.scripting.fun/import_scripts/?urls=%5B%22https%3A%2F%2Fraw.githubusercontent.com%2FStarYunLee%2FScripting%2Fmain%2FGitHub-Stars.scripting%22%5D) |
 | [Icon Library](./Icon%20Library/) | GitHub 公开图标库管理 | `1.1.2` | [一键导入](https://www.scripting.fun/import_scripts/?urls=%5B%22https%3A%2F%2Fraw.githubusercontent.com%2FStarYunLee%2FScripting%2Fmain%2FIcon-Library.scripting%22%5D) |
+| [Itemory](./Itemory/) | 个人物品档案、持有成本与订单识图录入 | `1.0.0` | [一键导入](https://www.scripting.fun/import_scripts/?urls=%5B%22https%3A%2F%2Fraw.githubusercontent.com%2FStarYunLee%2FScripting%2Fmain%2FItemory.scripting%22%5D) |
 | [Surge Metrics](./Surge%20Metrics/) | Surge iOS 运行指标小组件 | `1.1.1` | [一键导入](https://www.scripting.fun/import_scripts/?urls=%5B%22https%3A%2F%2Fraw.githubusercontent.com%2FStarYunLee%2FScripting%2Fmain%2FSurge-Metrics.scripting%22%5D) |
 
 ## AI Usage
@@ -111,6 +112,21 @@ https://raw.githubusercontent.com/StarYunLee/Scripting/main/GitHub-Stars.scripti
 ```text
 https://raw.githubusercontent.com/StarYunLee/Scripting/main/Icon-Library.scripting
 ```
+
+## Itemory
+
+记录物品的购入、维修和转手收支，查看持有天数与日均成本。可以从订单截图预填档案，也可以按年份查看统计，在置物架上回顾自己的物品。运行需要 Scripting Pro。
+
+<table>
+  <tr><th>物品</th><th>统计</th><th>回顾</th></tr>
+  <tr>
+    <td width="33%"><a href="./Itemory/assets/itemory-preview-items.webp"><img src="./Itemory/assets/itemory-preview-items.webp" alt="Itemory 物品界面动态预览" /></a></td>
+    <td width="33%"><a href="./Itemory/assets/itemory-preview-statistics.webp"><img src="./Itemory/assets/itemory-preview-statistics.webp" alt="Itemory 统计界面动态预览" /></a></td>
+    <td width="33%"><a href="./Itemory/assets/itemory-preview-review.webp"><img src="./Itemory/assets/itemory-preview-review.webp" alt="Itemory 回顾界面动态预览" /></a></td>
+  </tr>
+</table>
+
+[使用说明](./Itemory/) · [一键导入](https://www.scripting.fun/import_scripts/?urls=%5B%22https%3A%2F%2Fraw.githubusercontent.com%2FStarYunLee%2FScripting%2Fmain%2FItemory.scripting%22%5D) · [下载安装包](./Itemory.scripting)
 
 ## Surge Metrics
 
